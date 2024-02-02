@@ -7,6 +7,7 @@
         xmlns:settings="clr-namespace:WFInfo.Settings"
         xmlns:components="clr-namespace:WFInfo.Components"
         xmlns:screenshot="clr-namespace:WFInfo.Services.Screenshot"
+        xmlns:opticalCharacterRecognition="clr-namespace:WFInfo.net8.Services.OpticalCharacterRecognition"
         mc:Ignorable="d"
         Title="Settings"
         MaxWidth="334"
@@ -20,9 +21,9 @@
         AllowsTransparency="True"
         ResizeMode="CanResizeWithGrip">
     <Window.Resources>
-        <ObjectDataProvider x:Key="enumWFTheme" MethodName="GetValues" ObjectType="{x:Type wfInfo:WFtheme}">
+        <ObjectDataProvider x:Key="enumWFTheme" MethodName="GetValues" ObjectType="{x:Type opticalCharacterRecognition:WFtheme}">
             <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="wfInfo:WFtheme"/>
+                <x:Type TypeName="opticalCharacterRecognition:WFtheme"/>
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
         <ObjectDataProvider x:Key="enumHDRSupport" MethodName="GetValues" ObjectType="{x:Type screenshot:HdrSupportEnum}">

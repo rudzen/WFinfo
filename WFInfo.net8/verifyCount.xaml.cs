@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
 

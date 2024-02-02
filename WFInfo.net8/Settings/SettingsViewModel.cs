@@ -10,6 +10,7 @@ using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using Windows.Foundation.Metadata;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 
 namespace WFInfo.Settings
 {

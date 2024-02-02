@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.Screenshot;
 
 namespace WFInfo.Settings

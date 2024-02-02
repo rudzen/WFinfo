@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WindowInfo;
 
 namespace WFInfo;

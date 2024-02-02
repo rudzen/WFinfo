@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 
 namespace WFInfo.Settings
 {
@@ -186,7 +187,7 @@ namespace WFInfo.Settings
             Main.SpawnErrorPopup(DateTime.UtcNow, 1800);
         }
 
-        private void localeComboboxSelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private void localeComboboxSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             ComboBoxItem item = (ComboBoxItem) localeCombobox.SelectedItem;
             
@@ -201,7 +202,6 @@ namespace WFInfo.Settings
                 Main.dataBase.ReloadItems();
             });
         }
-
 
         private void LightRadioChecked(object sender, RoutedEventArgs e)
         {

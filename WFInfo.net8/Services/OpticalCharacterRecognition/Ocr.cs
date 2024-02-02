@@ -1,11 +1,13 @@
-using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Primitives;
+using Newtonsoft.Json.Linq;
 using Tesseract;
 using WFInfo.Services.HDRDetection;
 using WFInfo.Services.Screenshot;
@@ -18,31 +20,9 @@ using Pen = System.Drawing.Pen;
 using Point = System.Drawing.Point;
 using Rect = Tesseract.Rect;
 
-namespace WFInfo;
+namespace WFInfo.net8.Services.OpticalCharacterRecognition;
 
-public enum WFtheme
-{
-    VITRUVIAN,
-    STALKER,
-    BARUUK,
-    CORPUS,
-    FORTUNA,
-    GRINEER,
-    LOTUS,
-    NIDUS,
-    OROKIN,
-    TENNO,
-    HIGH_CONTRAST,
-    LEGACY,
-    EQUINOX,
-    DARK_LOTUS,
-    ZEPHYR,
-    UNKNOWN = -1,
-    AUTO = -2,
-    CUSTOM = -3
-}
-
-class OCR
+internal class OCR
 {
     private static readonly string applicationDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
@@ -109,7 +89,7 @@ private static int numberOfRewardsDisplayed;
     public static bool processingActive;
 
     private static Bitmap bigScreenshot;
-    private static Bitmap partialScreenshot;
+    private static Bitmap? partialScreenshot;
     private static Bitmap partialScreenshotExpanded;
 
     private static string[] firstChecks;
@@ -191,7 +171,7 @@ private static int numberOfRewardsDisplayed;
         for (int i = 0; i < parts.Count; i++)
         {
             int tempI = i;
-            tasks[i] = Task.Factory.StartNew(() => { firstChecks[tempI] = OCR.GetTextFromImage(parts[tempI], _tesseractService.Engines[tempI]);});
+            tasks[i] = Task.Factory.StartNew(() => { firstChecks[tempI] = GetTextFromImage(parts[tempI], _tesseractService.Engines[tempI]);});
         }
         Task.WaitAll(tasks);
 
@@ -283,31 +263,15 @@ private static int numberOfRewardsDisplayed;
                 }
                 #endregion
 
-                #region clipboard
-                if (platinum > 0)
-                {
-                    if (!string.IsNullOrEmpty(clipboard)) { clipboard += "-  "; }
-
-                    clipboard += "[" + correctName.Replace(" Blueprint", "") + "]: " + plat + ":platinum: ";
-
-                    if (primeSetPlat != null)
-                    {
-                        clipboard += "Set: " + primeSetPlat + ":platinum: ";
-                    }
-
-                    if (_settings.ClipboardVaulted)
-                    {
-                        clipboard += ducats + ":ducats:";
-                        if (vaulted)
-                            clipboard += "(V)";
-                    }
-                }
-
-                if ((partNumber == firstChecks.Length - 1) && (!string.IsNullOrEmpty(clipboard)))
-                {
-                    clipboard += _settings.ClipboardTemplate;
-                }
-                #endregion
+                RewardScreenClipboard(
+                    platinum: in platinum,
+                    correctName: correctName,
+                    plat: plat,
+                    primeSetPlat: primeSetPlat,
+                    ducats: ducats,
+                    vaulted: vaulted,
+                    partNumber: partNumber
+                );
 
                 #region display part
                 Main.RunOnUIThread(() =>
@@ -360,7 +324,8 @@ private static int numberOfRewardsDisplayed;
         }
         #endregion 
 
-        if (_settings.IsLightSelected && clipboard.Length > 3) //light mode doesn't have any visual confirmation that the ocr has finished, thus we use a sound to indicate this.
+        // light mode doesn't have any visual confirmation that the ocr has finished, thus we use a sound to indicate this.
+        if (_settings.IsLightSelected && clipboard.Length > 3)
         {
             _soundPlayer.Play();
         }
@@ -371,7 +336,7 @@ private static int numberOfRewardsDisplayed;
                  .Where(f => f.CreationTime < DateTime.Now.AddHours(-1 * _settings.ImageRetentionTime))
                  .ToList().ForEach(f => f.Delete());
 
-        if (partialScreenshot != null)
+        if (partialScreenshot is not null)
         {
             path = Path.Combine(path, $"PartBox {timestamp}.png");
             partialScreenshot.Save(path);
@@ -382,6 +347,48 @@ private static int numberOfRewardsDisplayed;
         processingActive = false;
 
     }
+
+    #region clipboard
+
+    private static void RewardScreenClipboard(
+        in double platinum,
+        string correctName,
+        string plat,
+        string? primeSetPlat,
+        string ducats,
+        bool vaulted,
+        int partNumber)
+    {
+        var sb = new StringBuilder(64);
+        
+        if (platinum > 0)
+        {
+            if (!string.IsNullOrEmpty(clipboard))
+                sb.Append("-  ");
+
+            sb.Append('[');
+            sb.Append(correctName.Replace(" Blueprint", string.Empty));
+            sb.Append("]: ").Append(plat).Append(":platinum: ");
+            
+            if (primeSetPlat is not null)
+                sb.Append("Set: ").Append(primeSetPlat).Append(":platinum: ");
+
+            if (_settings.ClipboardVaulted)
+            {
+                sb.Append(ducats).Append(":ducats:");
+                if (vaulted)
+                    sb.Append("(V)");
+            }
+        }
+
+        if (partNumber == firstChecks.Length - 1 && sb.Length > 0)
+            sb.Append(_settings.ClipboardTemplate);
+        
+        if (sb.Length > 0)
+            clipboard = sb.ToString();
+    }
+    
+    #endregion clipboard
 
     internal static int GetSelectedReward(Point lastClick)
     {
@@ -1523,7 +1530,7 @@ private static int numberOfRewardsDisplayed;
     /// <param name="fullShot">Image to scan</param>
     internal static void ProcessProfileScreen(Bitmap fullShot)
     {
-        System.Diagnostics.Stopwatch watch = new Stopwatch();
+        Stopwatch watch = new Stopwatch();
         watch.Start();
         long start = watch.ElapsedMilliseconds;
 
@@ -1603,7 +1610,7 @@ private static int numberOfRewardsDisplayed;
     /// <param name="ProfileImage">Image of profile screen to scan, debug markings will be drawn on this</param>
     /// <param name="timestamp">Time started at, used for file name</param>
     /// <returns>List of found items</returns>
-    private static List<InventoryItem> FindOwnedItems(Bitmap ProfileImage, string timestamp, long start, System.Diagnostics.Stopwatch watch)
+    private static List<InventoryItem> FindOwnedItems(Bitmap ProfileImage, string timestamp, long start, Stopwatch watch)
     {
         Pen orange = new Pen(Brushes.Orange);
         Pen red = new Pen(Brushes.Red);
@@ -2167,7 +2174,7 @@ private static int numberOfRewardsDisplayed;
         try
         {
             Rectangle rect = new Rectangle(cropLeft, cropTop, cropWidth, cropHei);
-            partialScreenshot = preFilter.Clone(rect, System.Drawing.Imaging.PixelFormat.DontCare);
+            partialScreenshot = preFilter.Clone(rect, PixelFormat.DontCare);
             if (partialScreenshot.Height == 0 || partialScreenshot.Width == 0)
                 throw new ArithmeticException("New image was null");
         }
@@ -2387,7 +2394,7 @@ private static int numberOfRewardsDisplayed;
                 } while (iter.Next(PageIteratorLevel.TextLine, PageIteratorLevel.Word) || iter.Next(PageIteratorLevel.Para, PageIteratorLevel.TextLine) || iter.Next(PageIteratorLevel.Block, PageIteratorLevel.Para) || iter.Next(PageIteratorLevel.Block));
             }
         }
-        arr2D.Sort(new OCR.Arr2D_Compare());
+        arr2D.Sort(new Arr2D_Compare());
 
         List<string> ret = [];
 

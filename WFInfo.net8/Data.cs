@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Security.Authentication;
 using System.Text.RegularExpressions;
 using WebSocketSharp;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using WFInfo.Settings;

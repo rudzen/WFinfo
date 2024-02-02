@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
 
 namespace WFInfo;

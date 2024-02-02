@@ -6,6 +6,7 @@ using System.Windows.Input;
 using System.Drawing;
 using System.Windows.Media.Imaging;
 using System.Windows.Forms;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 
 namespace WFInfo
 {

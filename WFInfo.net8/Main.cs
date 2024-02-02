@@ -17,6 +17,7 @@ using Microsoft.Extensions.DependencyInjection;
 using WFInfo.Services;
 using WFInfo.Services.HDRDetection;
 using Windows.Foundation.Metadata;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
 
