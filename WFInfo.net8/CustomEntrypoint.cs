@@ -9,7 +9,6 @@ using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Win32;
 using Serilog;
-using Serilog.Core;
 using Serilog.Events;
 using Tesseract;
 

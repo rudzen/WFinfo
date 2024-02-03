@@ -219,8 +219,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        Main.settingsWindow?.Close();
-        Main.settingsWindow = _sp.GetRequiredService<SettingsWindow>();
+        // Main.settingsWindow?.Close();
+        // Main.settingsWindow = _sp.GetRequiredService<SettingsWindow>();
         Main.settingsWindow.populate();
         Main.settingsWindow.Left = Left;
         Main.settingsWindow.Top = Top + Height;

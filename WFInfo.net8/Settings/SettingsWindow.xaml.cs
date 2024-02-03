@@ -1,8 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Extensions.DependencyInjection;
-using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo.Settings;
@@ -15,13 +13,13 @@ public partial class SettingsWindow : Window
     private readonly SettingsViewModel _viewModel;
     public SettingsViewModel SettingsViewModel => _viewModel;
 
-    public static KeyConverter converter = new KeyConverter();
+    public static KeyConverter converter = new();
 
-    public SettingsWindow(IServiceProvider sp)
+    public SettingsWindow(SettingsViewModel settingsViewModel)
     {
         InitializeComponent();
         DataContext = this;
-        _viewModel = sp.GetRequiredService<SettingsViewModel>();
+        _viewModel = settingsViewModel;
     }
 
     public void populate()

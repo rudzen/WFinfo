@@ -1,7 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using WFInfo.Settings;
 
@@ -18,10 +17,10 @@ public partial class Login : Window
 
     #region default methods
 
-    public Login(IServiceProvider sp)
+    public Login(SettingsWindow settingsWindow)
     {
         InitializeComponent();
-        _settingsWindow = sp.GetRequiredService<SettingsWindow>();
+        _settingsWindow = settingsWindow;
     }
 
     /// <summary>

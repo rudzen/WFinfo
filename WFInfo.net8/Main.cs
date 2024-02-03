@@ -14,13 +14,9 @@ using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using Microsoft.Extensions.DependencyInjection;
-using WFInfo.Services;
 using WFInfo.Services.HDRDetection;
-using Windows.Foundation.Metadata;
-using Windows.Graphics.Capture;
 using Serilog;
 using WFInfo.Services.OpticalCharacterRecognition;
-using Application = System.Windows.Application;
 
 namespace WFInfo;
 
@@ -30,24 +26,17 @@ public class Main
     
     public static Main INSTANCE { get; private set; }
 
-    public static string AppPath { get; } =
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+    public static string AppPath { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
     public static string buildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
     public static Data dataBase { get; private set; }
-
     public static RewardWindow window { get; set; } = new RewardWindow();
-    
     public static Overlay[] overlays { get; set; } = [new Overlay(), new Overlay(), new Overlay(), new Overlay()];
-    
     public static EquipmentWindow equipmentWindow { get; set; } = new EquipmentWindow();
-    
     public static SettingsWindow settingsWindow { get; set; }
     
     public static VerifyCount verifyCount { get; set; } = new VerifyCount();
-    
     public static AutoCount autoCount { get; set; } = new AutoCount();
-    
     public static ErrorDialogue popup { get; set; }
     public static FullscreenReminder fullscreenpopup { get; set; }
     public static GFNWarning gfnWarning { get; set; }
@@ -67,19 +56,15 @@ public class Main
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
-    // Main service provider
-    // TODO: Move to CustomEntryPoint
-    private IServiceProvider _services;
-
     // Instance services
-    private IReadOnlyApplicationSettings _settings;
-    private IProcessFinder _process;
-    private IWindowInfoService _windowInfo;
-    private IHDRDetectorService _detector;
+    private readonly IReadOnlyApplicationSettings _settings;
+    private readonly IProcessFinder _process;
+    private readonly IWindowInfoService _windowInfo;
+    private readonly IHDRDetectorService _detector;
 
     // See comment on Ocr.Init for explanation
-    private IScreenshotService _gdiScreenshot;
-    private IScreenshotService? _windowsScreenshot;
+    private readonly IScreenshotService _gdiScreenshot;
+    private readonly IScreenshotService? _windowsScreenshot;
 
     private ITesseractService? _tesseractService;
 
@@ -94,14 +79,24 @@ public class Main
         login = sp.GetRequiredService<Login>();
         settingsWindow = sp.GetRequiredService<SettingsWindow>();
 
+        _settings = sp.GetRequiredService<IReadOnlyApplicationSettings>();
+        _process = sp.GetRequiredService<IProcessFinder>();
+        _windowInfo = sp.GetRequiredService<IWindowInfoService>();
+        _detector = sp.GetRequiredService<IHDRDetectorService>();
+        _tesseractService = sp.GetRequiredService<ITesseractService>();
+
+        dataBase = new Data(ApplicationSettings.GlobalReadonlySettings, _process, _windowInfo);
+        snapItOverlayWindow = new SnapItOverlay(_windowInfo);
+
+        // See comment on Ocr.Init for explanation (todo: no longer relevant?)
+        _gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
+        _windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
+
         StartMessage();
         buildVersion = buildVersion[..buildVersion.LastIndexOf('.')];
 
         AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
         AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
-
-        _services = sp;//ConfigureServices(new ServiceCollection()).BuildServiceProvider();
-        InitializeLegacyServices(_services);
 
         Task.Factory.StartNew(ThreadedDataLoad);
     }
@@ -109,23 +104,6 @@ public class Main
     public void DisposeTesseract()
     {
         _tesseractService?.Dispose();
-    }
-
-    private void InitializeLegacyServices(IServiceProvider services)
-    {
-        // TODO: Ideally we also inject into Main
-        _settings = services.GetRequiredService<IReadOnlyApplicationSettings>();
-        _process = services.GetRequiredService<IProcessFinder>();
-        _windowInfo = services.GetRequiredService<IWindowInfoService>();
-        _detector = services.GetRequiredService<IHDRDetectorService>();
-        _tesseractService = services.GetRequiredService<ITesseractService>();
-
-        dataBase = new Data(ApplicationSettings.GlobalReadonlySettings, _process, _windowInfo);
-        snapItOverlayWindow = new SnapItOverlay(_windowInfo);
-
-        // // See comment on Ocr.Init for explanation
-        _gdiScreenshot = services.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
-        _windowsScreenshot = services.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
     }
 
     private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)

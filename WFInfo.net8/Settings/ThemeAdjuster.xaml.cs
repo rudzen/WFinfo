@@ -6,10 +6,10 @@ using System.Windows.Input;
 using System.Drawing;
 using System.Windows.Media.Imaging;
 using System.Windows.Forms;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.OpticalCharacterRecognition;
+using WFInfo.Settings;
 
 namespace WFInfo;
 
@@ -27,12 +27,12 @@ public partial class ThemeAdjuster : Window
     private Bitmap unfiltered;
     public BitmapImage displayImage;
 
-    public ThemeAdjuster(IServiceProvider sp)
+    public ThemeAdjuster(SettingsViewModel settingsViewModel)
     {
         InitializeComponent();
         DataContext = this;
         INSTANCE = this;
-        _viewModel = sp.GetRequiredService<Settings.SettingsViewModel>();
+        _viewModel = settingsViewModel;
     }
 
     public static void ShowThemeAdjuster()
