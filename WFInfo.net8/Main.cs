@@ -26,16 +26,14 @@ public class Main
     
     public static Main INSTANCE { get; private set; }
 
-    public static string AppPath { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+    public static string AppPath => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
-    public static string buildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+    public static string buildVersion { get; set; } = Assembly.GetExecutingAssembly().GetName().Version.ToString();
     public static Data dataBase { get; private set; }
     public static RewardWindow window { get; set; } = new RewardWindow();
     public static Overlay[] overlays { get; set; } = [new Overlay(), new Overlay(), new Overlay(), new Overlay()];
-    public static EquipmentWindow equipmentWindow { get; set; } = new EquipmentWindow();
+    public static EquipmentWindow EquipmentWindow { get; set; } = new EquipmentWindow();
     public static SettingsWindow settingsWindow { get; set; }
-    
-    public static VerifyCount verifyCount { get; set; } = new VerifyCount();
     public static AutoCount autoCount { get; set; } = new AutoCount();
     public static ErrorDialogue popup { get; set; }
     public static FullscreenReminder fullscreenpopup { get; set; }
@@ -45,16 +43,16 @@ public class Main
     public static SearchIt searchBox { get; set; } = new SearchIt();
     public static Login login { get; set; }
     public static ListingHelper listingHelper { get; set; } = new ListingHelper();
-    public static DateTime latestActive { get; set; }
-    public static PlusOne plusOne { get; set; }  = new PlusOne();
-    public static System.Threading.Timer timer { get; set; }
-    public static System.Drawing.Point lastClick { get; set; }
-    
-    private const int minutesTillAfk = 7;
+
+    private static readonly TimeSpan timeTillAfk = TimeSpan.FromMinutes(7);
 
     private static bool UserAway { get; set; }
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
+
+    private DateTime _latestActive;
+    private System.Drawing.Point _lastClick;
+    private System.Threading.Timer _timer;
 
     // Instance services
     private readonly IReadOnlyApplicationSettings _settings;
@@ -66,7 +64,7 @@ public class Main
     private readonly IScreenshotService _gdiScreenshot;
     private readonly IScreenshotService? _windowsScreenshot;
 
-    private ITesseractService? _tesseractService;
+    private readonly ITesseractService? _tesseractService;
 
     // hack, should not be here, but stuff is too intertwined for now
     // also, the auto updater needs this to allow for event to be used
@@ -85,7 +83,7 @@ public class Main
         _detector = sp.GetRequiredService<IHDRDetectorService>();
         _tesseractService = sp.GetRequiredService<ITesseractService>();
 
-        dataBase = new Data(ApplicationSettings.GlobalReadonlySettings, _process, _windowInfo);
+        dataBase = sp.GetRequiredService<Data>();
         snapItOverlayWindow = new SnapItOverlay(_windowInfo);
 
         // See comment on Ocr.Init for explanation (todo: no longer relevant?)
@@ -111,7 +109,7 @@ public class Main
         update = new UpdateDialogue(args, _sp);
     }
 
-    public async Task ThreadedDataLoad()
+    private async Task ThreadedDataLoad()
     {
         try
         {
@@ -138,7 +136,7 @@ public class Main
 
             if (dataBase.JWT != null) // if token is loaded in, connect to websocket
             {
-                bool result = await dataBase.OpenWebSocket();
+                var result = await dataBase.OpenWebSocket();
                 Logger.Debug("Logging into websocket success: {Result}", result);
             }
         }
@@ -158,7 +156,7 @@ public class Main
         if (!await dataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
             return;
         DateTime now = DateTime.UtcNow;
-        Debug.WriteLine($"Checking if the user has been inactive \nNow: {now}, Lastactive: {latestActive}");
+        Debug.WriteLine($"Checking if the user has been inactive \nNow: {now}, Lastactive: {_latestActive}");
 
         if (!_process.IsRunning && LastMarketStatus != "invisible")
         {
@@ -178,7 +176,7 @@ public class Main
                 StatusUpdate("WFM status set offline, Warframe was closed", 0);
             }).ConfigureAwait(false);
         }
-        else if (UserAway && latestActive > now)
+        else if (UserAway && _latestActive > now)
         {
             Debug.WriteLine($"User has returned. Last Status was: {LastMarketStatusB4AFK}");
 
@@ -197,7 +195,7 @@ public class Main
                 StatusUpdate($"Welcome back user", 0);
             }
         }
-        else if (!UserAway && latestActive <= now)
+        else if (!UserAway && _latestActive <= now)
         {
             //set users offline if afk for longer than set timer
             LastMarketStatusB4AFK = LastMarketStatus;
@@ -209,7 +207,7 @@ public class Main
                 await Task.Run(async () =>
                 {
                     await dataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                    StatusUpdate($"User has been inactive for {minutesTillAfk} minutes", 0);
+                    StatusUpdate($"User has been inactive for {timeTillAfk} minutes", 0);
                 }).ConfigureAwait(false);
             }
         }
@@ -362,7 +360,7 @@ public class Main
 
     public void OnMouseAction(MouseButton key)
     {
-        latestActive = DateTime.UtcNow.AddMinutes(minutesTillAfk);
+        _latestActive = DateTime.UtcNow.Add(timeTillAfk);
 
         if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
         {
@@ -396,8 +394,8 @@ public class Main
 
             Task.Run((() =>
             {
-                lastClick = System.Windows.Forms.Cursor.Position;
-                int index = OCR.GetSelectedReward(lastClick);
+                _lastClick = System.Windows.Forms.Cursor.Position;
+                int index = OCR.GetSelectedReward(_lastClick);
                 Logger.Debug("Reward chosen. index={Index}", index);
                 if (index < 0)
                     return;
@@ -408,7 +406,7 @@ public class Main
 
     public void OnKeyAction(Key key)
     {
-        latestActive = DateTime.UtcNow.AddMinutes(minutesTillAfk);
+        _latestActive = DateTime.UtcNow.Add(timeTillAfk);
 
         // close the snapit overlay when *any* key is pressed down
         if (snapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
@@ -456,7 +454,6 @@ public class Main
     {
         gfnWarning = new GFNWarning();
     }
-
 
     public enum ScreenshotType
     {
@@ -536,11 +533,11 @@ public class Main
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.LoggedIn(); });
 
         // start the AFK timer
-        latestActive = DateTime.UtcNow.AddMinutes(1);
+        _latestActive = DateTime.UtcNow.AddMinutes(1);
         TimeSpan startTimeSpan = TimeSpan.Zero;
         TimeSpan periodTimeSpan = TimeSpan.FromMinutes(1);
 
-        timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, startTimeSpan, periodTimeSpan);
+        _timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, startTimeSpan, periodTimeSpan);
     }
 
     public static void FinishedLoading()

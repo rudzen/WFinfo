@@ -6,6 +6,7 @@
 - [ ] Remove unused code
 - [ ] Modernize a bit to C# 12
 - [ ] Replace Newtonsoft.Json with System.Text.Json
+- [ ] Replace WebClient with HttpClient
 
 ## Refactor
 
@@ -24,5 +25,5 @@
 
 ## DI
 
-- [ ] Improve DI across the board
-
+- [x] Improve DI across the board
+- [ ] Add everything to DI

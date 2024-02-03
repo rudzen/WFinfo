@@ -19,32 +19,26 @@ namespace WFInfo;
 
 public sealed class Data
 {
-    private static readonly ILogger Logger = Log.Logger.ForContext<Data>(); 
+    private static readonly ILogger Logger = Log.Logger.ForContext<Data>();
 
-    public JObject marketItems; // Warframe.market item listing           {<id>: "<name>|<url_name>", ...}
+    // Warframe.market item listing           {<id>: "<name>|<url_name>", ...}
+    public JObject marketItems { get; set; }
 
-    public JObject
-        marketData
-    {
-        get;
-        private set;
-    } // Contains warframe.market ducatonator listing     {<partName>: {"ducats": <ducat_val>,"plat": <plat_val>}, ...}
+    // Contains warframe.market ducatonator listing     {<partName>: {"ducats": <ducat_val>,"plat": <plat_val>}, ...}
+    public JObject marketData { get; private set; }
 
-    public JObject?
-        relicData
-    {
-        get;
-        private set;
-    } // Contains relicData from Warframe PC Drops        {<Era>: {"A1":{"vaulted": true,<rare1/uncommon[12]/common[123]>: <part>}, ...}, "Meso": ..., "Neo": ..., "Axi": ...}
+    // Contains relicData from Warframe PC Drops        {<Era>: {"A1":{"vaulted": true,<rare1/uncommon[12]/common[123]>: <part>}, ...}, "Meso": ..., "Neo": ..., "Axi": ...}
+    public JObject? relicData { get; private set; }
 
-    public JObject?
-        equipmentData
-    {
-        get;
-        private set;
-    } // Contains equipmentData from Warframe PC Drops          {<EQMT>: {"vaulted": true, "PARTS": {<NAME>:{"relic_name":<name>|"","count":<num>}, ...}},  ...}
+    /// <summary>
+    /// Contains equipmentData from Warframe PC Drops
+    /// <para>
+    /// </para>
+    /// </summary>
+    // {<EQMT>: {"vaulted": true, "PARTS": {<NAME>:{"relic_name":<name>|"","count":<num>}, ...}},  ...}
+    public JObject? equipmentData { get; private set; }
 
-    public JObject? nameData; // Contains relic to market name translation          {<relic_name>: <market_name>}
+    private JObject? nameData; // Contains relic to market name translation          {<relic_name>: <market_name>}
 
     private static List<Dictionary<int, List<int>>> korean =
     [
@@ -89,7 +83,7 @@ public sealed class Data
     private readonly string filterAllJSON = "https://api.warframestat.us/wfinfo/filtered_items";
     private readonly string sheetJsonUrl = "https://api.warframestat.us/wfinfo/prices";
 
-    public string inGameName { get; set; } = string.Empty;
+    public string inGameName { get; private set; } = string.Empty;
     readonly HttpClient client;
     private string githubVersion;
     public bool rememberMe { get; set; }
@@ -143,29 +137,29 @@ public sealed class Data
 
     public void EnableLogCapture()
     {
-        if (EElogWatcher == null)
+        if (EElogWatcher is not null)
+            return;
+        
+        try
         {
-            try
-            {
-                EElogWatcher = new LogCapture(_process);
-                EElogWatcher.TextChanged += LogChanged;
-            }
-            catch (Exception ex)
-            {
-                Logger.Debug("Failed to start logcapture, exception: " + ex);
-                Main.StatusUpdate("Failed to start capturing log", 1);
-            }
+            EElogWatcher = new LogCapture(_process);
+            EElogWatcher.TextChanged += LogChanged;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex, "Failed to start log capture");
+            Main.StatusUpdate("Failed to start capturing log", 1);
         }
     }
 
     public void DisableLogCapture()
     {
-        if (EElogWatcher != null)
-        {
-            EElogWatcher.TextChanged -= LogChanged;
-            EElogWatcher.Dispose();
-            EElogWatcher = null;
-        }
+        if (EElogWatcher is null)
+            return;
+        
+        EElogWatcher.TextChanged -= LogChanged;
+        EElogWatcher.Dispose();
+        EElogWatcher = null;
     }
 
     private void SaveDatabase(string path, object db)
@@ -175,7 +169,8 @@ public sealed class Data
 
     public bool IsJwtLoggedIn()
     {
-        return JWT != null && JWT.Length > 300; //check if the token is of the right length
+        //check if the token is of the right length
+        return JWT is { Length: > 300 };
     }
 
     public int GetGithubVersion()
@@ -651,9 +646,11 @@ public sealed class Data
 
     public string PartsCount(string name)
     {
-        if (name.IndexOf("Prime") < 0)
+        var primeIndex = name.IndexOf("Prime");
+        
+        if (primeIndex < 0)
             return "0";
-        string eqmt = name.Substring(0, name.IndexOf("Prime") + 5);
+        string eqmt = name[..(primeIndex + 5)];
         string count = equipmentData[eqmt]["parts"][name]["count"].ToString();
         if (count == "0")
             return "0";
@@ -1134,7 +1131,7 @@ public sealed class Data
             string csv = "";
             Logger.Debug("Looping through rewards");
             Logger.Debug("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +
-                        _settings.AutoCount);
+                         _settings.AutoCount);
             foreach (var rewardscreen in Main.listingHelper.PrimeRewards)
             {
                 string rewards = "";
@@ -1361,7 +1358,7 @@ public sealed class Data
         }
         catch (Exception e)
         {
-            Logger.Debug("Unable to connect to socket: " + e.Message);
+            Logger.Error(e, "Unable to connect to socket");
             return false;
         }
 

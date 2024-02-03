@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using WFInfo.Resources;
 using WFInfo.Services.HDRDetection;
 using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
@@ -45,6 +46,8 @@ public partial class App : Application
                     services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
                     services.AddSingleton<IHDRDetectorService, SchemeHDRDetector>();
 
+                    services.AddSingleton<Data>();
+
                     services.AddSingleton(ApplicationSettings.GlobalReadonlySettings)
                             .AddSingleton<ITesseractService, TesseractService>();
 
@@ -54,6 +57,7 @@ public partial class App : Application
                     services.AddSingleton<Login>();
                     services.AddSingleton<SettingsWindow>();
                     services.AddSingleton<ThemeAdjuster>();
+                    services.AddSingleton<PlusOne>();
                     
                     services.AddSingleton<SettingsViewModel>();
                 })

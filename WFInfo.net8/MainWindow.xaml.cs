@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Serilog;
+using WFInfo.Resources;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
 
@@ -28,7 +29,7 @@ public partial class MainWindow : Window
         Brushes.Orange
     ];
 
-    private Main main { get; set; } //subscriber
+    private Main Main { get; set; } //subscriber
     public static MainWindow INSTANCE { get; set; }
     public static WelcomeDialogue welcomeDialogue { get; set; }
     public static LowLevelListener listener { get; set; }
@@ -37,21 +38,23 @@ public partial class MainWindow : Window
 
     private readonly IServiceProvider _sp;
     private readonly SettingsViewModel _settingsViewModel;
+    private readonly PlusOne _plusOne;
 
     public MainWindow(IServiceProvider sp)
     {
         _sp = sp;
         INSTANCE = this;
-        main = new Main(sp);
+        Main = new Main(sp);
         _settingsViewModel = sp.GetRequiredService<SettingsViewModel>();
+        _plusOne = sp.GetRequiredService<PlusOne>();
         
         listener = new LowLevelListener(); //publisher
         try
         {
             InitializeSettings();
 
-            LowLevelListener.KeyEvent += main.OnKeyAction;
-            LowLevelListener.MouseEvent += main.OnMouseAction;
+            LowLevelListener.KeyEvent += Main.OnKeyAction;
+            LowLevelListener.MouseEvent += Main.OnMouseAction;
             listener.Hook();
             InitializeComponent();
             Version.Content = "v" + Main.BuildVersion;
@@ -208,7 +211,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        Main.equipmentWindow.Show();
+        Main.EquipmentWindow.Show();
     }
 
     private void Settings_click(object sender, RoutedEventArgs e)
@@ -415,9 +418,9 @@ public partial class MainWindow : Window
 
     private void PlusOne(object sender, MouseButtonEventArgs e)
     {
-        Main.plusOne.Show();
-        Main.plusOne.Left = Left + Width;
-        Main.plusOne.Top = Top;
+        _plusOne.Show();
+        _plusOne.Left = Left + Width;
+        _plusOne.Top = Top;
     }
 
     private void SearchItButton_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
