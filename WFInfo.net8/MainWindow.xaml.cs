@@ -166,7 +166,13 @@ public partial class MainWindow : Window
 
     private void WebsiteClick(object sender, RoutedEventArgs e)
     {
-        Process.Start("https://discord.gg/N8S5zfw");
+        var processInfo = new ProcessStartInfo
+        {
+            FileName = "https://discord.gg/TAq7bqr",
+            UseShellExecute = true
+        };
+
+        Process.Start(processInfo);
     }
 
     private void RelicsClick(object sender, RoutedEventArgs e)
@@ -410,6 +416,10 @@ public partial class MainWindow : Window
 
     private void OpenAppDataFolder(object sender, MouseButtonEventArgs e)
     {
-        Process.Start(Main.AppPath);
+        var processInfo = new ProcessStartInfo();
+        processInfo.FileName = Main.AppPath;
+        processInfo.UseShellExecute = true;
+        
+        Process.Start(processInfo);
     }
 }

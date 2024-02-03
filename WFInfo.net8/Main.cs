@@ -285,7 +285,7 @@ class Main
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.ChangeStatus(message, severity); });
     }
 
-    public void ActivationKeyPressed(Object key)
+    public void ActivationKeyPressed(object key)
     {
         //Log activation. Can't set activation key to left or right mouse button via UI so not differentiating between MouseButton and Key should be fine
         Main.AddLog($"User is activating with pressing key: {key} and is holding down:\n" +

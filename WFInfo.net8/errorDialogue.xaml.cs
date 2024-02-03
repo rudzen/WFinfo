@@ -40,57 +40,55 @@ public partial class ErrorDialogue : Window
         var fullZipPath = zipPath + @"\WFInfoError_" + closest.ToString("yyyy-MM-dd_HH-mm-ssff");
         try
         {
-            using (ZipFile zip = new ZipFile())
+            using ZipFile zip = new ZipFile();
+            foreach (FileInfo file in files)
+                zip.AddFile(file.FullName, "");
+            if (File.Exists(startPath + @"\..\eqmt_data.json"))
             {
-                foreach (FileInfo file in files)
-                    zip.AddFile(file.FullName, "");
-                if (File.Exists(startPath + @"\..\eqmt_data.json"))
-                {
-                    zip.AddFile(startPath + @"\..\eqmt_data.json", "");
-                }
-                else
-                    Main.AddLog(startPath + "eqmt_data.json didn't exist.");
-                
-                if (File.Exists(startPath + @"\..\market_data.json"))
-                {
-                    zip.AddFile(startPath + @"\..\market_data.json", "");
-                }
-                else
-                    Main.AddLog(startPath + "market_data.json didn't exist.");
-                
-                if (File.Exists(startPath  + @"\..\market_items.json"))
-                {
-                    zip.AddFile(startPath + @"\..\market_items.json", "");
-                }
-                else
-                    Main.AddLog(startPath + "market_items.json didn't exist.");
-                
-                if (File.Exists(startPath + @"\..\name_data.json"))
-                {
-                    zip.AddFile(startPath + @"\..\name_data.json", "");
-                }
-                else
-                    Main.AddLog(startPath + "name_data.json didn't exist.");
-                
-                if (File.Exists(startPath + @"\..\relic_data.json"))
-                {
-                    zip.AddFile(startPath + @"\..\relic_data.json", "");
-                }
-                else
-                    Main.AddLog(startPath + "relic_data.json didn't exist.");
-                
-                if (File.Exists(startPath + @"\..\settings.json"))
-                {
-                    zip.AddFile(startPath + @"\..\settings.json", "");
-                }
-                else
-                    Main.AddLog( startPath + "settings.json didn't exist.");
-                
-                zip.AddFile(startPath + @"\..\debug.log", "");
-                zip.Comment = "This zip was created at " + closest.ToString("yyyy-MM-dd_HH-mm-ssff");
-                zip.MaxOutputSegmentSize64 = 25000 * 1024; // 8m segments
-                zip.Save(fullZipPath + ".zip");
+                zip.AddFile(startPath + @"\..\eqmt_data.json", "");
             }
+            else
+                Main.AddLog(startPath + "eqmt_data.json didn't exist.");
+                
+            if (File.Exists(startPath + @"\..\market_data.json"))
+            {
+                zip.AddFile(startPath + @"\..\market_data.json", "");
+            }
+            else
+                Main.AddLog(startPath + "market_data.json didn't exist.");
+                
+            if (File.Exists(startPath + @"\..\market_items.json"))
+            {
+                zip.AddFile(startPath + @"\..\market_items.json", "");
+            }
+            else
+                Main.AddLog(startPath + "market_items.json didn't exist.");
+                
+            if (File.Exists(startPath + @"\..\name_data.json"))
+            {
+                zip.AddFile(startPath + @"\..\name_data.json", "");
+            }
+            else
+                Main.AddLog(startPath + "name_data.json didn't exist.");
+                
+            if (File.Exists(startPath + @"\..\relic_data.json"))
+            {
+                zip.AddFile(startPath + @"\..\relic_data.json", "");
+            }
+            else
+                Main.AddLog(startPath + "relic_data.json didn't exist.");
+                
+            if (File.Exists(startPath + @"\..\settings.json"))
+            {
+                zip.AddFile(startPath + @"\..\settings.json", "");
+            }
+            else
+                Main.AddLog( startPath + "settings.json didn't exist.");
+                
+            zip.AddFile(startPath + @"\..\debug.log", "");
+            zip.Comment = "This zip was created at " + closest.ToString("yyyy-MM-dd_HH-mm-ssff");
+            zip.MaxOutputSegmentSize64 = 25000 * 1024; // 8m segments
+            zip.Save(fullZipPath + ".zip");
         }
         catch (Exception ex)
         {
@@ -98,7 +96,11 @@ public partial class ErrorDialogue : Window
             throw;
         }
 
-        Process.Start(Main.AppPath + @"\generatedZip");
+        var processStartInfo = new ProcessStartInfo();
+        processStartInfo.FileName = Path.Combine(Main.AppPath, "generatedZip");
+        processStartInfo.UseShellExecute = true;
+        
+        Process.Start(processStartInfo);
         Close();
     }
 

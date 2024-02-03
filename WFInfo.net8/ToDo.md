@@ -10,6 +10,7 @@
 ## Refactor
 
 - [ ] OCR
+- [ ] Optional use for easier code reading
 
 ## Database
 

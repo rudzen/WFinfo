@@ -29,7 +29,7 @@ namespace Composition.WindowsRuntimeHelpers;
 
 public static class Direct3D11Helper
 {
-    static Guid ID3D11Texture2D = new Guid("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
+    private static readonly Guid ID3D11Texture2D = new Guid("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
 
     [ComImport]
     [Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1")]
@@ -48,26 +48,13 @@ public static class Direct3D11Helper
         ExactSpelling = true,
         CallingConvention = CallingConvention.StdCall
         )]
-    static extern UInt32 CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
+    static extern uint CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
 
-    public static IDirect3DDevice CreateDirect3DDeviceFromSharpDXDevice(SharpDX.Direct3D11.Device d3dDevice)
+    public static IDirect3DDevice? CreateDirect3DDeviceFromSharpDxDevice(SharpDX.Direct3D11.Device sharpDxDevice)
     {
-        IDirect3DDevice device = null;
-
-        // Acquire the DXGI interface for the Direct3D device.
-        using (var dxgiDevice = d3dDevice.QueryInterface<SharpDX.DXGI.Device3>())
-        {
-            // Wrap the native device using a WinRT interop object.
-            uint hr = CreateDirect3D11DeviceFromDXGIDevice(dxgiDevice.NativePointer, out IntPtr pUnknown);
-
-            if (hr == 0)
-            {
-                device = Marshal.GetObjectForIUnknown(pUnknown) as IDirect3DDevice;
-                Marshal.Release(pUnknown);
-            }
-        }
-
-        return device;
+        return CreateDirect3D11DeviceFromDXGIDevice(sharpDxDevice.NativePointer, out var punk) != 0
+            ? null
+            : WinRT.MarshalInterface<IDirect3DDevice>.FromAbi(punk);
     }
 
     public static SharpDX.Direct3D11.Texture2D CreateSharpDXTexture2D(IDirect3DSurface surface)

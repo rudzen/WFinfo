@@ -23,7 +23,6 @@
 //  ---------------------------------------------------------------------------------
 
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Graphics.Capture;
 
 namespace Composition.WindowsRuntimeHelpers
@@ -49,11 +48,9 @@ namespace Composition.WindowsRuntimeHelpers
 
         public static GraphicsCaptureItem CreateItemForWindow(IntPtr hwnd)
         {
-            var factory = WindowsRuntimeMarshal.GetActivationFactory(typeof(GraphicsCaptureItem));
-            var interop = (IGraphicsCaptureItemInterop)factory;
-            var temp = typeof(GraphicsCaptureItem);           
-            var itemPointer = interop.CreateForWindow(hwnd, GraphicsCaptureItemGuid);
-            var item = Marshal.GetObjectForIUnknown(itemPointer) as GraphicsCaptureItem;
+            var factory = GraphicsCaptureItem.As<IGraphicsCaptureItemInterop>();
+            var itemPointer = factory.CreateForWindow(hwnd, GraphicsCaptureItemGuid);
+            var item = GraphicsCaptureItem.FromAbi(itemPointer);
             Marshal.Release(itemPointer);
 
             return item;
@@ -61,11 +58,9 @@ namespace Composition.WindowsRuntimeHelpers
 
         public static GraphicsCaptureItem CreateItemForMonitor(IntPtr hmon)
         {
-            var factory = WindowsRuntimeMarshal.GetActivationFactory(typeof(GraphicsCaptureItem));
-            var interop = (IGraphicsCaptureItemInterop)factory;
-            var temp = typeof(GraphicsCaptureItem);         
-            var itemPointer = interop.CreateForMonitor(hmon, GraphicsCaptureItemGuid);
-            var item = Marshal.GetObjectForIUnknown(itemPointer) as GraphicsCaptureItem;
+            var factory = GraphicsCaptureItem.As<IGraphicsCaptureItemInterop>();
+            var itemPointer = factory.CreateForMonitor(hmon, GraphicsCaptureItemGuid);
+            var item = GraphicsCaptureItem.FromAbi(itemPointer);
             Marshal.Release(itemPointer);
 
             return item;

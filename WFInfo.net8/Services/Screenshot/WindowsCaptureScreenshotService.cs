@@ -21,7 +21,7 @@ namespace WFInfo.Services.Screenshot
         private readonly IProcessFinder _process;
 
         private readonly Device _d3dDevice;
-        private readonly IDirect3DDevice _device;
+        private readonly IDirect3DDevice? _device;
 
         private Direct3D11CaptureFramePool _framePool;
         private GraphicsCaptureSession _session;
@@ -37,10 +37,13 @@ namespace WFInfo.Services.Screenshot
             _process = process;
             _useHdr = useHdr;
 
-            _d3dDevice = new Device(SharpDX.Direct3D.DriverType.Hardware, DeviceCreationFlags.BgraSupport);
-            _device = Direct3D11Helper.CreateDirect3DDeviceFromSharpDXDevice(_d3dDevice);
+            const DeviceCreationFlags creationFlags = DeviceCreationFlags.BgraSupport | DeviceCreationFlags.Debug;
+            _d3dDevice = new Device(SharpDX.Direct3D.DriverType.Hardware, creationFlags);
+            _device = Direct3D11Helper.CreateDirect3DDeviceFromSharpDxDevice(_d3dDevice);
 
-            if (_process.IsRunning) CreateCaptureSession(_process.Warframe);
+            if (_process.IsRunning)
+                CreateCaptureSession(_process.Warframe);
+            
             _process.OnProcessChanged += CreateCaptureSession;
         }
 
@@ -55,17 +58,15 @@ namespace WFInfo.Services.Screenshot
                 height = _frame.ContentSize.Height;
 
                 // Copy resource into memory that can be accessed by the CPU
-                using (var capturedTexture = Direct3D11Helper.CreateSharpDXTexture2D(_frame.Surface))
-                {
-                    var desc = capturedTexture.Description;
-                    desc.CpuAccessFlags = CpuAccessFlags.Read;
-                    desc.BindFlags = BindFlags.None;
-                    desc.Usage = ResourceUsage.Staging;
-                    desc.OptionFlags = ResourceOptionFlags.None;
+                using var capturedTexture = Direct3D11Helper.CreateSharpDXTexture2D(_frame.Surface);
+                var desc = capturedTexture.Description;
+                desc.CpuAccessFlags = CpuAccessFlags.Read;
+                desc.BindFlags = BindFlags.None;
+                desc.Usage = ResourceUsage.Staging;
+                desc.OptionFlags = ResourceOptionFlags.None;
 
-                    cpuTexture = new Texture2D(_d3dDevice, desc);
-                    _d3dDevice.ImmediateContext.CopyResource(capturedTexture, cpuTexture);
-                }
+                cpuTexture = new Texture2D(_d3dDevice, desc);
+                _d3dDevice.ImmediateContext.CopyResource(capturedTexture, cpuTexture);
             }
 
             var mapSource = _d3dDevice.ImmediateContext.MapSubresource(cpuTexture, 0, MapMode.Read, MapFlags.None);

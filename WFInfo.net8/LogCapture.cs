@@ -5,7 +5,7 @@ using WFInfo.Services.WarframeProcess;
 
 namespace WFInfo;
 
-public delegate void LogWatcherEventHandler(object sender, String text);
+public delegate void LogWatcherEventHandler(object sender, string text);
 
 class LogCapture : IDisposable
 {
@@ -27,7 +27,7 @@ class LogCapture : IDisposable
         Main.AddLog("Starting LogCapture");
         memoryMappedFile = MemoryMappedFile.CreateOrOpen("DBWIN_BUFFER", 4096L);
 
-        bufferReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_BUFFER_READY", out Boolean createdBuffer);
+        bufferReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_BUFFER_READY", out bool createdBuffer);
 
         if (!createdBuffer)
         {
@@ -105,7 +105,7 @@ class LogCapture : IDisposable
     private void GetProcess()
     {
         if (!_process.IsRunning) return;
-        dataReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_DATA_READY", out Boolean createdData);
+        dataReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_DATA_READY", out bool createdData);
 
         if (!createdData)
         {

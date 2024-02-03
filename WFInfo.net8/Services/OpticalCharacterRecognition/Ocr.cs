@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -24,55 +25,56 @@ namespace WFInfo.net8.Services.OpticalCharacterRecognition;
 
 internal class OCR
 {
-    private static readonly string applicationDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+    private static readonly string applicationDirectory =
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
     #region variabels and sizzle
-
 
     // Colors for the top left "profile bar"
     public static Color[] ThemePrimary =
     [
-        Color.FromArgb(190, 169, 102),		//VITRUVIAN		
-															Color.FromArgb(153,  31,  35), 	    //STALKER		
-															Color.FromArgb(238, 193, 105),  	//BARUUK		
-															Color.FromArgb( 35, 201, 245),  	//CORPUS		
-															Color.FromArgb( 57, 105, 192),  	//FORTUNA		
-															Color.FromArgb(255, 189, 102),  	//GRINEER		
-															Color.FromArgb( 36, 184, 242),  	//LOTUS			
-															Color.FromArgb(140,  38,  92),  	//NIDUS			
-															Color.FromArgb( 20,  41,  29),  	//OROKIN		
-															Color.FromArgb(  9,  78, 106),  	//TENNO			
-															Color.FromArgb(  2, 127, 217),  	//HIGH_CONTRAST	
-															Color.FromArgb(255, 255, 255),  	//LEGACY		
-															Color.FromArgb(158, 159, 167),  	//EQUINOX		
-															Color.FromArgb(140, 119, 147),      //DARK_LOTUS
-                                                        Color.FromArgb(253, 132,   2)
-    ];   //ZEPHER
+        Color.FromArgb(190, 169, 102), //VITRUVIAN		
+        Color.FromArgb(153, 31, 35),   //STALKER		
+        Color.FromArgb(238, 193, 105), //BARUUK		
+        Color.FromArgb(35, 201, 245),  //CORPUS		
+        Color.FromArgb(57, 105, 192),  //FORTUNA		
+        Color.FromArgb(255, 189, 102), //GRINEER		
+        Color.FromArgb(36, 184, 242),  //LOTUS			
+        Color.FromArgb(140, 38, 92),   //NIDUS			
+        Color.FromArgb(20, 41, 29),    //OROKIN		
+        Color.FromArgb(9, 78, 106),    //TENNO			
+        Color.FromArgb(2, 127, 217),   //HIGH_CONTRAST	
+        Color.FromArgb(255, 255, 255), //LEGACY		
+        Color.FromArgb(158, 159, 167), //EQUINOX		
+        Color.FromArgb(140, 119, 147), //DARK_LOTUS
+        Color.FromArgb(253, 132, 2)
+    ]; //ZEPHER
 
 //highlight colors from selected items
-public static Color[] ThemeSecondary =
-[
-    Color.FromArgb(245, 227, 173),		//VITRUVIAN		
-															Color.FromArgb(255,  61,  51), 	//STALKER		
-															Color.FromArgb(236, 211, 162),  	//BARUUK		
-															Color.FromArgb(111, 229, 253),  	//CORPUS		
-															Color.FromArgb(255, 115, 230),  	//FORTUNA		
-															Color.FromArgb(255, 224, 153),  	//GRINEER		
-															Color.FromArgb(255, 241, 191),  	//LOTUS			
-															Color.FromArgb(245,  73,  93),  	//NIDUS			
-															Color.FromArgb(178, 125,   5),  	//OROKIN		
-															Color.FromArgb(  6, 106,  74),  	//TENNO			
-															Color.FromArgb(255, 255,   0),  	//HIGH_CONTRAST	
-															Color.FromArgb(232, 213,  93),  	//LEGACY		
-															Color.FromArgb(232, 227, 227),  	//EQUINOX		
-															Color.FromArgb(189, 169, 237),      //DARK_LOTUS	
-                                                        Color.FromArgb(255,  53,   0)
-];    //ZEPHER	
+    public static Color[] ThemeSecondary =
+    [
+        Color.FromArgb(245, 227, 173), //VITRUVIAN		
+        Color.FromArgb(255, 61, 51),   //STALKER		
+        Color.FromArgb(236, 211, 162), //BARUUK		
+        Color.FromArgb(111, 229, 253), //CORPUS		
+        Color.FromArgb(255, 115, 230), //FORTUNA		
+        Color.FromArgb(255, 224, 153), //GRINEER		
+        Color.FromArgb(255, 241, 191), //LOTUS			
+        Color.FromArgb(245, 73, 93),   //NIDUS			
+        Color.FromArgb(178, 125, 5),   //OROKIN		
+        Color.FromArgb(6, 106, 74),    //TENNO			
+        Color.FromArgb(255, 255, 0),   //HIGH_CONTRAST	
+        Color.FromArgb(232, 213, 93),  //LEGACY		
+        Color.FromArgb(232, 227, 227), //EQUINOX		
+        Color.FromArgb(189, 169, 237), //DARK_LOTUS	
+        Color.FromArgb(255, 53, 0)
+    ]; //ZEPHER	
 
 
-private static int numberOfRewardsDisplayed;
+    private static int numberOfRewardsDisplayed;
 
-    private const NumberStyles styles = NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands | NumberStyles.AllowExponent;
+    private const NumberStyles styles = NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands |
+                                        NumberStyles.AllowExponent;
 
     // UI - Scaling used in Warframe
     public static double uiScaling;
@@ -99,9 +101,9 @@ private static int numberOfRewardsDisplayed;
     private static string timestamp;
 
     private static string clipboard;
+
     #endregion
 
-   
     private static ITesseractService _tesseractService;
     private static ISoundPlayer _soundPlayer;
     private static IReadOnlyApplicationSettings _settings;
@@ -115,8 +117,14 @@ private static int numberOfRewardsDisplayed;
     // Now I can either do this and switch between these two based on settings
     // Or I can make this a scoped service, with each scope being a new screenshot request and dynamically choose the right service using a IScreenshotServiceFactory
     // Unfortunately option 2 means rewriting like half of this thing so I'm sticking with a hack
-    public static void Init(ITesseractService tesseractService, ISoundPlayer soundPlayer, IReadOnlyApplicationSettings settings,
-        IWindowInfoService window, IHDRDetectorService hdrDetector, GdiScreenshotService gdiScreenshot, WindowsCaptureScreenshotService windowsScreenshot = null)
+    public static void Init(
+        ITesseractService tesseractService,
+        ISoundPlayer soundPlayer,
+        IReadOnlyApplicationSettings settings,
+        IWindowInfoService window,
+        IHDRDetectorService hdrDetector,
+        GdiScreenshotService gdiScreenshot,
+        WindowsCaptureScreenshotService? windowsScreenshot = null)
     {
         Directory.CreateDirectory(Main.AppPath + @"\Debug");
         _tesseractService = tesseractService;
@@ -133,6 +141,7 @@ private static int numberOfRewardsDisplayed;
     internal static void ProcessRewardScreen(Bitmap? file = null)
     {
         #region initializers
+
         if (processingActive)
         {
             Main.StatusUpdate("Still Processing Reward Screen", 2);
@@ -143,7 +152,8 @@ private static int numberOfRewardsDisplayed;
 
         processingActive = true;
         Main.StatusUpdate("Processing...", 0);
-        Main.AddLog("----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
+        Main.AddLog(
+            "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
 
         DateTime time = DateTime.UtcNow;
         timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
@@ -156,7 +166,7 @@ private static int numberOfRewardsDisplayed;
         bigScreenshot = file ?? CaptureScreenshot();
         try
         {
-				    parts.AddRange(ExtractPartBoxAutomatically(out uiScaling, out _, bigScreenshot));
+            parts.AddRange(ExtractPartBoxAutomatically(out uiScaling, out _, bigScreenshot));
         }
         catch (Exception e)
         {
@@ -165,14 +175,17 @@ private static int numberOfRewardsDisplayed;
             return;
         }
 
-
         firstChecks = new string[parts.Count];
         Task[] tasks = new Task[parts.Count];
         for (int i = 0; i < parts.Count; i++)
         {
             int tempI = i;
-            tasks[i] = Task.Factory.StartNew(() => { firstChecks[tempI] = GetTextFromImage(parts[tempI], _tesseractService.Engines[tempI]);});
+            tasks[i] = Task.Factory.StartNew(() =>
+            {
+                firstChecks[tempI] = GetTextFromImage(parts[tempI], _tesseractService.Engines[tempI]);
+            });
         }
+
         Task.WaitAll(tasks);
 
         // Remove any empty (or suspiciously short) items from the array
@@ -180,16 +193,16 @@ private static int numberOfRewardsDisplayed;
         if (firstChecks == null || firstChecks.Length == 0 || CheckIfError())
         {
             processingActive = false;
-            Main.AddLog(("----  Partial Processing Time, couldn't find rewards " + (watch.ElapsedMilliseconds - start) + " ms  ------------------------------------------------------------------------------------------").Substring(0, 108));
+            Main.AddLog(("----  Partial Processing Time, couldn't find rewards " + (watch.ElapsedMilliseconds - start) +
+                         " ms  ------------------------------------------------------------------------------------------")
+                .Substring(0, 108));
             Main.StatusUpdate("Couldn't find any rewards to display", 2);
             if (firstChecks == null)
             {
-                Main.RunOnUIThread(() =>
-                {
-                    Main.SpawnErrorPopup(time);
-                });
+                Main.RunOnUIThread(() => { Main.SpawnErrorPopup(time); });
             }
         }
+
         double bestPlat = 0;
         int bestDucat = 0;
         int bestPlatItem = 0;
@@ -199,14 +212,23 @@ private static int numberOfRewardsDisplayed;
         #endregion
 
         #region processing data
+
         if (firstChecks.Length > 0)
         {
             numberOfRewardsDisplayed = firstChecks.Length;
             clipboard = string.Empty;
             int width = (int)(pixleRewardWidth * _window.ScreenScaling * uiScaling) + 10;
-            int startX = _window.Center.X - width / 2 + (int)(width * 0.004);
-            if (firstChecks.Length % 2 == 1) { startX += width / 8; }
-            if (firstChecks.Length <= 2) { startX += 2 * (width / 8); }
+            int startX = _window.Center.X - width / 2                               + (int)(width * 0.004);
+            if (firstChecks.Length % 2 == 1)
+            {
+                startX += width / 8;
+            }
+
+            if (firstChecks.Length <= 2)
+            {
+                startX += 2 * (width / 8);
+            }
+
             int overWid = (int)(width / (4.1 * _window.DpiScaling));
             int startY = (int)(_window.Center.Y / _window.DpiScaling - 20 * _window.ScreenScaling * uiScaling);
             int partNumber = 0;
@@ -214,7 +236,9 @@ private static int numberOfRewardsDisplayed;
             for (int i = 0; i < firstChecks.Length; i++)
             {
                 string part = firstChecks[i];
+
                 #region found a part
+
                 string correctName = Main.dataBase.GetPartName(part, out firstProximity[i], false, out _);
                 string primeSetName = Main.dataBase.GetSetName(correctName);
                 JObject job = (JObject)Main.dataBase.marketData.GetValue(correctName);
@@ -224,6 +248,7 @@ private static int numberOfRewardsDisplayed;
                 {
                     hideRewardInfo = true;
                 }
+
                 //else if (correctName != "Kuva" || correctName != "Exilus Weapon Adapter Blueprint" || correctName != "Riven Sliver" || correctName != "Ayatan Amber Star")
                 primeRewards.Add(correctName);
                 string plat = job["plat"].ToObject<string>();
@@ -232,6 +257,7 @@ private static int numberOfRewardsDisplayed;
                 {
                     primeSetPlat = (string)primeSet["plat"];
                 }
+
                 double platinum = double.Parse(plat, styles, Main.culture);
                 string volume = job["volume"].ToObject<string>();
                 bool vaulted = Main.dataBase.IsPartVaulted(correctName);
@@ -239,21 +265,28 @@ private static int numberOfRewardsDisplayed;
                 string partsOwned = Main.dataBase.PartsOwned(correctName);
                 string partsCount = Main.dataBase.PartsCount(correctName);
                 int duc = int.Parse(ducats, Main.culture);
+
                 #endregion
 
                 #region highlighting
+
                 if (platinum >= bestPlat)
                 {
-                    bestPlat = platinum; bestPlatItem = i;
+                    bestPlat = platinum;
+                    bestPlatItem = i;
                     if (duc >= bestDucat)
                     {
-                        bestDucat = duc; bestDucatItem = i;
+                        bestDucat = duc;
+                        bestDucatItem = i;
                     }
                 }
+
                 if (duc > bestDucat)
                 {
-                    bestDucat = duc; bestDucatItem = i;
+                    bestDucat = duc;
+                    bestDucatItem = i;
                 }
+
                 if (duc > 0)
                 {
                     if (!mastered && int.Parse(partsOwned, Main.culture) < int.Parse(partsCount, Main.culture))
@@ -261,6 +294,7 @@ private static int numberOfRewardsDisplayed;
                         unownedItems.Add(i);
                     }
                 }
+
                 #endregion
 
                 RewardScreenClipboard(
@@ -274,35 +308,44 @@ private static int numberOfRewardsDisplayed;
                 );
 
                 #region display part
+
                 Main.RunOnUIThread(() =>
                 {
                     Overlay.rewardsDisplaying = true;
 
                     if (_settings.IsOverlaySelected)
                     {
-                        Main.overlays[partNumber].LoadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered, $"{partsOwned} / {partsCount}", "", hideRewardInfo, false);
+                        Main.overlays[partNumber].LoadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted,
+                            mastered, $"{partsOwned} / {partsCount}", "", hideRewardInfo, false);
                         Main.overlays[partNumber].Resize(overWid);
-                        Main.overlays[partNumber].Display((int)((startX + width / 4 * partNumber + _settings.OverlayXOffsetValue) / _window.DpiScaling), startY + (int)(_settings.OverlayYOffsetValue / _window.DpiScaling), _settings.Delay);
+                        Main.overlays[partNumber]
+                            .Display(
+                                (int)((startX + width / 4 * partNumber + _settings.OverlayXOffsetValue) /
+                                      _window.DpiScaling),
+                                startY + (int)(_settings.OverlayYOffsetValue / _window.DpiScaling), _settings.Delay);
                     }
                     else if (!_settings.IsLightSelected)
                     {
-                        Main.window.loadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered, $"{partsOwned} / {partsCount}", partNumber, true, hideRewardInfo);
+                        Main.window.loadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered,
+                            $"{partsOwned} / {partsCount}", partNumber, true, hideRewardInfo);
                     }
                     //else
                     //Main.window.loadTextData(correctName, plat, ducats, volume, vaulted, $"{partsOwned} / {partsCount}", partNumber, false, hideRewardInfo);
 
                     if (_settings.Clipboard && !string.IsNullOrEmpty(clipboard))
                         Clipboard.SetText(clipboard);
-
                 });
                 partNumber++;
                 hideRewardInfo = false;
+
                 #endregion
             }
+
             var end = watch.ElapsedMilliseconds;
             Main.StatusUpdate("Completed processing (" + (end - start) + "ms)", 0);
 
-            if (Main.listingHelper.PrimeRewards.Count == 0 || Main.listingHelper.PrimeRewards.Last().Except(primeRewards).ToList().Count != 0)
+            if (Main.listingHelper.PrimeRewards.Count                                      == 0 ||
+                Main.listingHelper.PrimeRewards.Last().Except(primeRewards).ToList().Count != 0)
             {
                 Main.listingHelper.PrimeRewards.Add(primeRewards);
             }
@@ -315,14 +358,19 @@ private static int numberOfRewardsDisplayed;
                     {
                         Main.overlays[item].BestOwnedChoice();
                     }
+
                     Main.overlays[bestDucatItem].BestDucatChoice();
                     Main.overlays[bestPlatItem].BestPlatChoice();
                 });
             }
-            Main.AddLog(("----  Total Processing Time " + (end - start) + " ms  ------------------------------------------------------------------------------------------").Substring(0, 108));
+
+            Main.AddLog(("----  Total Processing Time " + (end - start) +
+                         " ms  ------------------------------------------------------------------------------------------")
+                .Substring(0, 108));
             watch.Stop();
         }
-        #endregion 
+
+        #endregion
 
         // light mode doesn't have any visual confirmation that the ocr has finished, thus we use a sound to indicate this.
         if (_settings.IsLightSelected && clipboard.Length > 3)
@@ -345,7 +393,6 @@ private static int numberOfRewardsDisplayed;
         }
 
         processingActive = false;
-
     }
 
     #region clipboard
@@ -360,7 +407,7 @@ private static int numberOfRewardsDisplayed;
         int partNumber)
     {
         var sb = new StringBuilder(64);
-        
+
         if (platinum > 0)
         {
             if (!string.IsNullOrEmpty(clipboard))
@@ -369,7 +416,7 @@ private static int numberOfRewardsDisplayed;
             sb.Append('[');
             sb.Append(correctName.Replace(" Blueprint", string.Empty));
             sb.Append("]: ").Append(plat).Append(":platinum: ");
-            
+
             if (primeSetPlat is not null)
                 sb.Append("Set: ").Append(primeSetPlat).Append(":platinum: ");
 
@@ -383,11 +430,11 @@ private static int numberOfRewardsDisplayed;
 
         if (partNumber == firstChecks.Length - 1 && sb.Length > 0)
             sb.Append(_settings.ClipboardTemplate);
-        
+
         if (sb.Length > 0)
             clipboard = sb.ToString();
     }
-    
+
     #endregion clipboard
 
     internal static int GetSelectedReward(Point lastClick)
@@ -395,17 +442,19 @@ private static int numberOfRewardsDisplayed;
         Debug.WriteLine(lastClick.ToString());
         var primeRewardIndex = 0;
         lastClick.Offset(-_window.Window.X, -_window.Window.Y);
-        var width = _window.Window.Width * (int)_window.DpiScaling;
+        var width = _window.Window.Width   * (int)_window.DpiScaling;
         var height = _window.Window.Height * (int)_window.DpiScaling;
         var mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling * uiScaling);
-        var mostLeft = (width / 2) - (mostWidth / 2);
-        var bottom = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5 * uiScaling);
-        var top = height / 2 - (int)((pixleRewardYDisplay) * _window.ScreenScaling * uiScaling);
+        var mostLeft = (width                  / 2) - (mostWidth       / 2);
+        var bottom = height / 2 -
+                     (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5 * uiScaling);
+        var top = height / 2 - (int)((pixleRewardYDisplay)                      * _window.ScreenScaling * uiScaling);
         var selectionRectangle = new Rectangle(mostLeft, top, mostWidth, bottom / 2);
         if (numberOfRewardsDisplayed == 3)
         {
             var offset = selectionRectangle.Width / 8;
-            selectionRectangle = new Rectangle(selectionRectangle.X + offset, selectionRectangle.Y, selectionRectangle.Width - offset * 2, selectionRectangle.Height);
+            selectionRectangle = new Rectangle(selectionRectangle.X + offset, selectionRectangle.Y,
+                selectionRectangle.Width                            - offset * 2, selectionRectangle.Height);
         }
 
         if (!selectionRectangle.Contains(lastClick))
@@ -414,16 +463,20 @@ private static int numberOfRewardsDisplayed;
         var length = mostWidth / 8;
 
 
-        var RewardPoints4 = new List<Point>() {
-        new Point(mostLeft + length, middelHeight),
-        new Point(mostLeft + 3 * length, middelHeight),
-        new Point(mostLeft + 5 * length, middelHeight),
-        new Point(mostLeft + 7 * length, middelHeight)};
+        var RewardPoints4 = new List<Point>()
+        {
+            new Point(mostLeft + length, middelHeight),
+            new Point(mostLeft + 3 * length, middelHeight),
+            new Point(mostLeft + 5 * length, middelHeight),
+            new Point(mostLeft + 7 * length, middelHeight)
+        };
 
-        var RewardPoints3 = new List<Point>() {
-        new Point(mostLeft + 2 * length, middelHeight),
-        new Point(mostLeft + 4 * length, middelHeight),
-        new Point(mostLeft + 6 * length, middelHeight)};
+        var RewardPoints3 = new List<Point>()
+        {
+            new Point(mostLeft + 2 * length, middelHeight),
+            new Point(mostLeft + 4 * length, middelHeight),
+            new Point(mostLeft + 6 * length, middelHeight)
+        };
 
         var lowestDistance = int.MaxValue;
         var lowestDistancePoint = new Point();
@@ -435,12 +488,13 @@ private static int numberOfRewardsDisplayed;
         {
             foreach (var pnt in RewardPoints4)
             {
-                var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) + (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
+                var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
+                                           (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
                 Debug.WriteLine($"current point: {pnt}, with distance: {distanceToLastClick}");
 
                 if (distanceToLastClick >= lowestDistance)
                     continue;
-                
+
                 lowestDistance = distanceToLastClick;
                 lowestDistancePoint = pnt;
                 primeRewardIndex = RewardPoints4.IndexOf(pnt);
@@ -458,7 +512,8 @@ private static int numberOfRewardsDisplayed;
         {
             foreach (var pnt in RewardPoints3)
             {
-                var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) + (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
+                var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
+                                           (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
                 Debug.WriteLine($"current point: {pnt}, with distance: {distanceToLastClick}");
 
                 if (distanceToLastClick >= lowestDistance) continue;
@@ -468,7 +523,8 @@ private static int numberOfRewardsDisplayed;
             }
         }
 
-        #region  debuging image
+        #region debuging image
+
         /*Debug.WriteLine($"Closest point: {lowestDistancePoint}, with distance: {lowestDistance}");
 
         timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
@@ -505,11 +561,14 @@ private static int numberOfRewardsDisplayed;
         pinkP.Dispose();
         blackP.Dispose();
         img.Dispose();*/
+
         #endregion
+
         return primeRewardIndex;
     }
 
     private const double ERROR_DETECTION_THRESH = 0.25;
+
     private static bool CheckIfError()
     {
         if (firstChecks == null || firstProximity == null)
@@ -521,7 +580,6 @@ private static int numberOfRewardsDisplayed;
                 return true;
 
         return false;
-
     }
 
     /// <summary>
@@ -549,9 +607,7 @@ private static int numberOfRewardsDisplayed;
             image = CaptureScreenshot();
         }
 
-
-
-        double[] weights = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        Span<double> weights = stackalloc double[15];
         int minWidth = mostWidth / 4;
 
         if (image == null || image.Height == 0)
@@ -561,18 +617,19 @@ private static int numberOfRewardsDisplayed;
 
         for (int y = lineHeight; y < image.Height; y++)
         {
-            double perc = (y - lineHeight) / (image.Height - lineHeight);
+            double perc = (y - lineHeight) / (double)(image.Height - lineHeight);
             int totWidth = (int)(minWidth * perc + minWidth);
             for (int x = 0; x < totWidth; x++)
             {
                 int match = (int)GetClosestTheme(image.GetPixel(x + (mostWidth - totWidth) / 2, y), out int thresh);
-            
+
                 weights[match] += 1 / Math.Pow(thresh + 1, 4);
             }
         }
 
         double max = 0;
         WFtheme active = WFtheme.UNKNOWN;
+#if DEBUG
         for (int i = 0; i < weights.Length; i++)
         {
             Debug.Write(weights[i].ToString("F2", Main.culture) + " ");
@@ -582,6 +639,51 @@ private static int numberOfRewardsDisplayed;
                 active = (WFtheme)i;
             }
         }
+
+#else
+        max = GetMaxWeight(weights);
+        active = (WFtheme)weights.IndexOf(max);
+        
+        static double GetMaxWeight(ReadOnlySpan<double> span)
+        {
+            double result;
+            int index;
+
+            if (Vector.IsHardwareAccelerated && span.Length >= Vector<double>.Count * 2)
+            {
+                var maxes = new Vector<double>(span);
+                index = Vector<double>.Count;
+                do
+                {
+                    var right = new Vector<double>(span.Slice(index));
+                    maxes = Vector.Max(maxes, right);
+                    index += Vector<double>.Count;
+                } while (index + Vector<double>.Count <= span.Length);
+                
+                result = maxes[0];
+                for (var i = 1; i < Vector<double>.Count; i++)
+                {
+                    if (maxes[i] > result)
+                        result = maxes[i];
+                }
+            }
+            else
+            {
+                result = span[0];
+                index = 1;
+            }
+
+            for (var i = index; (uint)i < (uint)span.Length; i++)
+            {
+                if (span[i] > result)
+                    result = span[i];
+            }
+
+            return result;
+        }
+#endif
+        
+
         Main.AddLog("CLOSEST THEME(" + max.ToString("F2", Main.culture) + "): " + active.ToString());
         closestThresh = max;
         if (_settings.ThemeSelection != WFtheme.AUTO)
@@ -589,6 +691,7 @@ private static int numberOfRewardsDisplayed;
             Main.AddLog("Theme overwrite present, setting to: " + _settings.ThemeSelection.ToString());
             return _settings.ThemeSelection;
         }
+
         return active;
     }
 #pragma warning disable IDE0044 // Add readonly modifier
@@ -619,6 +722,7 @@ private static int numberOfRewardsDisplayed;
                 }
             }
         }
+
         GetThemeCache[clr.R, clr.G, clr.B] = (byte)(minTheme + 1);
         GetThresholdCache[clr.R, clr.G, clr.B] = (byte)threshold;
         return minTheme;
@@ -629,9 +733,11 @@ private static int numberOfRewardsDisplayed;
     /// </summary>
     /// <param name="partName">Scanned part name</param>
     /// <returns>If part name is close enough to valid to actually process</returns>
-    internal static bool PartNameValid (string partName)
+    internal static bool PartNameValid(string partName)
     {
-        if ((partName.Length < 13 && _settings.Locale == "en") || (partName.Replace(" ", "").Length < 6 && _settings.Locale == "ko")) // if part name is smaller than "Bo prime handle" skip current part 
+        if ((partName.Length < 13 && _settings.Locale == "en") ||
+            (partName.Replace(" ", "").Length < 6 &&
+             _settings.Locale == "ko")) // if part name is smaller than "Bo prime handle" skip current part 
             //TODO: Add a min character for other locale here.
             return false;
         return true;
@@ -653,24 +759,28 @@ private static int numberOfRewardsDisplayed;
         snapItImage.Save(Main.AppPath + @"\Debug\SnapItImage " + timestamp + ".png");
         Bitmap snapItImageFiltered = ScaleUpAndFilter(snapItImage, theme, out int[] rowHits, out int[] colHits);
         snapItImageFiltered.Save(Main.AppPath + @"\Debug\SnapItImageFiltered " + timestamp + ".png");
-        List<InventoryItem> foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits); 
+        List<InventoryItem> foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
         long end = watch.ElapsedMilliseconds;
         Main.StatusUpdate("Completed snapit Processing(" + (end - start) + "ms)", 0);
         string csv = string.Empty;
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
-        if (!File.Exists(applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture) + ".csv") && _settings.SnapitExport)
-            csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture) + Environment.NewLine;
+        if (!File.Exists(applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture) +
+                         ".csv") && _settings.SnapitExport)
+            csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
+                   DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture)      + Environment.NewLine;
         int resultCount = foundParts.Count;
         for (int i = 0; i < foundParts.Count; i++)
         {
             var part = foundParts[i];
             if (!PartNameValid(part.Name))
             {
-                foundParts.RemoveAt(i--); //remove invalid part from list to not clog VerifyCount. Decrement to not skip any entries
+                foundParts.RemoveAt(
+                    i--); //remove invalid part from list to not clog VerifyCount. Decrement to not skip any entries
                 resultCount--;
                 continue;
             }
+
             Debug.WriteLine($"Part  {foundParts.IndexOf(part)} out of {foundParts.Count}");
             string name = Main.dataBase.GetPartName(part.Name, out int levenDist, false, out bool multipleLowest);
             string primeSetName = Main.dataBase.GetSetName(name);
@@ -679,6 +789,7 @@ private static int numberOfRewardsDisplayed;
                 //show warning triangle if the result is of questionable accuracy. The limit is basically arbitrary
                 part.Warning = true;
             }
+
             bool doWarn = part.Warning;
             part.Name = name;
             foundParts[i] = part;
@@ -690,6 +801,7 @@ private static int numberOfRewardsDisplayed;
             {
                 primeSetPlat = (string)primeSet["plat"];
             }
+
             string ducats = job["ducats"].ToObject<string>();
             string volume = job["volume"].ToObject<string>();
             bool vaulted = Main.dataBase.IsPartVaulted(name);
@@ -700,7 +812,8 @@ private static int numberOfRewardsDisplayed;
             if (_settings.SnapitExport)
             {
                 var owned = string.IsNullOrEmpty(partsOwned) ? "0" : partsOwned;
-                csv += name + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(Main.culture) + "," + owned + "," + partsDetected + ", \"\"" + Environment.NewLine;
+                csv += name  + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(Main.culture) + "," +
+                       owned + "," + partsDetected + ", \"\"" + Environment.NewLine;
             }
 
             int width = (int)(part.Bounding.Width * _window.ScreenScaling);
@@ -719,18 +832,19 @@ private static int numberOfRewardsDisplayed;
             Main.RunOnUIThread(() =>
             {
                 Overlay itemOverlay = new Overlay();
-                itemOverlay.LoadTextData(name, plat, primeSetPlat, ducats, volume, vaulted, mastered, partsOwned, partsDetected, false, doWarn);
+                itemOverlay.LoadTextData(name, plat, primeSetPlat, ducats, volume, vaulted, mastered, partsOwned,
+                    partsDetected, false, doWarn);
                 itemOverlay.toSnapit();
                 itemOverlay.Resize(width);
-                itemOverlay.Display((int)(_window.Window.X + snapItOrigin.X + (part.Bounding.X - width / 8) / _window.DpiScaling), (int)((_window.Window.Y + snapItOrigin.Y + part.Bounding.Y - itemOverlay.Height) / _window.DpiScaling), _settings.SnapItDelay);
+                itemOverlay.Display(
+                    (int)(_window.Window.X + snapItOrigin.X + (part.Bounding.X - width / 8) / _window.DpiScaling),
+                    (int)((_window.Window.Y + snapItOrigin.Y + part.Bounding.Y - itemOverlay.Height) /
+                          _window.DpiScaling), _settings.SnapItDelay);
             });
         }
 
         if (_settings.DoSnapItCount && resultCount > 0)
-            Main.RunOnUIThread(() =>
-            {
-                VerifyCount.ShowVerifyCount(foundParts);
-             });
+            Main.RunOnUIThread(() => { VerifyCount.ShowVerifyCount(foundParts); });
 
         if (Main.snapItOverlayWindow.tempImage != null)
             Main.snapItOverlayWindow.tempImage.Dispose();
@@ -738,25 +852,25 @@ private static int numberOfRewardsDisplayed;
         if (resultCount == 0)
         {
             Main.StatusUpdate("Couldn't find any items to display (took " + (end - start) + "ms) ", 1);
-            Main.RunOnUIThread(() =>
-            {
-                Main.SpawnErrorPopup(DateTime.UtcNow);
-            });
-
-        } 
+            Main.RunOnUIThread(() => { Main.SpawnErrorPopup(DateTime.UtcNow); });
+        }
         else
         {
             Main.StatusUpdate("Completed snapit Displaying(" + (end - start) + "ms)", 0);
         }
+
         watch.Stop();
         Main.AddLog("Snap-it finished, displayed reward count:" + resultCount + ", time: " + (end - start) + "ms");
         if (_settings.SnapitExport)
         {
-            File.AppendAllText(applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture) + ".csv", csv);
+            File.AppendAllText(
+                applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture) + ".csv",
+                csv);
         }
     }
 
-    private static List<Tuple<Bitmap, Rectangle>> DivideSnapZones (Bitmap filteredImage, Bitmap filteredImageClean, int[] rowHits, int[] colHits) 
+    private static List<Tuple<Bitmap, Rectangle>> DivideSnapZones(Bitmap filteredImage, Bitmap filteredImageClean,
+        int[] rowHits, int[] colHits)
     {
         List<Tuple<Bitmap, Rectangle>> zones = [];
         Pen brown = new Pen(Brushes.Brown);
@@ -768,12 +882,15 @@ private static int numberOfRewardsDisplayed;
         int rowHeight = 0;
         while (i < filteredImage.Height)
         {
-            if ( (double)(rowHits[i]) / filteredImage.Width > _settings.SnapRowTextDensity) {
+            if ((double)(rowHits[i]) / filteredImage.Width > _settings.SnapRowTextDensity)
+            {
                 int j = 0;
-                while ( i+j < filteredImage.Height && (double)(rowHits[i+j]) / filteredImage.Width > _settings.SnapRowEmptyDensity)
+                while (i + j                                          < filteredImage.Height &&
+                       (double)(rowHits[i + j]) / filteredImage.Width > _settings.SnapRowEmptyDensity)
                 {
                     j++;
                 }
+
                 if (j > 3) //only add "rows" of reasonable height
                 {
                     rows.Add(Tuple.Create(i, j));
@@ -781,11 +898,13 @@ private static int numberOfRewardsDisplayed;
                 }
 
                 i += j;
-            } else
+            }
+            else
             {
                 i++;
             }
         }
+
         rowHeight = rowHeight / Math.Max(rows.Count, 1);
 
         //combine adjacent rows into one block of text
@@ -797,12 +916,12 @@ private static int numberOfRewardsDisplayed;
             {
                 while (i + 1 < rows.Count)
                 {
-
-                    g.DrawLine(brown, 0, rows[i].Item1 + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
+                    g.DrawLine(brown, 0, rows[i].Item1      + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
                     gClean.DrawLine(white, 0, rows[i].Item1 + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
                     if (rows[i].Item1 + rows[i].Item2 + rowHeight > rows[i + 1].Item1)
                     {
-                        rows[i + 1] = Tuple.Create(rows[i].Item1, rows[i + 1].Item1 - rows[i].Item1 + rows[i + 1].Item2);
+                        rows[i + 1] = Tuple.Create(rows[i].Item1,
+                            rows[i + 1].Item1 - rows[i].Item1 + rows[i + 1].Item2);
                         rows.RemoveAt(i);
                     }
                     else
@@ -818,27 +937,33 @@ private static int numberOfRewardsDisplayed;
 
         int colStart = 0;
         i = 0;
-        while (i + 1< filteredImage.Width)
+        while (i + 1 < filteredImage.Width)
         {
             if ((double)(colHits[i]) / filteredImage.Height < _settings.SnapColEmptyDensity)
             {
                 int j = 0;
-                while (i + j + 1< filteredImage.Width && (double)(colHits[i + j]) / filteredImage.Width < _settings.SnapColEmptyDensity)
+                while (i + j + 1                                      < filteredImage.Width &&
+                       (double)(colHits[i + j]) / filteredImage.Width < _settings.SnapColEmptyDensity)
                 {
                     j++;
                 }
+
                 if (j > rowHeight / 2)
                 {
                     if (i != 0)
                     {
                         cols.Add(Tuple.Create(colStart, i - colStart));
                     }
+
                     colStart = i + j + 1;
                 }
+
                 i += j;
             }
+
             i += 1;
         }
+
         if (i != colStart)
         {
             cols.Add(Tuple.Create(colStart, i - colStart));
@@ -847,14 +972,15 @@ private static int numberOfRewardsDisplayed;
         //divide image into text blocks
         for (i = 0; i < rows.Count; i++)
         {
-            for ( int j = 0; j < cols.Count; j++)
+            for (int j = 0; j < cols.Count; j++)
             {
-                int top = Math.Max(rows[i].Item1 - (rowHeight / 2), 0);
+                int top = Math.Max(rows[i].Item1    - (rowHeight / 2), 0);
                 int height = Math.Min(rows[i].Item2 + rowHeight, filteredImageClean.Height - top - 1);
-                int left = Math.Max(cols[j].Item1 - (rowHeight / 4), 0);
-                int width = Math.Min(cols[j].Item2 + (rowHeight / 2), filteredImageClean.Width - left - 1);
+                int left = Math.Max(cols[j].Item1   - (rowHeight / 4), 0);
+                int width = Math.Min(cols[j].Item2  + (rowHeight / 2), filteredImageClean.Width - left - 1);
                 Rectangle cloneRect = new Rectangle(left, top, width, height);
-                Tuple<Bitmap, Rectangle> temp = Tuple.Create(filteredImageClean.Clone(cloneRect, filteredImageClean.PixelFormat), cloneRect);
+                Tuple<Bitmap, Rectangle> temp =
+                    Tuple.Create(filteredImageClean.Clone(cloneRect, filteredImageClean.PixelFormat), cloneRect);
                 zones.Add(temp);
             }
         }
@@ -865,6 +991,7 @@ private static int numberOfRewardsDisplayed;
             {
                 g.DrawRectangle(brown, tup.Item2);
             }
+
             g.DrawRectangle(brown, 0, 0, rowHeight / 2, rowHeight);
         }
 
@@ -873,34 +1000,35 @@ private static int numberOfRewardsDisplayed;
         return zones;
     }
 
-    private static List<Tuple<String,  Rectangle>> GetTextWithBoundsFromImage(TesseractEngine engine, Bitmap image, int rectXOffset, int rectYOffset)
+    private static List<Tuple<string, Rectangle>> GetTextWithBoundsFromImage(TesseractEngine engine, Bitmap image,
+        int rectXOffset, int rectYOffset)
     {
-
-        List<Tuple<String, Rectangle>> data = [];
+        List<Tuple<string, Rectangle>> data = [];
 
         using (var page = engine.Process(image, PageSegMode.SparseText))
         {
             using (var iterator = page.GetIterator())
             {
-
                 iterator.Begin();
                 do
                 {
                     string currentWord = iterator.GetText(PageIteratorLevel.TextLine);
                     iterator.TryGetBoundingBox(PageIteratorLevel.TextLine, out Rect tempbounds);
-                    Rectangle bounds = new Rectangle(tempbounds.X1 + rectXOffset, tempbounds.Y1 + rectYOffset, tempbounds.Width, tempbounds.Height);
+                    Rectangle bounds = new Rectangle(tempbounds.X1 + rectXOffset, tempbounds.Y1 + rectYOffset,
+                        tempbounds.Width, tempbounds.Height);
                     if (currentWord != null)
                     {
                         currentWord = RE.Replace(currentWord, "").Trim();
                         if (currentWord.Length > 0)
-                        { //word is valid start comparing to others
+                        {
+                            //word is valid start comparing to others
                             data.Add(Tuple.Create(currentWord, bounds));
                         }
                     }
-                }
-                while (iterator.Next(PageIteratorLevel.TextLine));
+                } while (iterator.Next(PageIteratorLevel.TextLine));
             }
         }
+
         return data;
     }
 
@@ -908,12 +1036,14 @@ private static int numberOfRewardsDisplayed;
     /// Filters out any group of words and addes them all into a single InventoryItem, containing the found words as well as the bounds within they reside.
     /// </summary>
     /// <returns>List of found items</returns>
-    private static List<InventoryItem> FindAllParts(Bitmap filteredImage, Bitmap unfilteredImage, int[] rowHits, int[] colHits)
+    private static List<InventoryItem> FindAllParts(Bitmap filteredImage, Bitmap unfilteredImage, int[] rowHits,
+        int[] colHits)
     {
         Bitmap filteredImageClean = new Bitmap(filteredImage);
         DateTime time = DateTime.UtcNow;
         string timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
-        List<Tuple<List<InventoryItem>, Rectangle>> foundItems = []; //List containing Tuples of overlapping InventoryItems and their combined bounds
+        List<Tuple<List<InventoryItem>, Rectangle>>
+            foundItems = []; //List containing Tuples of overlapping InventoryItems and their combined bounds
         int numberTooLarge = 0;
         int numberTooFewCharacters = 0;
         int numberTooLargeButEnoughCharacters = 0;
@@ -925,11 +1055,12 @@ private static int numberOfRewardsDisplayed;
         var font = new Font("Arial", 16);
         List<Tuple<Bitmap, Rectangle>> zones;
         int snapThreads;
-        if ( _settings.SnapMultiThreaded)
+        if (_settings.SnapMultiThreaded)
         {
             zones = DivideSnapZones(filteredImage, filteredImageClean, rowHits, colHits);
             snapThreads = 4;
-        } else
+        }
+        else
         {
             zones =
             [
@@ -938,42 +1069,51 @@ private static int numberOfRewardsDisplayed;
             ];
             snapThreads = 1;
         }
-        Task < List<Tuple<String, Rectangle>>>[] snapTasks = new Task<List<Tuple<String, Rectangle>>>[snapThreads];
+
+        Task<List<Tuple<string, Rectangle>>>[] snapTasks = new Task<List<Tuple<string, Rectangle>>>[snapThreads];
         for (int i = 0; i < snapThreads; i++)
         {
             int tempI = i;
             snapTasks[i] = Task.Factory.StartNew(() =>
             {
-                List<Tuple<String, Rectangle>> taskResults = [];
+                List<Tuple<string, Rectangle>> taskResults = [];
                 for (int j = tempI; j < zones.Count; j += snapThreads)
                 {
                     //process images
-                    List<Tuple<String, Rectangle>> currentResult = GetTextWithBoundsFromImage(_tesseractService.Engines[tempI], zones[j].Item1, zones[j].Item2.X, zones[j].Item2.Y);
+                    List<Tuple<string, Rectangle>> currentResult =
+                        GetTextWithBoundsFromImage(_tesseractService.Engines[tempI], zones[j].Item1, zones[j].Item2.X,
+                            zones[j].Item2.Y);
                     taskResults.AddRange(currentResult);
                 }
+
                 return taskResults;
             });
         }
+
         Task.WaitAll(snapTasks);
 
         for (int threadNum = 0; threadNum < snapThreads; threadNum++)
         {
-            foreach (Tuple<String,Rectangle> wordResult in snapTasks[threadNum].Result)
+            foreach (Tuple<string, Rectangle> wordResult in snapTasks[threadNum].Result)
             {
                 string currentWord = wordResult.Item1;
                 Rectangle bounds = wordResult.Item2;
                 //word is valid start comparing to others
-                int VerticalPad = bounds.Height/2;
+                int VerticalPad = bounds.Height / 2;
                 int HorizontalPad = (int)(bounds.Height * _settings.SnapItHorizontalNameMargin);
-                var paddedBounds = new Rectangle(bounds.X - HorizontalPad, bounds.Y - VerticalPad, bounds.Width + HorizontalPad * 2, bounds.Height + VerticalPad * 2);
+                var paddedBounds = new Rectangle(bounds.X - HorizontalPad, bounds.Y          - VerticalPad,
+                    bounds.Width                          + HorizontalPad * 2, bounds.Height + VerticalPad * 2);
                 //var paddedBounds = new Rectangle(bounds.X - bounds.Height / 3, bounds.Y - bounds.Height / 3, bounds.Width + bounds.Height, bounds.Height + bounds.Height / 2);
 
                 using (Graphics g = Graphics.FromImage(filteredImage))
                 {
-                    if (paddedBounds.Height > 50 * _window.ScreenScaling || paddedBounds.Width > 84 * _window.ScreenScaling)
-                    { //Determine whether or not the box is too large, false positives in OCR can scan items (such as neuroptics, chassis or systems) as a character(s).
+                    if (paddedBounds.Height > 50 * _window.ScreenScaling ||
+                        paddedBounds.Width  > 84 * _window.ScreenScaling)
+                    {
+                        //Determine whether or not the box is too large, false positives in OCR can scan items (such as neuroptics, chassis or systems) as a character(s).
                         if (currentWord.Length > 3)
-                        { // more than 3 characters in a box too large is likely going to be good, pass it but mark as potentially bad
+                        {
+                            // more than 3 characters in a box too large is likely going to be good, pass it but mark as potentially bad
                             g.DrawRectangle(orange, paddedBounds);
                             numberTooLargeButEnoughCharacters++;
                         }
@@ -994,10 +1134,11 @@ private static int numberOfRewardsDisplayed;
                     {
                         g.DrawRectangle(pinkP, paddedBounds);
                     }
+
                     g.DrawRectangle(greenp, bounds);
                     g.DrawString(currentWord, font, Brushes.Pink, new Point(paddedBounds.X, paddedBounds.Y));
-
                 }
+
                 int i = foundItems.Count - 1;
 
                 for (; i >= 0; i--)
@@ -1007,7 +1148,8 @@ private static int numberOfRewardsDisplayed;
                 if (i == -1)
                 {
                     //New entry added by creating a tuple. Item1 in tuple is list with just the newly found item, Item2 is its bounds
-                    foundItems.Add(Tuple.Create(new List<InventoryItem> { new InventoryItem(currentWord, paddedBounds) }, paddedBounds )); 
+                    foundItems.Add(Tuple.Create(
+                        new List<InventoryItem> { new InventoryItem(currentWord, paddedBounds) }, paddedBounds));
                 }
                 else
                 {
@@ -1017,7 +1159,7 @@ private static int numberOfRewardsDisplayed;
                     int bot = Math.Max(foundItems[i].Item2.Bottom, paddedBounds.Bottom);
 
                     Rectangle combinedBounds = new Rectangle(left, top, right - left, bot - top);
-                                
+
                     List<InventoryItem> tempList =
                     [
                         ..foundItems[i].Item1,
@@ -1031,27 +1173,28 @@ private static int numberOfRewardsDisplayed;
 
         List<InventoryItem> results = [];
 
-        foreach( Tuple<List<InventoryItem>, Rectangle> itemGroup in foundItems)
+        foreach (Tuple<List<InventoryItem>, Rectangle> itemGroup in foundItems)
         {
             //Sort order for component words to appear in. If large height difference, sort vertically. If small height difference, sort horizontally
-            itemGroup.Item1.Sort( (InventoryItem i1, InventoryItem i2) => 
+            itemGroup.Item1.Sort((InventoryItem i1, InventoryItem i2) =>
             {
-                return Math.Abs(i1.Bounding.Top - i2.Bounding.Top) > i1.Bounding.Height/8
-                    ? i1.Bounding.Top - i2.Bounding.Top
+                return Math.Abs(i1.Bounding.Top - i2.Bounding.Top) > i1.Bounding.Height / 8
+                    ? i1.Bounding.Top  - i2.Bounding.Top
                     : i1.Bounding.Left - i2.Bounding.Left;
             });
 
             //Combine into item name
-            String name = "";
-            foreach(InventoryItem i1 in itemGroup.Item1)
+            string name = "";
+            foreach (InventoryItem i1 in itemGroup.Item1)
             {
                 name += (i1.Name + " ");
             }
+
             name = name.Trim();
             results.Add(new InventoryItem(name, itemGroup.Item2));
         }
 
-        if ( _settings.DoSnapItCount)
+        if (_settings.DoSnapItCount)
         {
             GetItemCounts(filteredImage, filteredImageClean, unfilteredImage, results, font);
         }
@@ -1066,7 +1209,9 @@ private static int numberOfRewardsDisplayed;
         if (numberTooLarge > .3 * foundItems.Count || numberTooFewCharacters > .4 * foundItems.Count)
         {
             //Log old noise level heuristics
-            Main.AddLog("numberTooLarge: " + numberTooLarge + ", numberTooFewCharacters: " + numberTooFewCharacters + ", numberTooLargeButEnoughCharacters: " + numberTooLargeButEnoughCharacters + ", foundItems.Count: " + foundItems.Count);
+            Main.AddLog("numberTooLarge: " + numberTooLarge + ", numberTooFewCharacters: " + numberTooFewCharacters +
+                        ", numberTooLargeButEnoughCharacters: " + numberTooLargeButEnoughCharacters +
+                        ", foundItems.Count: " + foundItems.Count);
         }
 
         filteredImage.Save(Main.AppPath + @"\Debug\SnapItImageBounds " + timestamp + ".png");
@@ -1082,7 +1227,8 @@ private static int numberOfRewardsDisplayed;
     /// <param name="threshold">If the amount of adjacent black pixels (including itself) is below this number, it will be converted to white before the number scanning</param>
     /// <param name="font">Font used for debug marking</param>
     /// <returns>Nothing, but if successful <c>foundItems</c> will be modified</returns>
-    private static void GetItemCounts(Bitmap filteredImage, Bitmap filteredImageClean, Bitmap unfilteredImage, List<InventoryItem> foundItems, Font font)
+    private static void GetItemCounts(Bitmap filteredImage, Bitmap filteredImageClean, Bitmap unfilteredImage,
+        List<InventoryItem> foundItems, Font font)
     {
         Main.AddLog("Starting Item Counting");
         Pen darkCyan = new Pen(Brushes.DarkCyan);
@@ -1090,7 +1236,6 @@ private static int numberOfRewardsDisplayed;
         Pen cyan = new Pen(Brushes.Cyan);
         using (Graphics g = Graphics.FromImage(filteredImage))
         {
-
             //features of grid system
             List<Rectangle> Columns = [];
             List<Rectangle> Rows = [];
@@ -1099,7 +1244,7 @@ private static int numberOfRewardsDisplayed;
             List<InventoryItem> foundItemsBottom = foundItems.OrderBy(o => o.Bounding.Bottom).ToList();
             //filter out bad parts for more accurate grid
             bool itemRemoved = false;
-            for (int i = 0; i < foundItemsBottom.Count; i+=(itemRemoved ? 0 : 1))
+            for (int i = 0; i < foundItemsBottom.Count; i += (itemRemoved ? 0 : 1))
             {
                 itemRemoved = false;
                 if (!PartNameValid(foundItemsBottom[i].Name))
@@ -1108,13 +1253,16 @@ private static int numberOfRewardsDisplayed;
                     itemRemoved = true;
                 }
             }
+
             List<InventoryItem> foundItemsLeft = foundItemsBottom.OrderBy(o => o.Bounding.Left).ToList();
 
 
             for (int i = 0; i < foundItemsBottom.Count; i++)
             {
-                Rectangle currRow = new Rectangle(0, foundItemsBottom[i].Bounding.Y, 10000, foundItemsBottom[i].Bounding.Height);
-                Rectangle currColumn = new Rectangle(foundItemsLeft[i].Bounding.X, 0, foundItemsLeft[i].Bounding.Width, 10000);
+                Rectangle currRow = new Rectangle(0, foundItemsBottom[i].Bounding.Y, 10000,
+                    foundItemsBottom[i].Bounding.Height);
+                Rectangle currColumn = new Rectangle(foundItemsLeft[i].Bounding.X, 0, foundItemsLeft[i].Bounding.Width,
+                    10000);
 
                 //find or improve latest ColumnsRight
                 if (Rows.Count == 0 || !currRow.IntersectsWith(Rows.Last()))
@@ -1127,6 +1275,7 @@ private static int numberOfRewardsDisplayed;
                     {
                         Rows[Rows.Count - 1] = new Rectangle(0, Rows.Last().Y, 10000, currRow.Bottom - Rows.Last().Top);
                     }
+
                     if (Rows.Count != 1 && currColumn.Top > Columns.Last().Top)
                     {
                         Rows[Rows.Count - 1] = new Rectangle(0, currRow.Y, 10000, Rows.Last().Bottom - currRow.Top);
@@ -1142,14 +1291,16 @@ private static int numberOfRewardsDisplayed;
                 {
                     if (currColumn.Right < Columns.Last().Right)
                     {
-                        Columns[Columns.Count - 1] = new Rectangle(Columns.Last().X, 0, currColumn.Right - Columns.Last().X, 10000);
+                        Columns[Columns.Count - 1] = new Rectangle(Columns.Last().X, 0,
+                            currColumn.Right - Columns.Last().X, 10000);
                     }
+
                     if (Columns.Count != 1 && currColumn.Left > Columns.Last().Left)
                     {
-                        Columns[Columns.Count - 1] = new Rectangle(currColumn.X, 0, Columns.Last().Right - currColumn.X, 10000);
+                        Columns[Columns.Count                                   - 1] =
+                            new Rectangle(currColumn.X, 0, Columns.Last().Right - currColumn.X, 10000);
                     }
                 }
-
             }
 
             //draw debug markings for grid system
@@ -1158,11 +1309,11 @@ private static int numberOfRewardsDisplayed;
                 g.DrawLine(darkCyan, Columns[i].Right, 0, Columns[i].Right, 10000);
                 g.DrawLine(darkCyan, Columns[i].X, 0, Columns[i].X, 10000);
             }
+
             for (int i = 0; i < Rows.Count; i++)
             {
                 g.DrawLine(darkCyan, 0, Rows[i].Bottom, 10000, Rows[i].Bottom);
             }
-
 
 
             //set OCR to numbers only
@@ -1177,8 +1328,9 @@ private static int numberOfRewardsDisplayed;
                 {
                     //edges of current area to scan
                     int Left = (j == 0 ? 0 : (Columns[j - 1].Right + Columns[j].X) / 2);
-                    int Top = (i == 0 ? 0 : Rows[i - 1].Bottom);
-                    int Width = Math.Min((int)((Columns[j].Right - Left) * widthMultiplier), filteredImage.Size.Width - Left);
+                    int Top = (i  == 0 ? 0 : Rows[i - 1].Bottom);
+                    int Width = Math.Min((int)((Columns[j].Right - Left) * widthMultiplier),
+                        filteredImage.Size.Width - Left);
                     int Height = Math.Min((Rows[i].Bottom - Top) / 3, filteredImage.Size.Height - Top);
 
                     Rectangle cloneRect = new Rectangle(Left, Top, Width, Height);
@@ -1187,11 +1339,12 @@ private static int numberOfRewardsDisplayed;
                     Bitmap cloneBitmapColoured = unfilteredImage.Clone(cloneRect, filteredImageClean.PixelFormat);
 
 
-
                     //get cloneBitmap as array for fast access
                     int imgWidth = cloneBitmap.Width;
                     int imgHeight = cloneBitmap.Height;
-                    BitmapData lockedBitmapData = cloneBitmap.LockBits(new Rectangle(0, 0, imgWidth, cloneBitmap.Height), ImageLockMode.WriteOnly, cloneBitmap.PixelFormat);
+                    BitmapData lockedBitmapData = cloneBitmap.LockBits(
+                        new Rectangle(0, 0, imgWidth, cloneBitmap.Height), ImageLockMode.WriteOnly,
+                        cloneBitmap.PixelFormat);
                     int numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
                     byte[] LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
                     Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
@@ -1204,9 +1357,10 @@ private static int numberOfRewardsDisplayed;
                     int xCenter = 0;
                     int yCenter = 0;
                     int sumBlack = 1;
-                    for(index = 0; index < numbytes; index += 4)
+                    for (index = 0; index < numbytes; index += 4)
                     {
-                        if(LockedBitmapBytes[index] == 0 &&  LockedBitmapBytes[index + 1] == 0 && LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                         {
                             y = (index / 4) / imgWidth;
                             x = (index / 4) % imgWidth;
@@ -1215,24 +1369,27 @@ private static int numberOfRewardsDisplayed;
                             sumBlack++;
                         }
                     }
+
                     xCenter = xCenter / sumBlack;
                     yCenter = yCenter / sumBlack;
 
 
-                    if (sumBlack < Height ) continue; //not enough black = ignore and move on
+                    if (sumBlack < Height) continue; //not enough black = ignore and move on
 
                     //mark first-pass center
                     filteredImage.SetPixel(Left + xCenter, Top + yCenter, Color.Red);
 
-                    
-                    int minToEdge = Math.Min( Math.Min(xCenter, imgWidth - xCenter), Math.Min(yCenter, imgHeight - yCenter)); //get the distance to closest edge of image
+
+                    int minToEdge = Math.Min(Math.Min(xCenter, imgWidth - xCenter),
+                        Math.Min(yCenter, imgHeight - yCenter)); //get the distance to closest edge of image
                     //we're expected to be within the checkmark + circle, find closest black pixel to find some part of it to start at
                     for (int dist = 0; dist < minToEdge; dist++)
                     {
                         x = xCenter + dist;
                         y = yCenter;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 && LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1240,7 +1397,8 @@ private static int numberOfRewardsDisplayed;
                         x = xCenter - dist;
                         y = yCenter;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 && LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1248,7 +1406,8 @@ private static int numberOfRewardsDisplayed;
                         x = xCenter;
                         y = yCenter + dist;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 && LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1256,7 +1415,8 @@ private static int numberOfRewardsDisplayed;
                         x = xCenter;
                         y = yCenter - dist;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 && LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1271,7 +1431,7 @@ private static int numberOfRewardsDisplayed;
                     Stack<Point> searchSpace = new Stack<Point>();
                     Dictionary<Point, bool> pixelChecked = new Dictionary<Point, bool>();
                     searchSpace.Push(new Point(x, y));
-                    while(searchSpace.Count > 0)
+                    while (searchSpace.Count > 0)
                     {
                         Point p = searchSpace.Pop();
                         if (!pixelChecked.TryGetValue(p, out bool val) || !val)
@@ -1281,10 +1441,12 @@ private static int numberOfRewardsDisplayed;
                             {
                                 for (int yOff = -2; yOff <= 2; yOff++)
                                 {
-                                    if (p.X + xOff > 0 && p.X + xOff < imgWidth && p.Y + yOff > 0 && p.Y + yOff < imgHeight)
+                                    if (p.X + xOff > 0 && p.X + xOff < imgWidth && p.Y + yOff > 0 &&
+                                        p.Y + yOff < imgHeight)
                                     {
                                         index = 4 * (p.X + xOff + (p.Y + yOff) * imgWidth);
-                                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 && LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                                         {
                                             searchSpace.Push(new Point(p.X + xOff, p.Y + yOff));
                                             //cloneBitmap.SetPixel(p.X + xOff, p.Y + yOff, Color.Green); //debugging markings, uncomment as needed
@@ -1306,7 +1468,7 @@ private static int numberOfRewardsDisplayed;
                     yCenterNew = yCenterNew / sumBlack;
 
                     //Search slight bit up and down to get well within the long line of the checkmark
-                    int lowest = yCenterNew + 1000;
+                    int lowest = yCenterNew  + 1000;
                     int highest = yCenterNew - 1000;
                     for (int yOff = -5; yOff < 5; yOff++)
                     {
@@ -1314,7 +1476,8 @@ private static int numberOfRewardsDisplayed;
                         if (checkY > 0 && checkY < imgHeight)
                         {
                             index = 4 * (xCenterNew + (checkY) * imgWidth);
-                            if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 && LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                            if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                                LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                             {
                                 if (checkY > highest)
                                     highest = checkY;
@@ -1324,6 +1487,7 @@ private static int numberOfRewardsDisplayed;
                             }
                         }
                     }
+
                     yCenterNew = (highest + lowest) / 2;
 
 
@@ -1339,7 +1503,9 @@ private static int numberOfRewardsDisplayed;
                     //get cloneBitmapColoured as array for fast access
                     imgHeight = cloneBitmapColoured.Height;
                     imgWidth = cloneBitmapColoured.Width;
-                    lockedBitmapData = cloneBitmapColoured.LockBits(new Rectangle(0, 0, imgWidth, cloneBitmapColoured.Height), ImageLockMode.WriteOnly, cloneBitmapColoured.PixelFormat);
+                    lockedBitmapData = cloneBitmapColoured.LockBits(
+                        new Rectangle(0, 0, imgWidth, cloneBitmapColoured.Height), ImageLockMode.WriteOnly,
+                        cloneBitmapColoured.PixelFormat);
                     numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
                     LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
                     Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
@@ -1351,29 +1517,37 @@ private static int numberOfRewardsDisplayed;
                     pointsToCheck.Enqueue(new Point(xCenterNew, yCenterNew + 1));
                     pointsToCheck.Enqueue(new Point(xCenterNew, yCenterNew - 1));
                     bool stop = false;
-                    while(pointsToCheck.Count > 0)
+                    while (pointsToCheck.Count > 0)
                     {
                         Point p = pointsToCheck.Dequeue();
                         int offset = (p.Y > yCenter ? 1 : -1);
                         if (p.X + 3 > Width || p.X - 3 < 0 || p.Y + 3 > imgHeight || p.Y - 3 < 0)
                         {
                             stop = true; //keep going until we almost hit the edge of the image
-                        } 
-                        if(!stop)
+                        }
+
+                        if (!stop)
                         {
                             pointsToCheck.Enqueue(new Point(p.X + offset, p.Y + offset));
                         }
+
                         index = 4 * (p.X + p.Y * imgWidth);
-                        if (LockedBitmapBytes[index] == LockedBitmapBytes[index - 4] && LockedBitmapBytes[index] == LockedBitmapBytes[index + 4]
-                            && LockedBitmapBytes[index + 1] == LockedBitmapBytes[index + 1 - 4] && LockedBitmapBytes[index + 1] == LockedBitmapBytes[index + 1 + 4]
-                            && LockedBitmapBytes[index + 2] == LockedBitmapBytes[index + 2 - 4] && LockedBitmapBytes[index + 2] == LockedBitmapBytes[index + 2 + 4]
-                            && LockedBitmapBytes[index + 3] == LockedBitmapBytes[index + 3 - 4] && LockedBitmapBytes[index + 3] == LockedBitmapBytes[index + 3 + 4]) 
+                        if (LockedBitmapBytes[index] == LockedBitmapBytes[index - 4] &&
+                            LockedBitmapBytes[index] == LockedBitmapBytes[index + 4]
+                            && LockedBitmapBytes[index + 1] == LockedBitmapBytes[index + 1 - 4] &&
+                            LockedBitmapBytes[index + 1] == LockedBitmapBytes[index + 1 + 4]
+                            && LockedBitmapBytes[index + 2] == LockedBitmapBytes[index + 2 - 4] &&
+                            LockedBitmapBytes[index + 2] == LockedBitmapBytes[index + 2 + 4]
+                            && LockedBitmapBytes[index + 3] == LockedBitmapBytes[index + 3 - 4] &&
+                            LockedBitmapBytes[index + 3] == LockedBitmapBytes[index + 3 + 4])
                         {
-                            Color color = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2], LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
+                            Color color = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
+                                LockedBitmapBytes[index                          + 1], LockedBitmapBytes[index]);
                             if (colorHits.ContainsKey(color))
                             {
                                 colorHits[color]++;
-                            } else
+                            }
+                            else
                             {
                                 colorHits[color] = 1;
                             }
@@ -1391,80 +1565,93 @@ private static int numberOfRewardsDisplayed;
                         }
                         //Debug.WriteLine("Color: " + key.ToString() + ", Value: " + colorHits[key]);
                     }
+
                     Debug.WriteLine("Top Color: " + topColor.ToString() + ", Value: " + topColorScore);
 
-                    if (topColor == Color.FromArgb(255, 255, 255, 255)) continue; //if most common colour is our default value, ignore and move on
+                    if (topColor == Color.FromArgb(255, 255, 255, 255))
+                        continue; //if most common colour is our default value, ignore and move on
 
                     //get unfilteredImage as array for fast access
                     imgWidth = unfilteredImage.Width;
-                    lockedBitmapData = unfilteredImage.LockBits(new Rectangle(0, 0, imgWidth, unfilteredImage.Height), ImageLockMode.WriteOnly, unfilteredImage.PixelFormat);
+                    lockedBitmapData = unfilteredImage.LockBits(new Rectangle(0, 0, imgWidth, unfilteredImage.Height),
+                        ImageLockMode.WriteOnly, unfilteredImage.PixelFormat);
                     numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
                     LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
                     Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
                     unfilteredImage.UnlockBits(lockedBitmapData);
 
                     //recalculate centers to be relative to whole image
-                    rightmost = rightmost + Left + 1;
-                    xCenter = xCenter + Left;
-                    yCenter = yCenter + Top;
+                    rightmost = rightmost   + Left + 1;
+                    xCenter = xCenter       + Left;
+                    yCenter = yCenter       + Top;
                     xCenterNew = xCenterNew + Left;
                     yCenterNew = yCenterNew + Top;
-                    Debug.WriteLine("Old Center" + xCenter + ", " + yCenter);
+                    Debug.WriteLine("Old Center" + xCenter    + ", " + yCenter);
                     Debug.WriteLine("New Center" + xCenterNew + ", " + yCenterNew);
-                    
+
                     //search diagonally (toward top-right) from second-pass center until we find the "amount label" colour
                     x = xCenterNew;
                     y = yCenterNew;
                     index = 4 * (x + y * imgWidth);
-                    Color currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2], LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
-                    while ( x < imgWidth && y > 0 && topColor != currColor )
+                    Color currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
+                        LockedBitmapBytes[index                              + 1], LockedBitmapBytes[index]);
+                    while (x < imgWidth && y > 0 && topColor != currColor)
                     {
                         x++;
                         y--;
                         index = 4 * (x + y * imgWidth);
-                        currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2], LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
+                        currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
+                            LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]);
                     }
 
                     //then search for top edge
                     Top = y;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2], LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
+                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
                     {
                         Top--;
                         index = 4 * (x + Top * imgWidth);
                     }
-                    Top+= 2;
+
+                    Top += 2;
                     index = 4 * (x + Top * imgWidth);
 
                     //search for left edge
                     Left = x;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2], LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
+                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
                     {
                         Left--;
                         index = 4 * (Left + Top * imgWidth);
                     }
-                    Left+= 2;
+
+                    Left += 2;
                     index = 4 * (Left + Top * imgWidth);
 
                     //search for height (bottom edge)
                     Height = 0;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2], LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
+                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
                     {
                         Height++;
                         index = 4 * (Left + (Top + Height) * imgWidth);
                     }
-                    Height-= 2;
+
+                    Height -= 2;
 
                     Left = rightmost; // cut out checkmark+circle icon
                     index = 4 * (Left + (Top + Height) * imgWidth);
 
                     //search for width
                     Width = 0;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2], LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
+                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
                     {
                         Width++;
                         index = 4 * (Left + Width + Top * imgWidth);
                     }
-                    Width-= 2;
+
+                    Width -= 2;
 
                     if (Width < 5 || Height < 5) continue; //if extremely low width or height, ignore
 
@@ -1482,17 +1669,19 @@ private static int numberOfRewardsDisplayed;
                         {
                             iterator.Begin();
                             string rawText = iterator.GetText(PageIteratorLevel.TextLine);
-                            if (rawText != null) 
+                            if (rawText != null)
                                 rawText = rawText.Replace(" ", "");
                             //if no number found, 1 of item
-                            if (!Int32.TryParse(rawText, out int itemCount))
+                            if (!int.TryParse(rawText, out int itemCount))
                             {
                                 itemCount = 1;
                             }
+
                             g.DrawString(rawText, font, Brushes.Cyan, new Point(cloneRect.X, cloneRect.Y));
 
                             //find what item the item belongs to
-                            Rectangle itemLabel = new Rectangle( Columns[j].X, Rows[i].Top, Columns[j].Width , Rows[i].Height);
+                            Rectangle itemLabel = new Rectangle(Columns[j].X, Rows[i].Top, Columns[j].Width,
+                                Rows[i].Height);
                             g.DrawRectangle(cyan, itemLabel);
                             for (int k = 0; k < foundItems.Count; k++)
                             {
@@ -1504,7 +1693,6 @@ private static int numberOfRewardsDisplayed;
                                 }
                             }
                         }
-
                     }
 
                     //mark first-pass and second-pass center of checkmark (in case they've been drawn over)
@@ -1515,10 +1703,11 @@ private static int numberOfRewardsDisplayed;
                     cloneBitmap.Dispose();
                 }
             }
-            
+
             //return OCR to any symbols
             _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", "");
         }
+
         darkCyan.Dispose();
         red.Dispose();
         cyan.Dispose();
@@ -1542,9 +1731,14 @@ private static int numberOfRewardsDisplayed;
             InventoryItem part = foundParts[i];
             if (!PartNameValid(part.Name + " Blueprint"))
                 continue;
-            string name = Main.dataBase.GetPartName(part.Name+" Blueprint", out int proximity, true, out _); //add blueprint to name to check against prime drop table
-            string checkName = Main.dataBase.GetPartName(part.Name + " prime Blueprint", out int primeProximity, true, out _); //also add prime to check if that gives better match. If so, this is a non-prime
-            Main.AddLog("Checking \"" + part.Name.Trim() +"\", (" + proximity +")\"" + name + "\", +prime (" + primeProximity + ")\"" + checkName + "\"");
+            string name =
+                Main.dataBase.GetPartName(part.Name + " Blueprint", out int proximity, true,
+                    out _); //add blueprint to name to check against prime drop table
+            string checkName =
+                Main.dataBase.GetPartName(part.Name + " prime Blueprint", out int primeProximity, true,
+                    out _); //also add prime to check if that gives better match. If so, this is a non-prime
+            Main.AddLog("Checking \""  + part.Name.Trim() + "\", ("   + proximity + ")\"" + name + "\", +prime (" +
+                        primeProximity + ")\""            + checkName + "\"");
 
             //Decide if item is an actual prime, if so mark as mastered
             if (proximity < 3 && proximity < primeProximity && part.Name.Length > 6 && name.Contains("Prime"))
@@ -1558,28 +1752,28 @@ private static int numberOfRewardsDisplayed;
                     Main.dataBase.equipmentData[primeName]["mastered"] = true;
 
                     Main.AddLog("Marked \"" + primeName + "\" as mastered");
-                } else
+                }
+                else
                 {
                     Main.AddLog("Failed to mark \"" + primeName + "\" as mastered");
                 }
             }
         }
+
         Main.dataBase.SaveAllJSONs();
-        Main.RunOnUIThread(() =>
-        {
-            EquipmentWindow.INSTANCE.reloadItems();
-        });
+        Main.RunOnUIThread(() => { EquipmentWindow.INSTANCE.reloadItems(); });
 
         long end = watch.ElapsedMilliseconds;
         if (end - start < 10000)
         {
             Main.StatusUpdate("Completed Profile Scanning(" + (end - start) + "ms)", 0);
-        } else
+        }
+        else
         {
             Main.StatusUpdate("Lower brightness may increase speed(" + (end - start) + "ms)", 1);
         }
-        watch.Stop();
 
+        watch.Stop();
     }
 
     /// <summary>
@@ -1601,6 +1795,7 @@ private static int numberOfRewardsDisplayed;
         {
             return A > 80 && R > 80 && G > 80 && B > 80;
         }
+
         return A > 240 && R > 200 && G > 200 && B > 200;
     }
 
@@ -1610,7 +1805,8 @@ private static int numberOfRewardsDisplayed;
     /// <param name="ProfileImage">Image of profile screen to scan, debug markings will be drawn on this</param>
     /// <param name="timestamp">Time started at, used for file name</param>
     /// <returns>List of found items</returns>
-    private static List<InventoryItem> FindOwnedItems(Bitmap ProfileImage, string timestamp, long start, Stopwatch watch)
+    private static List<InventoryItem> FindOwnedItems(Bitmap ProfileImage, string timestamp, long start,
+        Stopwatch watch)
     {
         Pen orange = new Pen(Brushes.Orange);
         Pen red = new Pen(Brushes.Red);
@@ -1624,7 +1820,9 @@ private static int numberOfRewardsDisplayed;
         Main.AddLog("Using probe interval: " + probe_interval);
 
         int imgWidth = ProfileImageClean.Width;
-        BitmapData lockedBitmapData = ProfileImageClean.LockBits(new Rectangle(0, 0, imgWidth, ProfileImageClean.Height), ImageLockMode.WriteOnly, ProfileImageClean.PixelFormat);
+        BitmapData lockedBitmapData = ProfileImageClean.LockBits(
+            new Rectangle(0, 0, imgWidth, ProfileImageClean.Height), ImageLockMode.WriteOnly,
+            ProfileImageClean.PixelFormat);
         int numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
         byte[] LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
         Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
@@ -1634,28 +1832,31 @@ private static int numberOfRewardsDisplayed;
             int nextY = 0;
             int nextYCounter = -1;
             List<Tuple<int, int, int>> skipZones = []; //left edge, right edge, bottom edge
-            for (int y = 0; y < ProfileImageClean.Height-1; y = (nextYCounter == 0 ? nextY : y+1 ))
+            for (int y = 0; y < ProfileImageClean.Height - 1; y = (nextYCounter == 0 ? nextY : y + 1))
             {
-                for (int x = 0; x < imgWidth; x+= probe_interval) //probe every few pixels for performance
+                for (int x = 0; x < imgWidth; x += probe_interval) //probe every few pixels for performance
                 {
-                    if (probeProfilePixel(LockedBitmapBytes, imgWidth, x, y, false) )
+                    if (probeProfilePixel(LockedBitmapBytes, imgWidth, x, y, false))
                     {
                         //find left edge and check that the coloured area is at least as big as probe_interval
                         int leftEdge = -1;
                         int hits = 0;
                         int areaWidth = 0;
                         double hitRatio = 0;
-                        for (int tempX = Math.Max(x - probe_interval, 0); tempX < Math.Min(x + probe_interval, imgWidth) ; tempX++)
+                        for (int tempX = Math.Max(x - probe_interval, 0);
+                             tempX < Math.Min(x + probe_interval, imgWidth);
+                             tempX++)
                         {
                             areaWidth++;
-                            if ( probeProfilePixel(LockedBitmapBytes, imgWidth, tempX, y, false))
+                            if (probeProfilePixel(LockedBitmapBytes, imgWidth, tempX, y, false))
                             {
                                 hits++;
                                 leftEdge = (leftEdge == -1 ? tempX : leftEdge);
                             }
                         }
+
                         hitRatio = (double)(hits) / areaWidth;
-                        if ( hitRatio < 0.5) //skip if too low hit ratio
+                        if (hitRatio < 0.5) //skip if too low hit ratio
                         {
                             g.DrawLine(orange, x - probe_interval, y, x + probe_interval, y);
                             continue;
@@ -1663,18 +1864,20 @@ private static int numberOfRewardsDisplayed;
 
                         //find where the line ends
                         int rightEdge = leftEdge;
-                        while (rightEdge+2 < imgWidth && 
-                            ( probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge+1, y, false) 
-                            || probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 2, y, false)))
+                        while (rightEdge + 2 < imgWidth &&
+                               (probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge    + 1, y, false)
+                                || probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 2, y, false)))
                         {
                             rightEdge++;
                         }
 
                         //check that it isn't in an area already thoroughly searched
                         bool failed = false;
-                        foreach (Tuple<int,int,int> skipZone in skipZones)
+                        foreach (Tuple<int, int, int> skipZone in skipZones)
                         {
-                            if ( y < skipZone.Item3 && ( (leftEdge <= skipZone.Item1 && rightEdge >= skipZone.Item1) || (leftEdge >= skipZone.Item1 && leftEdge <= skipZone.Item2) || (rightEdge >= skipZone.Item1 && rightEdge <= skipZone.Item2)))
+                            if (y < skipZone.Item3 && ((leftEdge  <= skipZone.Item1 && rightEdge >= skipZone.Item1) ||
+                                                       (leftEdge  >= skipZone.Item1 && leftEdge  <= skipZone.Item2) ||
+                                                       (rightEdge >= skipZone.Item1 && rightEdge <= skipZone.Item2)))
                             {
                                 g.DrawLine(darkCyan, leftEdge, y, rightEdge, y);
                                 x = Math.Max(x, skipZone.Item2);
@@ -1682,11 +1885,12 @@ private static int numberOfRewardsDisplayed;
                                 break;
                             }
                         }
-                         if (failed)
+
+                        if (failed)
                         {
                             continue;
                         }
-                        
+
 
                         //find bottom edge and hit ratio of all rows
                         int topEdge = y;
@@ -1713,10 +1917,13 @@ private static int numberOfRewardsDisplayed;
                                     }
                                 }
                             }
-                            hitRatio = hits / (double)(rightEdge - leftEdge );
+
+                            hitRatio = hits / (double)(rightEdge - leftEdge);
                             hitRatios.Add(hitRatio);
 
-                            if (hitRatio > 0.2 && rightMostHit+1 < rightEdge && rightEdge - leftEdge > 100) //make sure the innermost right edge is used (avoid bright part of frame overlapping with edge)
+                            if (hitRatio > 0.2 && rightMostHit + 1 < rightEdge &&
+                                rightEdge - leftEdge >
+                                100) //make sure the innermost right edge is used (avoid bright part of frame overlapping with edge)
                             {
                                 g.DrawLine(red, rightEdge, bottomEdge, rightMostHit, bottomEdge);
                                 rightEdge = rightMostHit;
@@ -1724,7 +1931,10 @@ private static int numberOfRewardsDisplayed;
                                 hitRatios.Clear();
                                 hitRatios.Add(1);
                             }
-                            if (hitRatio > 0.2 && leftMostHit > leftEdge && rightEdge - leftEdge > 100) //make sure the innermost left edge is used (avoid bright part of frame overlapping with edge)
+
+                            if (hitRatio > 0.2 && leftMostHit > leftEdge &&
+                                rightEdge - leftEdge >
+                                100) //make sure the innermost left edge is used (avoid bright part of frame overlapping with edge)
                             {
                                 g.DrawLine(red, leftEdge, bottomEdge, leftMostHit, bottomEdge);
                                 leftEdge = leftMostHit;
@@ -1732,7 +1942,8 @@ private static int numberOfRewardsDisplayed;
                                 hitRatios.Clear();
                                 hitRatios.Add(1);
                             }
-                        } while (bottomEdge+2 < ProfileImageClean.Height && hitRatios.Last() > 0.2);
+                        } while (bottomEdge + 2 < ProfileImageClean.Height && hitRatios.Last() > 0.2);
+
                         hitRatios.RemoveAt(hitRatios.Count - 1);
                         //find if/where it transitions from text (some misses) to no text (basically no misses) then back to text (some misses). This is proof it's an owned item and marks the bottom edge of the text
                         int ratioChanges = 0;
@@ -1740,19 +1951,20 @@ private static int numberOfRewardsDisplayed;
                         int lineBreak = -1;
                         for (int i = 0; i < hitRatios.Count; i++)
                         {
-                            if ( (hitRatios[i] > 0.99) != prevMostlyHits)
+                            if ((hitRatios[i] > 0.99) != prevMostlyHits)
                             {
                                 if (ratioChanges == 1)
                                 {
-                                    lineBreak = i+1;
-                                    g.DrawLine(cyan, rightEdge, topEdge+lineBreak, leftEdge, topEdge + lineBreak);
+                                    lineBreak = i + 1;
+                                    g.DrawLine(cyan, rightEdge, topEdge + lineBreak, leftEdge, topEdge + lineBreak);
                                 }
+
                                 prevMostlyHits = !prevMostlyHits;
                                 ratioChanges++;
                             }
                         }
 
-                        int width = rightEdge - leftEdge;
+                        int width = rightEdge   - leftEdge;
                         int height = bottomEdge - topEdge;
 
                         if (ratioChanges != 4 || width < 2.4 * height || width > 4 * height)
@@ -1763,6 +1975,7 @@ private static int numberOfRewardsDisplayed;
                             {
                                 Main.StatusUpdate("High noise, this might be slow", 3);
                             }
+
                             continue;
                         }
 
@@ -1770,7 +1983,7 @@ private static int numberOfRewardsDisplayed;
                         skipZones.Add(new Tuple<int, int, int>(leftEdge, rightEdge, bottomEdge));
                         x = rightEdge;
                         nextY = bottomEdge + 1;
-                        nextYCounter = Math.Max(height/8, 3);
+                        nextYCounter = Math.Max(height / 8, 3);
 
                         height = lineBreak;
 
@@ -1780,6 +1993,7 @@ private static int numberOfRewardsDisplayed;
                         {
                             g2.FillRectangle(Brushes.White, 0, 0, cloneBitmap.Width, cloneBitmap.Height);
                         }
+
                         int offset = 0;
                         bool prevHit = false;
                         for (int i = 0; i < cloneRect.Width; i++)
@@ -1787,19 +2001,22 @@ private static int numberOfRewardsDisplayed;
                             bool hitSomething = false;
                             for (int j = 0; j < cloneRect.Height; j++)
                             {
-                                if (!probeProfilePixel(LockedBitmapBytes, imgWidth, cloneRect.X + i, cloneRect.Y + j, true))
+                                if (!probeProfilePixel(LockedBitmapBytes, imgWidth, cloneRect.X + i, cloneRect.Y + j,
+                                        true))
                                 {
-                                    cloneBitmap.SetPixel(i + offset, j, Color.Black);
-                                    ProfileImage.SetPixel(cloneRect.X + i, cloneRect.Y + j , Color.Red);
+                                    cloneBitmap.SetPixel(i            + offset, j, Color.Black);
+                                    ProfileImage.SetPixel(cloneRect.X + i, cloneRect.Y + j, Color.Red);
                                     hitSomething = true;
                                 }
                             }
+
                             if (!hitSomething && prevHit)
                             {
                                 //add empty columns between letters for better OCR accuracy
-                                offset+= 2;
+                                offset += 2;
                                 g.FillRectangle(Brushes.Gray, cloneRect.X + i, cloneRect.Y, 1, cloneRect.Height);
                             }
+
                             prevHit = hitSomething;
                         }
 
@@ -1807,7 +2024,8 @@ private static int numberOfRewardsDisplayed;
 
 
                         //do OCR
-                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
+                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist",
+                            " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
                         using (var page = _tesseractService.FirstEngine.Process(cloneBitmap, PageSegMode.SingleLine))
                         {
                             using (var iterator = page.GetIterator())
@@ -1817,14 +2035,17 @@ private static int numberOfRewardsDisplayed;
                                 rawText = Regex.Replace(rawText, @"\s", "");
                                 foundItems.Add(new InventoryItem(rawText, cloneRect));
 
-                                g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height, cloneRect.Width, cloneRect.Height);
-                                g.DrawString(rawText, font, Brushes.DarkBlue, new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
-
+                                g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height,
+                                    cloneRect.Width, cloneRect.Height);
+                                g.DrawString(rawText, font, Brushes.DarkBlue,
+                                    new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
                             }
                         }
+
                         _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", "");
                     }
                 }
+
                 if (nextYCounter >= 0)
                 {
                     nextYCounter--;
@@ -1851,8 +2072,8 @@ private static int numberOfRewardsDisplayed;
     {
         if (_settings.CF_usePrimaryHSL)
         {
-            if (_settings.CF_pHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_pHueMin &&
-                _settings.CF_pSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_pSatMin &&
+            if (_settings.CF_pHueMax    >= test.GetHue()        && test.GetHue()        >= _settings.CF_pHueMin &&
+                _settings.CF_pSatMax    >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_pSatMin &&
                 _settings.CF_pBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_pBrightMin)
                 return true;
         }
@@ -1867,8 +2088,8 @@ private static int numberOfRewardsDisplayed;
 
         if (_settings.CF_useSecondaryHSL)
         {
-            if (_settings.CF_sHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_sHueMin &&
-                _settings.CF_sSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_sSatMin &&
+            if (_settings.CF_sHueMax    >= test.GetHue()        && test.GetHue()        >= _settings.CF_sHueMin &&
+                _settings.CF_sSatMax    >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_sSatMin &&
                 _settings.CF_sBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_sBrightMin)
                 return true;
         }
@@ -1894,48 +2115,66 @@ private static int numberOfRewardsDisplayed;
 
         switch (theme)
         {
-            case WFtheme.VITRUVIAN:     // TO CHECK
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.25 && test.GetBrightness() >= 0.42;
+            case WFtheme.VITRUVIAN: // TO CHECK
+                return Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.25 &&
+                       test.GetBrightness()                       >= 0.42;
             case WFtheme.LOTUS:
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetSaturation() >= 0.65 && Math.Abs(test.GetBrightness() - primary.GetBrightness()) <= 0.1
-                    || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetBrightness() >= 0.65);
-            case WFtheme.OROKIN:        // TO CHECK
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() <= 0.42 && test.GetSaturation() >= 0.1)
-                    || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5 && test.GetBrightness() <= 0.5 && test.GetBrightness() >= 0.25 && test.GetSaturation() >= 0.25);
+                return Math.Abs(test.GetHue()        - primary.GetHue())        < 5 && test.GetSaturation() >= 0.65 &&
+                       Math.Abs(test.GetBrightness() - primary.GetBrightness()) <= 0.1
+                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetBrightness() >= 0.65);
+            case WFtheme.OROKIN: // TO CHECK
+                return (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() <= 0.42 &&
+                        test.GetSaturation()                       >= 0.1)
+                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5     && test.GetBrightness() <= 0.5 &&
+                           test.GetBrightness()                         >= 0.25 && test.GetSaturation() >= 0.25);
             case WFtheme.STALKER:
-                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55)
-                || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) && test.GetBrightness() >= 0.25;
+                return ((Math.Abs(test.GetHue()    - primary.GetHue())   < 4 && test.GetSaturation() >= 0.55)
+                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) &&
+                       test.GetBrightness() >= 0.25;
             case WFtheme.CORPUS:
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.42 && test.GetSaturation() >= 0.35;
+                return Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.42 &&
+                       test.GetSaturation()                       >= 0.35;
             case WFtheme.EQUINOX:
                 return test.GetSaturation() <= 0.2 && test.GetBrightness() >= 0.55;
             case WFtheme.DARK_LOTUS:
-                return (Math.Abs(test.GetHue() - secondary.GetHue()) < 20 && test.GetBrightness() >= 0.35 && test.GetBrightness() <= 0.55 && test.GetSaturation() <= 0.25 && test.GetSaturation() >= 0.05)
-                    || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.50 && test.GetSaturation() >= 0.20);
+                return (Math.Abs(test.GetHue() - secondary.GetHue()) < 20 && test.GetBrightness() >= 0.35 &&
+                        test.GetBrightness() <= 0.55 && test.GetSaturation() <= 0.25 && test.GetSaturation() >= 0.05)
+                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.50 &&
+                           test.GetSaturation()                         >= 0.20);
             case WFtheme.FORTUNA:
-                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.35) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.15)) && test.GetSaturation() >= 0.20;
+                return ((Math.Abs(test.GetHue() - primary.GetHue())   < 3 && test.GetBrightness() >= 0.35) ||
+                        (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.15)) &&
+                       test.GetSaturation() >= 0.20;
             case WFtheme.HIGH_CONTRAST:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.75 && test.GetBrightness() >= 0.35; // || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
-            case WFtheme.LEGACY:    // TO CHECK
+                return (Math.Abs(test.GetHue() - primary.GetHue())   < 3 ||
+                        Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.75 &&
+                       test.GetBrightness() >= 0.35; // || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
+            case WFtheme.LEGACY: // TO CHECK
                 return (test.GetBrightness() >= 0.65)
-                    || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() >= 0.5 && test.GetSaturation() >= 0.5);
+                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() >= 0.5 &&
+                           test.GetSaturation()                         >= 0.5);
             case WFtheme.NIDUS:
-                return (Math.Abs(test.GetHue() - (primary.GetHue() + 6)) < 8 && test.GetSaturation() >= 0.30)
-                || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetSaturation() >= 0.55);
+                return (Math.Abs(test.GetHue()    - (primary.GetHue() + 6)) < 8  && test.GetSaturation() >= 0.30)
+                       || (Math.Abs(test.GetHue() - secondary.GetHue())     < 15 && test.GetSaturation() >= 0.55);
             case WFtheme.TENNO:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.38 && test.GetBrightness() <= 0.55;
+                return (Math.Abs(test.GetHue() - primary.GetHue())   < 3 ||
+                        Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.38 &&
+                       test.GetBrightness()                                                       <= 0.55;
             case WFtheme.BARUUK:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 2) && test.GetSaturation() > 0.25 && test.GetBrightness() > 0.5;
+                return (Math.Abs(test.GetHue() - primary.GetHue()) < 2) && test.GetSaturation() > 0.25 &&
+                       test.GetBrightness()                                                     > 0.5;
             case WFtheme.GRINEER:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() > 0.5)
-                || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() > 0.55);
+                return (Math.Abs(test.GetHue()    - primary.GetHue())   < 5 && test.GetBrightness() > 0.5)
+                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() > 0.55);
             case WFtheme.ZEPHYR:
-            return ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55)
-                || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) && test.GetBrightness() >= 0.25;
+                return ((Math.Abs(test.GetHue()    - primary.GetHue())   < 4 && test.GetSaturation() >= 0.55)
+                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) &&
+                       test.GetBrightness() >= 0.25;
             default:
                 // This shouldn't be ran
                 //   Only for initial testing
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 2 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
+                return Math.Abs(test.GetHue() - primary.GetHue())   < 2 ||
+                       Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
         }
     }
 
@@ -1958,31 +2197,35 @@ private static int numberOfRewardsDisplayed;
 
             image = partialScreenshotExpanded;
         }
+
         filtered = new Bitmap(image);
 
         rowHits = new int[filtered.Height];
         colHits = new int[filtered.Width];
         Color clr;
-        BitmapData lockedBitmapData = filtered.LockBits(new Rectangle(0, 0, filtered.Width, filtered.Height), ImageLockMode.ReadWrite, filtered.PixelFormat);
+        BitmapData lockedBitmapData = filtered.LockBits(new Rectangle(0, 0, filtered.Width, filtered.Height),
+            ImageLockMode.ReadWrite, filtered.PixelFormat);
         int numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
         byte[] LockedBitmapBytes = new byte[numbytes];
         Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
         int PixelSize = 4; //ARGB, order in array is BGRA
-        for (int i = 0; i < numbytes; i+=PixelSize)
+        for (int i = 0; i < numbytes; i += PixelSize)
         {
-            clr = Color.FromArgb(LockedBitmapBytes[i + 3], LockedBitmapBytes[i + 2], LockedBitmapBytes[i + 1], LockedBitmapBytes[i]);
-            if (ThemeThresholdFilter(clr, active)) 
+            clr = Color.FromArgb(LockedBitmapBytes[i + 3], LockedBitmapBytes[i + 2], LockedBitmapBytes[i + 1],
+                LockedBitmapBytes[i]);
+            if (ThemeThresholdFilter(clr, active))
             {
                 LockedBitmapBytes[i] = 0;
                 LockedBitmapBytes[i + 1] = 0;
                 LockedBitmapBytes[i + 2] = 0;
                 LockedBitmapBytes[i + 3] = 255;
                 //Black
-                int x = (i / PixelSize) % filtered.Width;
+                int x = (i / PixelSize)     % filtered.Width;
                 int y = (i / PixelSize - x) / filtered.Width;
                 rowHits[y]++;
                 colHits[x]++;
-            } else
+            }
+            else
             {
                 LockedBitmapBytes[i] = 255;
                 LockedBitmapBytes[i + 1] = 255;
@@ -1991,6 +2234,7 @@ private static int numberOfRewardsDisplayed;
                 //White
             }
         }
+
         Marshal.Copy(LockedBitmapBytes, 0, lockedBitmapData.Scan0, numbytes);
         filtered.UnlockBits(lockedBitmapData);
         return filtered;
@@ -2000,7 +2244,9 @@ private static int numberOfRewardsDisplayed;
     // The top bit (upper case and dots/strings, bdfhijklt) > the juicy bit (lower case, acemnorsuvwxz) > the tails (gjpqy)
     // we ignore the "tippy top" because it has a lot of variance, so we just look at the "bottom half of the top"
     private static readonly int[] TextSegments = [2, 4, 16, 21];
-    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(out double scaling, out WFtheme active, Bitmap fullScreen)
+
+    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(out double scaling, out WFtheme active,
+        Bitmap fullScreen)
     {
         var watch = new Stopwatch();
         watch.Start();
@@ -2013,10 +2259,11 @@ private static int numberOfRewardsDisplayed;
         int width = _window.Window.Width;
         int height = _window.Window.Height;
         int mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling);
-        int mostLeft = (width / 2) - (mostWidth / 2 );
+        int mostLeft = (width                  / 2) - (mostWidth / 2);
         // Most Top = pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight
         //                   (316          -        235        +       44)    *    1.1    =    137
-        int mostTop = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) * _window.ScreenScaling);
+        int mostTop = height / 2 -
+                      (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) * _window.ScreenScaling);
         int mostBot = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5);
         //Bitmap postFilter = new Bitmap(mostWidth, mostBot - mostTop);
         var rectangle = new Rectangle((int)(mostLeft), (int)(mostTop), mostWidth, mostBot - mostTop);
@@ -2025,7 +2272,8 @@ private static int numberOfRewardsDisplayed;
         try
         {
             Main.AddLog($"Fullscreen is {fullScreen.Size}:, trying to clone: {rectangle.Size} at {rectangle.Location}");
-            preFilter = fullScreen.Clone(new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop), fullScreen.PixelFormat);
+            preFilter = fullScreen.Clone(new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop),
+                fullScreen.PixelFormat);
         }
         catch (Exception ex)
         {
@@ -2037,7 +2285,7 @@ private static int numberOfRewardsDisplayed;
         long end = watch.ElapsedMilliseconds;
         Main.AddLog("Grabbed images " + (end - start) + "ms");
         start = watch.ElapsedMilliseconds;
-        
+
         active = GetThemeWeighted(out var closest, fullScreen);
 
         end = watch.ElapsedMilliseconds;
@@ -2057,11 +2305,11 @@ private static int numberOfRewardsDisplayed;
             {
                 clr = preFilter.GetPixel(x, y);
                 if (ThemeThresholdFilter(clr, active))
-                //{
+                    //{
                     rows[y]++;
-                    //postFilter.SetPixel(x, y, Color.Black);
+                //postFilter.SetPixel(x, y, Color.Black);
                 //} else
-                    //postFilter.SetPixel(x, y, Color.White);
+                //postFilter.SetPixel(x, y, Color.White);
             }
             //Debug.Write(rows[y] + " ");
         }
@@ -2082,7 +2330,8 @@ private static int numberOfRewardsDisplayed;
 
         scaling = -1;
         double lowestWeight = 0;
-        Rectangle uidebug = new Rectangle((topLine_100 - topLine_50) / 50 + topLine_50, (int)(preFilter.Height/_window.ScreenScaling), preFilter.Width, 50);
+        Rectangle uidebug = new Rectangle((topLine_100 - topLine_50) / 50 + topLine_50,
+            (int)(preFilter.Height / _window.ScreenScaling), preFilter.Width, 50);
         for (int i = 0; i <= 50; i++)
         {
             int yFromTop = preFilter.Height - (i * (topLine_100 - topLine_50) / 50 + topLine_50);
@@ -2090,8 +2339,8 @@ private static int numberOfRewardsDisplayed;
             int scale = (50 + i);
             int scaleWidth = preFilter.Width * scale / 100;
 
-            int textTop = (int)(_window.ScreenScaling * TextSegments[0] * scale / 100);
-            int textTopBot = (int)(_window.ScreenScaling * TextSegments[1] * scale / 100);
+            int textTop = (int)(_window.ScreenScaling     * TextSegments[0] * scale / 100);
+            int textTopBot = (int)(_window.ScreenScaling  * TextSegments[1] * scale / 100);
             int textBothBot = (int)(_window.ScreenScaling * TextSegments[2] * scale / 100);
             int textTailBot = (int)(_window.ScreenScaling * TextSegments[3] * scale / 100);
 
@@ -2102,7 +2351,7 @@ private static int numberOfRewardsDisplayed;
             loc++;
             for (; loc < textBothBot; loc++)
             {
-                if (rows[yFromTop + loc] < scaleWidth / 15)
+                if (rows[yFromTop                       + loc] < scaleWidth / 15)
                     midWeights[i] += (scaleWidth * 0.26 - rows[yFromTop + loc]) * 5;
                 else
                     midWeights[i] += Math.Abs(scaleWidth * 0.24 - rows[yFromTop + loc]);
@@ -2113,9 +2362,9 @@ private static int numberOfRewardsDisplayed;
                 botWeights[i] += 10 * Math.Abs(scaleWidth * 0.007 - rows[yFromTop + loc]);
 
             topWeights[i] /= textTopBot - textTop + 1;
-            midWeights[i] /= textBothBot - textTopBot - 2;
-            botWeights[i] /= textTailBot - textBothBot - 1;
-            percWeights[i] = topWeights[i] + midWeights[i] + botWeights[i];
+            midWeights[i] /= textBothBot          - textTopBot    - 2;
+            botWeights[i] /= textTailBot          - textBothBot   - 1;
+            percWeights[i] = topWeights[i]        + midWeights[i] + botWeights[i];
 
             if (scaling == -1 || lowestWeight > percWeights[i])
             {
@@ -2146,7 +2395,11 @@ private static int numberOfRewardsDisplayed;
 
         for (int i = 0; i < 5; i++)
         {
-            Main.AddLog("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" + percWeights[topFive[i]].ToString("F2", Main.culture) + " -- " + topWeights[topFive[i]].ToString("F2", Main.culture) + ", " + midWeights[topFive[i]].ToString("F2", Main.culture) + ", " + botWeights[topFive[i]].ToString("F2", Main.culture));
+            Main.AddLog("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
+                        percWeights[topFive[i]].ToString("F2", Main.culture) + " -- " +
+                        topWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
+                        midWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
+                        botWeights[topFive[i]].ToString("F2", Main.culture));
         }
 
         using (Graphics g = Graphics.FromImage(fullScreen))
@@ -2154,21 +2407,25 @@ private static int numberOfRewardsDisplayed;
             g.DrawRectangle(Pens.Red, rectangle);
             g.DrawRectangle(Pens.Chartreuse, uidebug);
         }
+
         fullScreen.Save(Main.AppPath + @"\Debug\BorderScreenshot " + timestamp + ".png");
 
 
         //postFilter.Save(Main.appPath + @"\Debug\DebugBox1 " + timestamp + ".png");
         preFilter.Save(Main.AppPath + @"\Debug\FullPartArea " + timestamp + ".png");
-        scaling = topFive[4] + 50; //scaling was sometimes going to 50 despite being set to 100, so taking the value from above that seems to be accurate.
+        scaling = topFive[4] +
+                  50; //scaling was sometimes going to 50 despite being set to 100, so taking the value from above that seems to be accurate.
 
         scaling /= 100;
         double highScaling = scaling < 1.0 ? scaling + 0.01 : scaling;
-        double lowScaling = scaling > 0.5 ? scaling - 0.01 : scaling;
+        double lowScaling = scaling  > 0.5 ? scaling - 0.01 : scaling;
 
         int cropWidth = (int)(pixleRewardWidth * _window.ScreenScaling * highScaling);
         int cropLeft = (preFilter.Width / 2) - (cropWidth / 2);
-        int cropTop = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) * _window.ScreenScaling * highScaling);
-        int cropBot = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * lowScaling);
+        int cropTop = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) *
+                                         _window.ScreenScaling * highScaling);
+        int cropBot = height / 2 -
+                      (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * lowScaling);
         int cropHei = cropBot - cropTop;
         cropTop -= mostTop;
         try
@@ -2180,14 +2437,16 @@ private static int numberOfRewardsDisplayed;
         }
         catch (Exception ex)
         {
-            Main.AddLog("Something went wrong while trying to copy the right part of the screen into partial screenshot: " + ex.ToString());
+            Main.AddLog(
+                "Something went wrong while trying to copy the right part of the screen into partial screenshot: " +
+                ex.ToString());
             throw;
         }
 
         preFilter.Dispose();
 
         end = watch.ElapsedMilliseconds;
-        Main.AddLog("Finished function " + (end - beginning) + "ms");
+        Main.AddLog("Finished function "    + (end - beginning)           + "ms");
         partialScreenshot.Save(Main.AppPath + @"\Debug\PartialScreenshot" + timestamp + ".png");
         return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
     }
@@ -2221,7 +2480,7 @@ private static int numberOfRewardsDisplayed;
 
             count = Math.Min(count, partBox.Height / 3);
             double sinVal = Math.Cos(8 * x * Math.PI / partBox.Width);
-            sinVal = sinVal * sinVal * sinVal;
+            sinVal = sinVal  * sinVal * sinVal;
             weight += sinVal * count;
 
             if (sinVal < 0)
@@ -2237,7 +2496,7 @@ private static int numberOfRewardsDisplayed;
             // Assumed to be this issue if both the following criteria are met:
             // 1. A lot more black pixels than the next line up, going with 5x for the moment. The issue is almost entirely on a single line in the cases I've seen so far
             // 2. The problematic line should have a meaningful amount of black pixels. At least twice the height should be pretty good. (We don't yet know the number of players, so can't directly base it on width)
-            if (counts[y] > 5 * counts[y-1] && counts[y] > height * 2)
+            if (counts[y] > 5 * counts[y - 1] && counts[y] > height * 2)
             {
                 Bitmap tmp = filtered.Clone(new Rectangle(0, 0, width, y), filtered.PixelFormat);
                 Main.AddLog("Possible selection border in image, cropping height to: " + y + " (was " + height + ")");
@@ -2250,15 +2509,17 @@ private static int numberOfRewardsDisplayed;
         {
             Main.RunOnUIThread(() =>
             {
-                Main.StatusUpdate("Unable to detect reward from selection screen\nScanning inventory? Hold down snap-it modifier", 1);
+                Main.StatusUpdate(
+                    "Unable to detect reward from selection screen\nScanning inventory? Hold down snap-it modifier",
+                    1);
             });
             processingActive = false;
             throw new Exception("Unable to find any parts");
         }
 
-        double total = totalEven + totalOdd;
+        double total = totalEven          + totalOdd;
         Main.AddLog("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.culture) + "%");
-        Main.AddLog("ODD DISTRIBUTION: " + (totalOdd / total * 100).ToString("F2", Main.culture) + "%");
+        Main.AddLog("ODD DISTRIBUTION: "  + (totalOdd  / total * 100).ToString("F2", Main.culture) + "%");
 
         int boxWidth = partBox.Width / 4;
         int boxHeight = filtered.Height;
@@ -2282,6 +2543,7 @@ private static int numberOfRewardsDisplayed;
             newBox.Save(Main.AppPath + @"\Debug\PartBox(" + i + ") " + timestamp + ".png");
             yield return newBox;
         }
+
         filtered.Dispose();
     }
 
@@ -2306,26 +2568,30 @@ private static int numberOfRewardsDisplayed;
     //    return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
     //}
 
-    public static string GetTextFromImage(Bitmap image, TesseractEngine engine)
+    private static string GetTextFromImage(Bitmap image, TesseractEngine engine)
     {
-        string ret = "";
+        string ret = string.Empty;
         using (Page page = engine.Process(image))
-            ret = page.GetText().Trim();
-        return RE.Replace(ret, "").Trim();
+        {
+            var text = page.GetText();
+            var s = text.AsSpan().Trim();
+            ret = s.ToString();
+        }
+        
+        return RE.Replace(ret, string.Empty).Trim();
     }
 
     internal static List<string> SeparatePlayers(Bitmap image, TesseractEngine engine)
     {
-
         // Values to determine whether there's an even or odd number of players
-        int wid = image.Width / 4;
-        int subwid = wid / 2;
+        int wid = image.Width  / 4;
+        int subwid = wid       / 2;
         int subsubwid = subwid / 4;
 
         // 3 player values
         //  left  mid  right
         int mid = image.Width / 2;
-        int left = mid - wid;
+        int left = mid  - wid;
         int right = mid + wid;
 
         // list of centers for each potential set of text
@@ -2342,7 +2608,7 @@ private static int numberOfRewardsDisplayed;
          *     [start, end, word_ind, word_ind, ...] -- horizontal start and end position of this part and the list of words with it
          *     ...
          *   ]
-        */
+         */
         List<List<int>> arr2D = [];
         List<string> words = [];
         using (Page page = engine.Process(image))
@@ -2373,6 +2639,7 @@ private static int numberOfRewardsDisplayed;
                                     break;
                                 }
                             }
+
                             List<int> temp =
                             [
                                 outRect.X1,
@@ -2391,9 +2658,13 @@ private static int numberOfRewardsDisplayed;
                     //           or while there's lines left in the para
                     //           or while there's paras left in the block
                     //           or while there's blocks left 
-                } while (iter.Next(PageIteratorLevel.TextLine, PageIteratorLevel.Word) || iter.Next(PageIteratorLevel.Para, PageIteratorLevel.TextLine) || iter.Next(PageIteratorLevel.Block, PageIteratorLevel.Para) || iter.Next(PageIteratorLevel.Block));
+                } while (iter.Next(PageIteratorLevel.TextLine, PageIteratorLevel.Word) ||
+                         iter.Next(PageIteratorLevel.Para, PageIteratorLevel.TextLine) ||
+                         iter.Next(PageIteratorLevel.Block, PageIteratorLevel.Para)    ||
+                         iter.Next(PageIteratorLevel.Block));
             }
         }
+
         arr2D.Sort(new Arr2D_Compare());
 
         List<string> ret = [];
@@ -2426,18 +2697,22 @@ private static int numberOfRewardsDisplayed;
                 currPartTop = "";
                 currPartBot = "";
             }
+
             if (arr2D[ind][3] == 1)
                 currPartTop += words[arr2D[ind][2]] + " ";
             else
                 currPartBot += words[arr2D[ind][2]] + " ";
         }
+
         ret.Add((currPartTop.Trim() + " " + currPartBot.Trim()).Trim());
 
 
-        Main.AddLog((ret[0].Length == 0 ? ret.Count - 1 : ret.Count) + " Players Found -- Odds (" + oddCount + ") vs Evens (" + evenCount + ")");
+        Main.AddLog((ret[0].Length == 0 ? ret.Count - 1 : ret.Count) + " Players Found -- Odds (" + oddCount +
+                    ") vs Evens ("                                   + evenCount                  + ")");
 
         if ((oddCount == 0 && evenCount == 0) || oddCount == evenCount)
-        { //Detected 0 rewards
+        {
+            //Detected 0 rewards
             return null;
         }
 
@@ -2482,22 +2757,24 @@ private static int numberOfRewardsDisplayed;
                     screenshot = isHdr ? _windowsScreenshot : _gdiScreenshot;
                     break;
                 default:
-                    throw new NotImplementedException($"HDR support option '{_settings.HdrSupport}' does not have a corresponding screenshot service.");
+                    throw new NotImplementedException(
+                        $"HDR support option '{_settings.HdrSupport}' does not have a corresponding screenshot service.");
             }
         }
-        
+
 
         var image = screenshot.CaptureScreenshot().Result.First();
-        image.Save(Main.AppPath + @"\Debug\FullScreenShot " + DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture) + ".png");
+        image.Save(Main.AppPath                                                    + @"\Debug\FullScreenShot " +
+                   DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture) + ".png");
         return image;
     }
 
     internal static void SnapScreenshot()
     {
         Main.snapItOverlayWindow.Populate(CaptureScreenshot());
-        Main.snapItOverlayWindow.Left = _window.Window.Left / _window.DpiScaling;
-        Main.snapItOverlayWindow.Top = _window.Window.Top / _window.DpiScaling;
-        Main.snapItOverlayWindow.Width = _window.Window.Width / _window.DpiScaling;
+        Main.snapItOverlayWindow.Left = _window.Window.Left     / _window.DpiScaling;
+        Main.snapItOverlayWindow.Top = _window.Window.Top       / _window.DpiScaling;
+        Main.snapItOverlayWindow.Width = _window.Window.Width   / _window.DpiScaling;
         Main.snapItOverlayWindow.Height = _window.Window.Height / _window.DpiScaling;
         Main.snapItOverlayWindow.Topmost = true;
         Main.snapItOverlayWindow.Focusable = true;
