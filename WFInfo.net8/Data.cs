@@ -18,12 +18,28 @@ namespace WFInfo;
 class Data
 {
     public JObject marketItems; // Warframe.market item listing           {<id>: "<name>|<url_name>", ...}
-    
-    public JObject marketData { get; private set; } // Contains warframe.market ducatonator listing     {<partName>: {"ducats": <ducat_val>,"plat": <plat_val>}, ...}
-    
-    public JObject? relicData { get; private set; } // Contains relicData from Warframe PC Drops        {<Era>: {"A1":{"vaulted": true,<rare1/uncommon[12]/common[123]>: <part>}, ...}, "Meso": ..., "Neo": ..., "Axi": ...}
-    
-    public JObject? equipmentData { get; private set; } // Contains equipmentData from Warframe PC Drops          {<EQMT>: {"vaulted": true, "PARTS": {<NAME>:{"relic_name":<name>|"","count":<num>}, ...}},  ...}
+
+    public JObject
+        marketData
+    {
+        get;
+        private set;
+    } // Contains warframe.market ducatonator listing     {<partName>: {"ducats": <ducat_val>,"plat": <plat_val>}, ...}
+
+    public JObject?
+        relicData
+    {
+        get;
+        private set;
+    } // Contains relicData from Warframe PC Drops        {<Era>: {"A1":{"vaulted": true,<rare1/uncommon[12]/common[123]>: <part>}, ...}, "Meso": ..., "Neo": ..., "Axi": ...}
+
+    public JObject?
+        equipmentData
+    {
+        get;
+        private set;
+    } // Contains equipmentData from Warframe PC Drops          {<EQMT>: {"vaulted": true, "PARTS": {<NAME>:{"relic_name":<name>|"","count":<num>}, ...}},  ...}
+
     public JObject? nameData; // Contains relic to market name translation          {<relic_name>: <market_name>}
 
     private static List<Dictionary<int, List<int>>> korean =
@@ -56,7 +72,9 @@ class Data
         }
     ];
 
-    private static readonly string ApplicationDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+    private static readonly string ApplicationDirectory =
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+
     private readonly string marketItemsPath;
     private readonly string marketDataPath;
     private readonly string equipmentDataPath;
@@ -66,7 +84,7 @@ class Data
     private readonly WebSocket marketSocket = new WebSocket("wss://warframe.market/socket?platform=pc");
     private readonly string filterAllJSON = "https://api.warframestat.us/wfinfo/filtered_items";
     private readonly string sheetJsonUrl = "https://api.warframestat.us/wfinfo/prices";
-    
+
     public string inGameName { get; set; } = string.Empty;
     readonly HttpClient client;
     private string githubVersion;
@@ -93,11 +111,11 @@ class Data
         _window = window;
 
         Main.AddLog("Initializing Databases");
-        marketItemsPath = ApplicationDirectory + @"\market_items.json";
-        marketDataPath = ApplicationDirectory + @"\market_data.json";
+        marketItemsPath = ApplicationDirectory   + @"\market_items.json";
+        marketDataPath = ApplicationDirectory    + @"\market_data.json";
         equipmentDataPath = ApplicationDirectory + @"\eqmt_data.json";
-        relicDataPath = ApplicationDirectory + @"\relic_data.json";
-        nameDataPath = ApplicationDirectory + @"\name_data.json";
+        relicDataPath = ApplicationDirectory     + @"\relic_data.json";
+        nameDataPath = ApplicationDirectory      + @"\name_data.json";
 
         Directory.CreateDirectory(ApplicationDirectory);
 
@@ -108,6 +126,7 @@ class Data
         {
             proxy = new WebProxy(new Uri(proxy_string));
         }
+
         HttpClientHandler handler = new HttpClientHandler
         {
             Proxy = proxy
@@ -166,6 +185,7 @@ class Data
             githubVersion = github["tag_name"]?.ToObject<string>();
             return Main.VersionToInteger(githubVersion);
         }
+
         return Main.VersionToInteger(Main.BuildVersion);
     }
 
@@ -184,10 +204,12 @@ class Data
             string name = item["item_name"].ToString();
             if (name.Contains("Prime "))
             {
-                if ((name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") || name.Contains("Harness") || name.Contains("Wings")))
+                if ((name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
+                     name.Contains("Harness")    || name.Contains("Wings")))
                 {
                     name = name.Replace(" Blueprint", "");
                 }
+
                 marketItems[item["id"].ToString()] = name + "|" + item["url_name"];
             }
         }
@@ -241,7 +263,8 @@ class Data
             if (marketItems == null)
                 marketItems = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(marketItemsPath));
 
-            if (marketData.TryGetValue("version", out _) && (marketData["version"].ToObject<string>() == Main.BuildVersion))
+            if (marketData.TryGetValue("version", out _) &&
+                (marketData["version"].ToObject<string>() == Main.BuildVersion))
             {
                 DateTime timestamp = marketData["timestamp"].ToObject<DateTime>();
                 if (timestamp > DateTime.Now.AddHours(-12))
@@ -251,14 +274,17 @@ class Data
                 }
             }
         }
+
         try
         {
             ReloadItems();
         }
         catch
         {
-            Main.AddLog("Failed to refresh items from warframe.market, skipping WFM update for now. Some items might have incomplete info.");
+            Main.AddLog(
+                "Failed to refresh items from warframe.market, skipping WFM update for now. Some items might have incomplete info.");
         }
+
         marketData = new JObject();
         WebClient webClient = CustomEntrypoint.createNewWebClient();
         JArray rows = JsonConvert.DeserializeObject<JArray>(webClient.DownloadString(sheetJsonUrl));
@@ -268,15 +294,21 @@ class Data
             string name = row["name"].ToString();
             if (name.Contains("Prime "))
             {
-                if ((name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") || name.Contains("Harness") || name.Contains("Wings")))
+                if ((name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
+                     name.Contains("Harness")    || name.Contains("Wings")))
                 {
-                   name = name.Replace(" Blueprint", "");
+                    name = name.Replace(" Blueprint", "");
                 }
+
                 marketData[name] = new JObject
                 {
-                    {"plat", double.Parse(row["custom_avg"].ToString(), Main.culture)},
-                    {"ducats", 0},
-                    {"volume", int.Parse(row["yesterday_vol"].ToString(), Main.culture) + int.Parse(row["today_vol"].ToString(), Main.culture)}
+                    { "plat", double.Parse(row["custom_avg"].ToString(), Main.culture) },
+                    { "ducats", 0 },
+                    {
+                        "volume",
+                        int.Parse(row["yesterday_vol"].ToString(), Main.culture) +
+                        int.Parse(row["today_vol"].ToString(), Main.culture)
+                    }
                 };
             }
         }
@@ -311,7 +343,7 @@ class Data
                 { "avg_price", 999 },
                 { "volume", 0 }
             };
-        } 
+        }
         else
         {
             stats = latestStats.ToObject<JObject>();
@@ -321,7 +353,7 @@ class Data
         webClient = createWfmClient();
         data = webClient.DownloadString("https://api.warframe.market/v1/items/" + url);
         JObject? ducats = JsonConvert.DeserializeObject<JObject>(data);
-        
+
         ducats = ducats["payload"]["item"].ToObject<JObject>();
         string id = ducats["id"].ToObject<string>();
         ducats = ducats["items_in_set"].AsParallel().First(part => (string)part["id"] == id).ToObject<JObject>();
@@ -346,18 +378,26 @@ class Data
     private bool LoadEqmtData(JObject allFiltered, bool force = false)
     {
         if (equipmentData == null)
-            equipmentData = File.Exists(equipmentDataPath) ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(equipmentDataPath)) : new JObject();
+            equipmentData = File.Exists(equipmentDataPath)
+                ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(equipmentDataPath))
+                : new JObject();
         if (relicData == null)
-            relicData = File.Exists(relicDataPath) ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(relicDataPath)) : new JObject();
+            relicData = File.Exists(relicDataPath)
+                ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(relicDataPath))
+                : new JObject();
         if (nameData == null)
-            nameData = File.Exists(nameDataPath) ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(nameDataPath)) : new JObject();
+            nameData = File.Exists(nameDataPath)
+                ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(nameDataPath))
+                : new JObject();
 
         // fill in equipmentData (NO OVERWRITE)
         // fill in nameData
         // fill in relicData
 
         DateTime filteredDate = allFiltered["timestamp"].ToObject<DateTime>().ToLocalTime().AddHours(-1);
-        DateTime eqmtDate = equipmentData.TryGetValue("timestamp", out _) ? equipmentData["timestamp"].ToObject<DateTime>() : filteredDate;
+        DateTime eqmtDate = equipmentData.TryGetValue("timestamp", out _)
+            ? equipmentData["timestamp"].ToObject<DateTime>()
+            : filteredDate;
 
         if (force || eqmtDate.CompareTo(filteredDate) <= 0)
         {
@@ -417,6 +457,7 @@ class Data
             Main.AddLog("Prime Database has been downloaded");
             return true;
         }
+
         Main.AddLog("Prime Database is up to date");
         return false;
     }
@@ -476,10 +517,18 @@ class Data
             return false;
         }
 
-        Main.RunOnUIThread(() => { MainWindow.INSTANCE.MarketData.Content = marketData["timestamp"].ToObject<DateTime>().ToString("MMM dd - HH:mm", Main.culture); });
+        Main.RunOnUIThread(() =>
+        {
+            MainWindow.INSTANCE.MarketData.Content = marketData["timestamp"].ToObject<DateTime>()
+                                                                            .ToString("MMM dd - HH:mm", Main.culture);
+        });
 
         saveDatabases = LoadEqmtData(allFiltered, saveDatabases);
-        Main.RunOnUIThread(() => { MainWindow.INSTANCE.DropData.Content = equipmentData["timestamp"].ToObject<DateTime>().ToString("MMM dd - HH:mm", Main.culture); });
+        Main.RunOnUIThread(() =>
+        {
+            MainWindow.INSTANCE.DropData.Content = equipmentData["timestamp"].ToObject<DateTime>()
+                                                                             .ToString("MMM dd - HH:mm", Main.culture);
+        });
 
         if (saveDatabases)
             SaveAllJSONs();
@@ -516,7 +565,8 @@ class Data
             SaveDatabase(marketDataPath, marketData);
             Main.RunOnUIThread(() =>
             {
-                MainWindow.INSTANCE.MarketData.Content = marketData["timestamp"].ToObject<DateTime>().ToString("MMM dd - HH:mm", Main.culture);
+                MainWindow.INSTANCE.MarketData.Content = marketData["timestamp"].ToObject<DateTime>()
+                    .ToString("MMM dd - HH:mm", Main.culture);
                 Main.StatusUpdate("Market Update Complete", 0);
                 MainWindow.INSTANCE.ReloadDrop.IsEnabled = true;
                 MainWindow.INSTANCE.ReloadMarket.IsEnabled = true;
@@ -527,10 +577,7 @@ class Data
             Main.AddLog("Market Update Failed");
             Main.AddLog(ex.ToString());
             Main.StatusUpdate("Market Update Failed", 0);
-            Main.RunOnUIThread(() =>
-            {
-                _ = new ErrorDialogue(DateTime.Now, 0);
-            });
+            Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
     }
 
@@ -554,7 +601,8 @@ class Data
             SaveAllJSONs();
             Main.RunOnUIThread(() =>
             {
-                MainWindow.INSTANCE.DropData.Content = equipmentData["timestamp"].ToObject<DateTime>().ToString("MMM dd - HH:mm", Main.culture);
+                MainWindow.INSTANCE.DropData.Content = equipmentData["timestamp"].ToObject<DateTime>()
+                    .ToString("MMM dd - HH:mm", Main.culture);
                 Main.StatusUpdate("Prime Update Complete", 0);
 
                 MainWindow.INSTANCE.ReloadDrop.IsEnabled = true;
@@ -566,10 +614,7 @@ class Data
             Main.AddLog("Prime Update Failed");
             Main.AddLog(ex.ToString());
             Main.StatusUpdate("Prime Update Failed", 0);
-            Main.RunOnUIThread(() =>
-            {
-                _ = new ErrorDialogue(DateTime.Now, 0);
-            });
+            Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
     }
 
@@ -689,25 +734,24 @@ class Data
             d[0, j] = (t[j - 1] == ' ' ? count : ++count);
 
         for (int i = 1; i <= n; i++)
-            for (int j = 1; j <= m; j++)
-            {
-                // deletion of s
-                int opt1 = d[i - 1, j];
-                if (s[i - 1] != ' ')
-                    opt1++;
+        for (int j = 1; j <= m; j++)
+        {
+            // deletion of s
+            int opt1 = d[i - 1, j];
+            if (s[i - 1] != ' ')
+                opt1++;
 
-                // deletion of t
-                int opt2 = d[i, j - 1];
-                if (t[j - 1] != ' ')
-                    opt2++;
+            // deletion of t
+            int opt2 = d[i, j - 1];
+            if (t[j - 1] != ' ')
+                opt2++;
 
-                // swapping s to t
-                int opt3 = d[i - 1, j - 1];
-                if (t[j - 1] != s[i - 1])
-                    opt3++;
-                d[i, j] = Math.Min(Math.Min(opt1, opt2), opt3);
-            }
-
+            // swapping s to t
+            int opt3 = d[i - 1, j - 1];
+            if (t[j - 1] != s[i - 1])
+                opt3++;
+            d[i, j] = Math.Min(Math.Min(opt1, opt2), opt3);
+        }
 
 
         return d[n, m];
@@ -721,6 +765,7 @@ class Data
         if (0xAC00 <= c && c <= 0xD7A3) return true;
         return false;
     }
+
     public string getLocaleNameData(string s)
     {
         bool saveDatabases = false;
@@ -740,13 +785,16 @@ class Data
                 {
                     localeName = split[0];
                 }
+
                 break;
             }
         }
+
         if (saveDatabases)
             SaveAllJSONs();
         return localeName;
     }
+
     private protected static string e = "A?s/,;j_<Z3Q4z&)";
 
     public int LevenshteinDistanceKorean(string s, string t)
@@ -782,11 +830,11 @@ class Data
                 int[] b = new int[3];
                 a[0] = (((cha - 0xAC00) - (cha - 0xAC00) % 28) / 28) / 21;
                 a[1] = (((cha - 0xAC00) - (cha - 0xAC00) % 28) / 28) % 21;
-                a[2] = (cha - 0xAC00) % 28;
+                a[2] = (cha - 0xAC00)                                % 28;
 
                 b[0] = (((chb - 0xAC00) - (chb - 0xAC00) % 28) / 28) / 21;
                 b[1] = (((chb - 0xAC00) - (chb - 0xAC00) % 28) / 28) % 21;
-                b[2] = (chb - 0xAC00) % 28;
+                b[2] = (chb - 0xAC00)                                % 28;
 
                 if (a[0] != b[0] && a[1] != b[1] && a[2] != b[2])
                 {
@@ -807,8 +855,8 @@ class Data
                                 s1 += 1;
                             }
                         }
-
                     }
+
                     s1 *= 3;
                     s2 *= 2;
                 }
@@ -900,7 +948,8 @@ class Data
     }
 
     public string GetPartName(string name, out int low, bool suppressLogging, out bool multipleLowest)
-    { // Checks the Levenshtein Distance of a string and returns the index in Names() of the closest part
+    {
+        // Checks the Levenshtein Distance of a string and returns the index in Names() of the closest part
         string lowest = null;
         string lowest_unfiltered = null;
         low = 9999;
@@ -933,7 +982,8 @@ class Data
     }
 
     public string GetPartNameHuman(string name, out int low)
-    { // Checks the Levenshtein Distance of a string and returns the index in Names() of the closest part optimized for human searching
+    {
+        // Checks the Levenshtein Distance of a string and returns the index in Names() of the closest part optimized for human searching
         string lowest = null;
         string lowest_unfiltered = null;
         low = 9999;
@@ -950,6 +1000,7 @@ class Data
                 }
             }
         }
+
         if (low > 10)
         {
             foreach (KeyValuePair<string, JToken> prop in nameData)
@@ -961,9 +1012,9 @@ class Data
                     lowest = prop.Value.ToObject<string>();
                     lowest_unfiltered = prop.Value.ToString();
                 }
-
             }
         }
+
         Main.AddLog("Found part(" + low + "): \"" + lowest_unfiltered + "\" from \"" + name + "\"");
         return lowest;
     }
@@ -1059,7 +1110,8 @@ class Data
         }
 
         //abort if autolist and autocsv disabled, or line doesn't contain end-of-session message or timer finished message
-        if (!(line.Contains("MatchingService::EndSession") || line.Contains("Relic timer closed")) || ! (_settings.AutoList || _settings.AutoCSV || _settings.AutoCount)) return;
+        if (!(line.Contains("MatchingService::EndSession") || line.Contains("Relic timer closed")) ||
+            !(_settings.AutoList                           || _settings.AutoCSV || _settings.AutoCount)) return;
 
         if (Main.listingHelper.PrimeRewards == null || Main.listingHelper.PrimeRewards.Count == 0)
         {
@@ -1077,7 +1129,8 @@ class Data
             Overlay.rewardsDisplaying = false;
             string csv = "";
             Main.AddLog("Looping through rewards");
-            Main.AddLog("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " + _settings.AutoCount);
+            Main.AddLog("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +
+                        _settings.AutoCount);
             foreach (var rewardscreen in Main.listingHelper.PrimeRewards)
             {
                 string rewards = "";
@@ -1087,14 +1140,18 @@ class Data
                     if (i + 1 < rewardscreen.Count)
                         rewards += " || ";
                 }
+
                 Main.AddLog(rewards + ", detected choice: " + Main.listingHelper.SelectedRewardIndex);
 
 
                 if (_settings.AutoCSV)
                 {
                     if (csv.Length == 0 && !File.Exists(ApplicationDirectory + @"\rewardExport.csv"))
-                        csv += "Timestamp,ChosenIndex,Reward_0_Name,Reward_0_Plat,Reward_0_Ducats,Reward_1_Name,Reward_1_Plat,Reward_1_Ducats,Reward_2_Name,Reward_2_Plat,Reward_2_Ducats,Reward_3_Name,Reward_3_Plat,Reward_3_Ducats" + Environment.NewLine;
-                    csv += DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture) + "," + Main.listingHelper.SelectedRewardIndex;
+                        csv +=
+                            "Timestamp,ChosenIndex,Reward_0_Name,Reward_0_Plat,Reward_0_Ducats,Reward_1_Name,Reward_1_Plat,Reward_1_Ducats,Reward_2_Name,Reward_2_Plat,Reward_2_Ducats,Reward_3_Name,Reward_3_Plat,Reward_3_Ducats" +
+                            Environment.NewLine;
+                    csv += DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture) + "," +
+                           Main.listingHelper.SelectedRewardIndex;
                     for (int i = 0; i < 4; i++)
                     {
                         if (i < rewardscreen.Count)
@@ -1109,6 +1166,7 @@ class Data
                             csv += ",\"\",0,0"; //fill empty slots with "",0,0
                         }
                     }
+
                     csv += Environment.NewLine;
                 }
 
@@ -1116,32 +1174,31 @@ class Data
                 {
                     Main.RunOnUIThread(() =>
                     {
-                        Main.autoCount.viewModel.addItem(new AutoAddSingleItem(rewardscreen, Main.listingHelper.SelectedRewardIndex, Main.autoCount.viewModel));
+                        Main.autoCount.viewModel.AddItem(new AutoAddSingleItem(rewardscreen,
+                            Main.listingHelper.SelectedRewardIndex, Main.autoCount.viewModel));
                     });
                 }
 
                 if (_settings.AutoList)
                 {
-
                     var rewardCollection = Task.Run(() => Main.listingHelper.GetRewardCollection(rewardscreen)).Result;
                     if (rewardCollection.PrimeNames.Count == 0)
                         continue;
 
-                    Main.listingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
-                } else
-                {
-                    Main.listingHelper.SelectedRewardIndex = 0; //otherwise done by GetRewardCollection, but that calls WFM API
+                    Main.listingHelper.ScreensList.Add(
+                        new KeyValuePair<string, RewardCollection>("", rewardCollection));
                 }
-
+                else
+                {
+                    Main.listingHelper.SelectedRewardIndex =
+                        0; //otherwise done by GetRewardCollection, but that calls WFM API
+                }
             }
 
             if (_settings.AutoCount)
             {
                 Main.AddLog("Opening AutoCount interface");
-                Main.RunOnUIThread(() =>
-                {
-                    AutoCount.ShowAutoCount();
-                });
+                Main.RunOnUIThread(() => { AutoCount.ShowAutoCount(); });
             }
 
             if (_settings.AutoCSV)
@@ -1164,11 +1221,7 @@ class Data
             }
 
             Main.AddLog("Clearing listingHelper.PrimeRewards");
-            Main.RunOnUIThread(() =>
-            {
-                Main.listingHelper.PrimeRewards.Clear();
-            });
-
+            Main.RunOnUIThread(() => { Main.listingHelper.PrimeRewards.Clear(); });
         });
     }
 
@@ -1196,12 +1249,14 @@ class Data
                     OCR.ProcessRewardScreen();
                     break;
                 }
-            } else
+            }
+            else
             {
                 while (watch.ElapsedMilliseconds < fixedStop) ;
                 Main.AddLog("started auto processing (fixed delay)");
                 OCR.ProcessRewardScreen();
             }
+
             watch.Stop();
         }
         catch (Exception ex)
@@ -1209,10 +1264,7 @@ class Data
             Main.AddLog("AUTO FAILED");
             Main.AddLog(ex.ToString());
             Main.StatusUpdate("Auto Detection Failed", 0);
-            Main.RunOnUIThread(() =>
-            {
-                _ = new ErrorDialogue(DateTime.Now, 0);
-            });
+            Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
     }
 
@@ -1230,7 +1282,8 @@ class Data
             RequestUri = new Uri("https://api.warframe.market/v1/auth/signin"),
             Method = HttpMethod.Post,
         };
-        var content = $"{{ \"email\":\"{email}\",\"password\":\"{password.Replace(@"\", @"\\")}\", \"auth_type\": \"header\"}}";
+        var content =
+            $"{{ \"email\":\"{email}\",\"password\":\"{password.Replace(@"\", @"\\")}\", \"auth_type\": \"header\"}}";
         request.Content = new StringContent(content, System.Text.Encoding.UTF8, "application/json");
         request.Headers.Add("Authorization", "JWT");
         request.Headers.Add("language", "en");
@@ -1253,6 +1306,7 @@ class Data
             string censoredEmail = rgxEmail.Replace(email, "*");
             throw new Exception($"GetUserLogin, {responseBody}Email: {censoredEmail}, Pw length: {password.Length}");
         }
+
         request.Dispose();
     }
 
@@ -1286,16 +1340,12 @@ class Data
             Debug.WriteLine("warframe.market: " + e.Data);
             if (!e.Data.Contains("SET_STATUS")) return;
             var message = JsonConvert.DeserializeObject<JObject>(e.Data);
-            Main.RunOnUIThread(() =>
-            {
-                Main.UpdateMarketStatus(message.GetValue("payload").ToString());
-            });
-
+            Main.RunOnUIThread(() => { Main.UpdateMarketStatus(message.GetValue("payload").ToString()); });
         };
 
         marketSocket.OnOpen += (sender, e) =>
         {
-            marketSocket.Send( (_process.IsRunning && !_process.GameIsStreamed)
+            marketSocket.Send((_process.IsRunning && !_process.GameIsStreamed)
                 ? "{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"ingame\"}"
                 : "{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"online\"}");
         };
@@ -1310,6 +1360,7 @@ class Data
             Main.AddLog("Unable to connect to socket: " + e.Message);
             return false;
         }
+
         return true;
     }
 
@@ -1346,7 +1397,8 @@ class Data
                 Method = HttpMethod.Post,
             };
             var itemId = PrimeItemToItemID(primeItem);
-            var json = $"{{\"order_type\":\"sell\",\"item_id\":\"{itemId}\",\"platinum\":{platinum},\"quantity\":{quantity}}}";
+            var json =
+                $"{{\"order_type\":\"sell\",\"item_id\":\"{itemId}\",\"platinum\":{platinum},\"quantity\":{quantity}}}";
             request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             request.Headers.Add("Authorization", "JWT " + JWT);
             request.Headers.Add("language", "en");
@@ -1366,7 +1418,6 @@ class Data
             Main.AddLog($"ListItem: {e.Message} ");
             return false;
         }
-
     }
 
     /// <summary>
@@ -1385,7 +1436,8 @@ class Data
                 RequestUri = new Uri("https://api.warframe.market/v1/profile/orders/" + listingId),
                 Method = HttpMethod.Put,
             };
-            var json = $"{{\"order_id\":\"{listingId}\", \"platinum\": {platinum}, \"quantity\":{quantity + 1}, \"visible\":true}}";
+            var json =
+                $"{{\"order_id\":\"{listingId}\", \"platinum\": {platinum}, \"quantity\":{quantity + 1}, \"visible\":true}}";
             request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
             request.Headers.Add("Authorization", "JWT " + JWT);
             request.Headers.Add("language", "en");
@@ -1423,6 +1475,7 @@ class Data
                 return marketItem.Key;
             }
         }
+
         throw new Exception($"PrimeItemToItemID, Prime item \"{primeItem}\" does not exist in marketItem");
     }
 
@@ -1456,6 +1509,7 @@ class Data
                 message += "invisible\"}";
                 break;
         }
+
         try
         {
             SendMessage(message);
@@ -1465,6 +1519,7 @@ class Data
             Main.AddLog("SetWebsocketStatus, Was unable to set status due to: " + e);
             throw;
         }
+
         return true;
     }
 
@@ -1484,13 +1539,15 @@ class Data
             Debug.WriteLine($"Was unable to send message due to: {e}");
         }
     }
+
     /// <summary>
     /// Disconnects the user from websocket and sets JWT to null
     /// </summary>
     public void Disconnect()
     {
         if (marketSocket.ReadyState == WebSocketState.Open)
-        { //only send disconnect message if the socket is connected
+        {
+            //only send disconnect message if the socket is connected
             SendMessage("{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"invisible\"}");
             JWT = null;
             rememberMe = false;
@@ -1509,6 +1566,7 @@ class Data
                 return vals[1];
             }
         }
+
         throw new Exception($"GetUrlName, Prime item \"{primeName}\" does not exist in marketItem");
     }
 
@@ -1517,7 +1575,8 @@ class Data
     /// </summary>
     /// <param name="primeName"></param>
     /// <returns></returns>
-    public async Task<JObject?> GetTopListings(string primeName) //https://api.warframe.market/v1/items/ prime_name /orders/top
+    public async Task<JObject?>
+        GetTopListings(string primeName) //https://api.warframe.market/v1/items/ prime_name /orders/top
     {
         var urlName = GetUrlName(primeName);
 
@@ -1578,7 +1637,6 @@ class Data
             Main.AddLog($"IsJWTvalid: {e.Message} ");
             return false;
         }
-
     }
 
     /// <summary>
@@ -1681,6 +1739,7 @@ class Data
                 return false;
             }
         }
+
         return true;
     }
 

@@ -69,7 +69,7 @@ public class SelectTextOnFocus : DependencyObject
     [AttachedPropertyBrowsableForType(typeof(TextBox))]
     public static bool GetActive(DependencyObject @object)
     {
-        return (bool) @object.GetValue(ActiveProperty);
+        return (bool)@object.GetValue(ActiveProperty);
     }
 
     public static void SetActive(DependencyObject @object, bool value)

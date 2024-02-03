@@ -12,7 +12,9 @@ public partial class RewardWindow : Window
     {
         InitializeComponent();
     }
-    public void loadTextData(string name, string plat, string primeSetPlat, string ducats, string volume, bool vaulted, bool mastered, string owned, int partNumber, bool resize = true, bool hideReward = false)
+
+    public void loadTextData(string name, string plat, string primeSetPlat, string ducats, string volume, bool vaulted,
+        bool mastered, string owned, int partNumber, bool resize = true, bool hideReward = false)
     {
         Show();
         Topmost = true;
@@ -35,6 +37,7 @@ public partial class RewardWindow : Window
                         Width = 251;
                     break;
                 }
+
                 platImage.Visibility = Visibility.Visible;
                 setPlatImage.Visibility = Visibility.Visible;
                 firstDucatImage.Visibility = Visibility.Visible;
@@ -64,6 +67,7 @@ public partial class RewardWindow : Window
                     if (resize)
                         Width = 501;
                 }
+
                 platImage1.Visibility = Visibility.Visible;
                 setPlatImage1.Visibility = Visibility.Visible;
                 firstDucatImage1.Visibility = Visibility.Visible;
@@ -93,6 +97,7 @@ public partial class RewardWindow : Window
                     if (resize)
                         Width = 751;
                 }
+
                 platImage2.Visibility = Visibility.Visible;
                 setPlatImage2.Visibility = Visibility.Visible;
                 firstDucatImage2.Visibility = Visibility.Visible;
@@ -122,6 +127,7 @@ public partial class RewardWindow : Window
                     if (resize)
                         Width = 1000;
                 }
+
                 platImage3.Visibility = Visibility.Visible;
                 setPlatImage3.Visibility = Visibility.Visible;
                 firstDucatImage3.Visibility = Visibility.Visible;
@@ -136,16 +142,18 @@ public partial class RewardWindow : Window
                 break;
 
             default:
-                Main.AddLog("something went wrong while displaying: " + name);
+                Main.AddLog("something went wrong while displaying: "       + name);
                 Main.StatusUpdate("something went wrong while displaying: " + name + " in window", 1);
                 break;
         }
     }
+
     private void Exit(object sender, RoutedEventArgs e)
     {
         Topmost = false;
         Hide();
     }
+
     // Allows the draging of the window
     private new void MouseDown(object sender, MouseButtonEventArgs e)
     {

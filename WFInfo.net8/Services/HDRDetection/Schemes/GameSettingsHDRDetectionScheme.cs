@@ -8,23 +8,23 @@ public class GameSettingsHDRDetectionScheme : IHDRDetectionScheme
     {
         get
         {
-                var localAppdata = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                return Path.Combine(localAppdata, "Warframe", "EE.cfg");
-            }
+            var localAppdata = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return Path.Combine(localAppdata, "Warframe", "EE.cfg");
+        }
     }
 
     public HDRDetectionSchemeResult Detect()
     {
-            if (File.Exists(ConfigurationFile))
-            {
-                var contents = File.ReadAllText(ConfigurationFile);
-                var containsEnable = contents.Contains("Graphics.HDROutput=1");
+        if (File.Exists(ConfigurationFile))
+        {
+            var contents = File.ReadAllText(ConfigurationFile);
+            var containsEnable = contents.Contains("Graphics.HDROutput=1");
 
-                if (containsEnable) return new HDRDetectionSchemeResult(containsEnable, true); // 100% HDR
-                else return new HDRDetectionSchemeResult(containsEnable, false); // Could still be Auto HDR
-            }
-
-            // Could still be Auto HDR with old engine?
-            return new HDRDetectionSchemeResult(false, false);
+            if (containsEnable) return new HDRDetectionSchemeResult(containsEnable, true); // 100% HDR
+            else return new HDRDetectionSchemeResult(containsEnable, false);               // Could still be Auto HDR
         }
+
+        // Could still be Auto HDR with old engine?
+        return new HDRDetectionSchemeResult(false, false);
+    }
 }

@@ -10,6 +10,7 @@ public partial class InitialDialogue : Window
 {
     private int filesTotal = 0;
     private int filesDone = 1;
+
     public InitialDialogue()
     {
         InitializeComponent();

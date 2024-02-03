@@ -7,9 +7,9 @@ public class HDRDetectionSchemeResult
 {
     public HDRDetectionSchemeResult(bool isDetected, bool isGuaranteed)
     {
-            IsDetected = isDetected;
-            IsGuaranteed = isGuaranteed;
-        }
+        IsDetected = isDetected;
+        IsGuaranteed = isGuaranteed;
+    }
 
     /// <summary>
     /// Whether the scheme detected a possibility of HDR being enabled

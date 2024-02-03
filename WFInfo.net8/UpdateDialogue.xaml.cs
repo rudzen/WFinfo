@@ -26,14 +26,15 @@ public partial class UpdateDialogue : Window
         string version = args.CurrentVersion.ToString();
         if (!args.IsUpdateAvailable || (settings.Ignored == version))
             return;
-        version = version.Substring(0, version.LastIndexOf("."));
+        version = version[..version.LastIndexOf('.')];
 
-        NewVersionText.Text = "WFInfo version " + version + " has been released!";
+        NewVersionText.Text = "WFInfo version "   + version           + " has been released!";
         OldVersionText.Text = "You have version " + Main.BuildVersion + " installed.";
 
         WebClient = CustomEntrypoint.createNewWebClient();
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-        JArray releases = JsonConvert.DeserializeObject<JArray>(WebClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases"));
+        var data = WebClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases");
+        JArray releases = JsonConvert.DeserializeObject<JArray>(data);
         foreach (JObject prop in releases)
         {
             if (!prop["prerelease"].ToObject<bool>())
@@ -45,10 +46,12 @@ public partial class UpdateDialogue : Window
                 tag.Text = tag_name;
                 tag.FontWeight = FontWeights.Bold;
                 ReleaseNotes.Children.Add(tag);
-                TextBlock body = new TextBlock();
-                body.Text = prop["body"].ToString() + "\n";
-                body.Padding = new Thickness(10, 0, 0, 0);
-                body.TextWrapping = TextWrapping.Wrap;
+                TextBlock body = new TextBlock
+                {
+                    Text = prop["body"].ToString() + "\n",
+                    Padding = new Thickness(10, 0, 0, 0),
+                    TextWrapping = TextWrapping.Wrap
+                };
                 ReleaseNotes.Children.Add(body);
             }
         }
@@ -67,7 +70,8 @@ public partial class UpdateDialogue : Window
         }
         catch (Exception exception)
         {
-            MessageBox.Show(exception.Message, exception.GetType().ToString(), MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(exception.Message, exception.GetType().ToString(), MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
     }
 
@@ -89,5 +93,4 @@ public partial class UpdateDialogue : Window
         if (e.ChangedButton == MouseButton.Left)
             DragMove();
     }
-
 }

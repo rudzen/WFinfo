@@ -42,16 +42,17 @@ public partial class EquipmentWindow : Window
                     {
                         part.ReloadPartOwned(prime);
                     }
+
                     prime.GetSetInfo();
                 }
             }
+
             EqmtTree.Items.Refresh();
         }
     }
 
     public void populate()
     {
-
         primeTypes = new Dictionary<string, TreeNode>();
         foreach (KeyValuePair<string, JToken> prime in Main.dataBase.equipmentData)
         {
@@ -73,8 +74,10 @@ public partial class EquipmentWindow : Window
                     newType.SortNum = types.IndexOf(primeType);
                     primeTypes[primeType] = newType;
                 }
+
                 TreeNode type = primeTypes[primeType];
-                TreeNode primeNode = new TreeNode(primeName, prime.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "", mastered, 1);
+                TreeNode primeNode = new TreeNode(primeName, prime.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "",
+                    mastered, 1);
                 primeNode.MakeClickable(prime.Key);
                 foreach (KeyValuePair<string, JToken> primePart in prime.Value["parts"].ToObject<JObject>())
                 {
@@ -84,24 +87,30 @@ public partial class EquipmentWindow : Window
 
                     if (partName.Contains("Kubrow"))
                         partName = partName.Substring(partName.IndexOf(" Blueprint") + 1);
-                    TreeNode partNode = new TreeNode(partName, primePart.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "", false, 0);
+                    TreeNode partNode = new TreeNode(partName,
+                        primePart.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "", false, 0);
                     partNode.MakeClickable(primePart.Key);
                     if (Main.dataBase.marketData.TryGetValue(primePart.Key.ToString(), out JToken marketValues))
-                        partNode.SetPrimePart(marketValues["plat"].ToObject<double>(), marketValues["ducats"].ToObject<int>(), primePart.Value["owned"].ToObject<int>(), primePart.Value["count"].ToObject<int>());
+                        partNode.SetPrimePart(marketValues["plat"].ToObject<double>(),
+                            marketValues["ducats"].ToObject<int>(), primePart.Value["owned"].ToObject<int>(),
+                            primePart.Value["count"].ToObject<int>());
                     else if (Main.dataBase.equipmentData.TryGetValue(primePart.Key, out JToken job))
                     {
                         double plat = 0.0;
                         double ducats = 0.0;
                         foreach (KeyValuePair<string, JToken> subPartPart in job["parts"].ToObject<JObject>())
                         {
-                            if (Main.dataBase.marketData.TryGetValue(subPartPart.Key.ToString(), out JToken subMarketValues))
+                            if (Main.dataBase.marketData.TryGetValue(subPartPart.Key.ToString(),
+                                    out JToken subMarketValues))
                             {
                                 int temp = subPartPart.Value["count"].ToObject<int>();
-                                plat += temp * subMarketValues["plat"].ToObject<double>();
+                                plat += temp   * subMarketValues["plat"].ToObject<double>();
                                 ducats += temp * subMarketValues["ducats"].ToObject<double>();
                             }
                         }
-                        partNode.SetPrimeEqmt(plat, ducats, primePart.Value["owned"].ToObject<int>(), primePart.Value["count"].ToObject<int>());
+
+                        partNode.SetPrimeEqmt(plat, ducats, primePart.Value["owned"].ToObject<int>(),
+                            primePart.Value["count"].ToObject<int>());
                     }
                     else
                     {
@@ -111,6 +120,7 @@ public partial class EquipmentWindow : Window
 
                     primeNode.AddChild(partNode);
                 }
+
                 if (primeNode.Children.Count() > 0)
                 {
                     primeNode.GetSetInfo();
@@ -126,11 +136,11 @@ public partial class EquipmentWindow : Window
             primeType.FilterOutVaulted();
             EqmtTree.Items.Add(primeType);
         }
+
         SortBoxChanged(null, null);
         RefreshVisibleRelics();
         Show();
         Focus();
-
     }
 
     // Allows the draging of the window
@@ -142,7 +152,6 @@ public partial class EquipmentWindow : Window
 
     public void SortBoxChanged(object sender, SelectionChangedEventArgs e)
     {
-
         if (IsLoaded)
         {
             EqmtTree.Items.SortDescriptions.Clear();
@@ -151,30 +160,38 @@ public partial class EquipmentWindow : Window
                 primeType.Value.Sort(SortBox.SelectedIndex, false);
                 primeType.Value.RecolorChildren();
             }
+
             if (showAllEqmt)
             {
                 EqmtTree.Items.IsLiveSorting = true;
                 switch (SortBox.SelectedIndex)
                 {
                     case 1:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Plat_Val", System.ComponentModel.ListSortDirection.Descending));
+                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Plat_Val",
+                            System.ComponentModel.ListSortDirection.Descending));
                         break;
                     case 2:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Diff_Val", System.ComponentModel.ListSortDirection.Ascending));
+                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Diff_Val",
+                            System.ComponentModel.ListSortDirection.Ascending));
                         break;
                     case 3:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Val", System.ComponentModel.ListSortDirection.Descending));
+                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Val",
+                            System.ComponentModel.ListSortDirection.Descending));
                         break;
                     case 4:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Plat_Val", System.ComponentModel.ListSortDirection.Descending));
+                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Plat_Val",
+                            System.ComponentModel.ListSortDirection.Descending));
                         break;
                     case 5:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Ducat_Val", System.ComponentModel.ListSortDirection.Descending));
+                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Ducat_Val",
+                            System.ComponentModel.ListSortDirection.Descending));
                         break;
                     default:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("EqmtName_Sort", System.ComponentModel.ListSortDirection.Ascending));
+                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("EqmtName_Sort",
+                            System.ComponentModel.ListSortDirection.Ascending));
                         break;
                 }
+
                 bool i = false;
                 foreach (TreeNode prime in EqmtTree.Items)
                 {
@@ -185,6 +202,7 @@ public partial class EquipmentWindow : Window
                         prime.Background_Color = TreeNode.BACK_U_BRUSH;
                 }
             }
+
             EqmtTree.Items.Refresh();
         }
     }
@@ -254,8 +272,8 @@ public partial class EquipmentWindow : Window
     {
         showAllEqmt = !showAllEqmt;
         foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
-            foreach (TreeNode kid in primeType.Value.Children)
-                kid.topLevel = showAllEqmt;
+        foreach (TreeNode kid in primeType.Value.Children)
+            kid.topLevel = showAllEqmt;
 
         if (showAllEqmt)
             eqmtComboButton.Content = "All Equipment";
@@ -338,9 +356,11 @@ public partial class EquipmentWindow : Window
 
                     index++;
                 }
+
                 primeType.RecolorChildren();
             }
         }
+
         EqmtTree.Items.Refresh();
     }
 
@@ -364,5 +384,4 @@ public partial class EquipmentWindow : Window
     {
         populate();
     }
-
 }

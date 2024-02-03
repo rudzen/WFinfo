@@ -7,7 +7,8 @@ namespace WFInfo;
 
 public class RelicsViewModel : INPC
 {
-    public static RelicsViewModel Instance { get; }= new RelicsViewModel();
+    public static RelicsViewModel Instance { get; } = new RelicsViewModel();
+
     public RelicsViewModel()
     {
         _relicTreeItems = new List<TreeNode>();
@@ -54,6 +55,7 @@ public class RelicsViewModel : INPC
             RaisePropertyChanged(nameof(IsFilterEmpty));
         }
     }
+
     public bool IsFilterEmpty => FilterText.IsNullOrEmpty();
 
     public SimpleCommand ExpandAllCommand { get; }
@@ -64,7 +66,7 @@ public class RelicsViewModel : INPC
         foreach (TreeNode era in _rawRelicNodes)
             era.ChangeExpandedTo(expand);
     }
-    
+
     public bool ShowAllRelics
     {
         get => _showAllRelics;
@@ -74,19 +76,20 @@ public class RelicsViewModel : INPC
             foreach (TreeNode relic in era.Children)
                 relic.topLevel = value;
             SetField(ref _showAllRelics, value);
-            
+
             _relicTreeItems.Clear();
             RefreshVisibleRelics();
             RaisePropertyChanged(nameof(ShowAllRelicsText));
         }
     }
+
     public string ShowAllRelicsText => ShowAllRelics ? "All Relics" : "Relic Eras";
 
     public bool HideVaulted
     {
         get => _hideVaulted;
         set
-        { 
+        {
             SetField(ref _hideVaulted, value);
             ReapplyFilters();
         }
@@ -103,18 +106,20 @@ public class RelicsViewModel : INPC
             SortBoxChanged();
         }
     }
+
     public void SortBoxChanged()
     {
         // 0 - Name
         // 1 - Average intact plat
         // 2 - Average radiant plat
         // 3 - Difference (radiant-intact)
-    
+
         foreach (TreeNode era in _rawRelicNodes)
         {
             era.Sort(SortBoxSelectedIndex);
             era.RecolorChildren();
         }
+
         if (ShowAllRelics)
         {
             RelicsItemsView.SortDescriptions.Clear();
@@ -123,16 +128,20 @@ public class RelicsViewModel : INPC
             switch (SortBoxSelectedIndex)
             {
                 case 1:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Intact_Val", System.ComponentModel.ListSortDirection.Descending));
+                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Intact_Val",
+                        System.ComponentModel.ListSortDirection.Descending));
                     break;
                 case 2:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Radiant_Val", System.ComponentModel.ListSortDirection.Descending));
+                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Radiant_Val",
+                        System.ComponentModel.ListSortDirection.Descending));
                     break;
                 case 3:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Bonus_Val", System.ComponentModel.ListSortDirection.Descending));
+                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Bonus_Val",
+                        System.ComponentModel.ListSortDirection.Descending));
                     break;
                 default:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Name_Sort", System.ComponentModel.ListSortDirection.Ascending));
+                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Name_Sort",
+                        System.ComponentModel.ListSortDirection.Ascending));
                     break;
             }
 
@@ -193,26 +202,28 @@ public class RelicsViewModel : INPC
 
                     index++;
                 }
+
                 era.RecolorChildren();
             }
         }
+
         RelicsItemsView.Refresh();
     }
 
     public void ReapplyFilters()
     {
-    
         foreach (TreeNode era in _rawRelicNodes)
         {
             era.ResetFilter();
-            if(HideVaulted)
+            if (HideVaulted)
                 era.FilterOutVaulted(true);
-            if(!FilterText.IsNullOrEmpty())
+            if (!FilterText.IsNullOrEmpty())
             {
                 var searchText = FilterText.Split(' ');
                 era.FilterSearchText(searchText, false, true);
             }
         }
+
         RefreshVisibleRelics();
     }
 
@@ -222,6 +233,7 @@ public class RelicsViewModel : INPC
         {
             return;
         }
+
         TreeNode lith = new TreeNode("Lith", "", false, 0);
         TreeNode meso = new TreeNode("Meso", "", false, 0);
         TreeNode neo = new TreeNode("Neo", "", false, 0);
@@ -232,7 +244,7 @@ public class RelicsViewModel : INPC
         {
             double sumIntact = 0;
             double sumRad = 0;
-        
+
             head.SortNum = eraNum++;
             foreach (JProperty prop in Main.dataBase.relicData[head.Name])
             {
@@ -242,26 +254,29 @@ public class RelicsViewModel : INPC
                 relic.Era = head.Name;
                 foreach (KeyValuePair<string, JToken> kvp in primeItems)
                 {
-                    if (kvp.Key != "vaulted" && Main.dataBase.marketData.TryGetValue(kvp.Value.ToString(), out JToken marketValues))
+                    if (kvp.Key != "vaulted" &&
+                        Main.dataBase.marketData.TryGetValue(kvp.Value.ToString(), out JToken marketValues))
                     {
                         TreeNode part = new TreeNode(kvp.Value.ToString(), "", false, 0);
-                        part.SetPartText(marketValues["plat"].ToObject<double>(), marketValues["ducats"].ToObject<int>(), kvp.Key);                           
+                        part.SetPartText(marketValues["plat"].ToObject<double>(),
+                            marketValues["ducats"].ToObject<int>(), kvp.Key);
                         relic.AddChild(part);
                     }
                 }
-                            
+
                 relic.SetRelicText();
                 head.AddChild(relic);
-        
+
                 //groupedByAll.Items.Add(relic);
                 //Search.Items.Add(relic);
             }
-        
-            head.SetEraText();   
+
+            head.SetEraText();
             head.ResetFilter();
             head.FilterOutVaulted();
             head.RecolorChildren();
         }
+
         RefreshVisibleRelics();
         SortBoxChanged();
         _initialized = true;

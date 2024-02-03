@@ -6,7 +6,7 @@ public class AutoAddViewModel : INPC
 {
     private ObservableCollection<AutoAddSingleItem> _itemList;
 
-    public  ObservableCollection<AutoAddSingleItem> ItemList
+    public ObservableCollection<AutoAddSingleItem> ItemList
     {
         get => _itemList;
         private set
@@ -15,18 +15,19 @@ public class AutoAddViewModel : INPC
             RaisePropertyChanged();
         }
     }
+
     public AutoAddViewModel()
     {
         _itemList = [];
     }
 
-    public void addItem(AutoAddSingleItem item)
+    public void AddItem(AutoAddSingleItem item)
     {
         _itemList.Add(item);
         RaisePropertyChanged();
     }
 
-    public void removeItem(AutoAddSingleItem item)
+    public void RemoveItem(AutoAddSingleItem item)
     {
         _itemList.Remove(item);
         RaisePropertyChanged();
@@ -50,6 +51,7 @@ public class AutoAddSingleItem : INPC
     }
 
     private string _activeOption;
+
     public string ActiveOption
     {
         get => _activeOption;
@@ -71,10 +73,12 @@ public class AutoAddSingleItem : INPC
         if (activeIndex >= 0 && options != null)
         {
             ActiveOption = options[activeIndex];
-        } else
-        {
-            ActiveOption = "";
         }
+        else
+        {
+            ActiveOption = string.Empty;
+        }
+
         _parent = parent;
         Remove = new SimpleCommand(() => RemoveFromParent());
         Increment = new SimpleCommand(() => AddCount(true));
@@ -88,24 +92,27 @@ public class AutoAddSingleItem : INPC
         if (item.Contains("Prime"))
         {
             string[] nameParts = item.Split(["Prime"], 2, StringSplitOptions.None);
-            string primeName = nameParts[0] + "Prime";
-            string partName = primeName + ((nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow")) ? nameParts[1].Replace(" Blueprint", "") : nameParts[1]);
-
+            string primeName = $"{nameParts[0]}Prime";
+            string partName = primeName + (nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow")
+                ? nameParts[1].Replace(" Blueprint", "")
+                : nameParts[1]);
 
             Main.AddLog("Incrementing owned amount for part \"" + partName + "\"");
+
             try
             {
-
                 int count = Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"].ToObject<int>();
 
                 Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"] = count + 1;
             }
             catch (Exception ex)
             {
-                Main.AddLog("FAILED to increment owned amount, Name: " + item + ", primeName: " + primeName + ", partName: " + partName + Environment.NewLine + ex.Message);
+                Main.AddLog("FAILED to increment owned amount, Name: " + item     + ", primeName: "     + primeName +
+                            ", partName: "                             + partName + Environment.NewLine + ex.Message);
                 saveFailed = true;
             }
         }
+
         if (saveFailed)
         {
             //shouldn't need Main.RunOnUIThread since this is already on the UI Thread
@@ -126,8 +133,9 @@ public class AutoAddSingleItem : INPC
     {
         if (_parent != null)
         {
-            _parent.removeItem(this);
+            _parent.RemoveItem(this);
         }
+
         RaisePropertyChanged();
     }
 }

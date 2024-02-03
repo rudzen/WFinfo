@@ -114,7 +114,8 @@ public partial class Overlay : Window
         partText.Foreground = new SolidColorBrush(Color.FromRgb(0, 255, 215));
     }
 
-    public void LoadTextData(string name, string plat, string primeSetPlat, string ducats, string volume, bool vaulted, bool mastered, string owned, string detected, bool hideRewardInfo, bool showWarningTriangle)
+    public void LoadTextData(string name, string plat, string primeSetPlat, string ducats, string volume, bool vaulted,
+        bool mastered, string owned, string detected, bool hideRewardInfo, bool showWarningTriangle)
     {
         ducatText.Foreground = bluBrush;
         ducatText.FontWeight = FontWeights.Normal;
@@ -140,7 +141,8 @@ public partial class Overlay : Window
         if (showWarningTriangle)
         {
             warningImage.Visibility = Visibility.Visible;
-        } else
+        }
+        else
         {
             warningImage.Visibility = Visibility.Hidden;
         }
@@ -166,6 +168,7 @@ public partial class Overlay : Window
                 primeSetPlatText.Text = "Full set price: " + primeSetPlat;
                 primeSetPlatText.Visibility = Visibility.Visible;
             }
+
             setPlatImage.Visibility = Visibility.Visible;
             ducatText.Visibility = Visibility.Visible;
             volumeText.Visibility = Visibility.Visible;
@@ -183,6 +186,7 @@ public partial class Overlay : Window
             {
                 throw new ArgumentNullException(nameof(owned));
             }
+
             if (owned.Length > 0)
                 ownedText.Text = (mastered ? "✓ " : "") + owned + " OWNED";
             else
@@ -191,8 +195,8 @@ public partial class Overlay : Window
                 ownedText.Text += " (" + detected + " FOUND)";
         }
 
-        double.TryParse(plat, NumberStyles.Any , Main.culture, out var platinum );
-        int.TryParse(ducats, NumberStyles.Any , Main.culture, out var duc);
+        double.TryParse(plat, NumberStyles.Any, Main.culture, out var platinum);
+        int.TryParse(ducats, NumberStyles.Any, Main.culture, out var duc);
         var efficiency = $"{Math.Round(duc / platinum, 1)}";
         var color = Color.FromArgb(100, 174, 199, 206);
 
@@ -204,6 +208,7 @@ public partial class Overlay : Window
         {
             color = Colors.DarkRed;
         }
+
         var brush = new SolidColorBrush(color);
 
         EfficiencyText.Text = efficiency;
@@ -234,67 +239,67 @@ public partial class Overlay : Window
 
         // Part_Text
         margin = partMargin.Margin;
-        margin.Top = partMarginTop * scale;
+        margin.Top = partMarginTop       * scale;
         margin.Bottom = partMarginBottom * scale;
         partMargin.Margin = margin;
 
         // Vaulted_Text
         margin = vaultedMargin.Margin;
-        margin.Top = cornerMarginTop * scale;
+        margin.Top = cornerMarginTop       * scale;
         margin.Bottom = cornerMarginBottom * scale;
-        margin.Right = cornerMarginSide * scale;
+        margin.Right = cornerMarginSide    * scale;
         vaultedMargin.Margin = margin;
         vaultedText.FontSize = smallFont * scale;
 
         // Owned_Text
         margin = ownedMargin.Margin;
-        margin.Top = cornerMarginTop * scale;
+        margin.Top = cornerMarginTop       * scale;
         margin.Bottom = cornerMarginBottom * scale;
-        margin.Left = cornerMarginSide * scale;
+        margin.Left = cornerMarginSide     * scale;
         ownedMargin.Margin = margin;
         ownedText.FontSize = smallFont * scale;
 
         // Volume_Text
         margin = volumeMargin.Margin;
-        margin.Top = volumeMarginTop * scale;
+        margin.Top = volumeMarginTop       * scale;
         margin.Bottom = volumeMarginBottom * scale;
         volumeMargin.Margin = margin;
         volumeText.FontSize = mediumFont * scale;
 
         // Plat_Text
         margin = platMargin.Margin;
-        margin.Top = platMarginTop * scale;
+        margin.Top = platMarginTop       * scale;
         margin.Bottom = platMarginBottom * scale;
-        margin.Right = platMarginRight * scale;
+        margin.Right = platMarginRight   * scale;
         platMargin.Margin = margin;
         platText.FontSize = mediumFont * scale;
 
         // Set_Plat_Text
         margin = primeSetMargin.Margin;
-        margin.Top = primeSetMarginTop * scale;
+        margin.Top = primeSetMarginTop       * scale;
         margin.Bottom = primeSetMarginBottom * scale;
         primeSetMargin.Margin = margin;
         primeSetPlatText.FontSize = mediumFont * scale;
 
         // Ducat_Text
         margin = ducatMargin.Margin;
-        margin.Top = ducatMarginTop * scale;
+        margin.Top = ducatMarginTop       * scale;
         margin.Bottom = ducatMarginbottom * scale;
-        margin.Right = ducatMarginRight * scale;
+        margin.Right = ducatMarginRight   * scale;
         ducatMargin.Margin = margin;
         ducatText.FontSize = mediumFont * scale;
 
         // Plat_IMG
         margin = platImage.Margin;
         margin.Bottom = platImageMarginBottom * scale;
-        margin.Left = platImageMarginLeft * scale;
+        margin.Left = platImageMarginLeft     * scale;
         platImage.Margin = margin;
         platImage.Height = platImageHeightWidth * scale;
         platImage.Width = platImage.Height;
 
         // Set_Plat_IMG
         margin = setPlatImage.Margin;
-        margin.Bottom = setPlatImageBottom * scale;
+        margin.Bottom = setPlatImageBottom   * scale;
         margin.Left = setPlatImageMarginLeft * scale;
         setPlatImage.Margin = margin;
         setPlatImage.Height = setPlatImageHeightWidth * scale;
@@ -302,7 +307,7 @@ public partial class Overlay : Window
 
         // Warning_Triangle_IMG
         margin = warningImage.Margin;
-        margin.Bottom = warningImageBottom * scale;
+        margin.Bottom = warningImageBottom     * scale;
         margin.Right = warningImageMarginRight * scale;
         warningImage.Margin = margin;
         warningImage.Height = warningImageHeightWidth * scale;
@@ -311,39 +316,39 @@ public partial class Overlay : Window
         // Ducat_IMG
         margin = ducatImage.Margin;
         margin.Bottom = ducatImageMarginBottom * scale;
-        margin.Left = ducatImageMarginLeft * scale;
+        margin.Left = ducatImageMarginLeft     * scale;
         ducatImage.Margin = margin;
         ducatImage.Height = ducatImageHeightWidth * scale;
         ducatImage.Width = ducatImage.Height;
 
         //snapit plat text
         margin = PlatMargineSnap.Margin;
-        margin.Top = platMarginTop * scale;
-        margin.Bottom = platMarginBottom * scale;
+        margin.Top = platMarginTop         * scale;
+        margin.Bottom = platMarginBottom   * scale;
         margin.Left = platMarginLeftSanpit * scale;
         PlatMargineSnap.Margin = margin;
         PlatTextSnap.FontSize = mediumFont * scale;
 
         //snapit ducat text
         margin = DucatMargineSnap.Margin;
-        margin.Top = platMarginTop * scale;
-        margin.Bottom = platMarginBottom * scale;
+        margin.Top = platMarginTop           * scale;
+        margin.Bottom = platMarginBottom     * scale;
         margin.Left = ducatMargineLeftSanpit * scale;
         DucatMargineSnap.Margin = margin;
         DucatTextSnap.FontSize = mediumFont * scale;
 
         //snapit efficiency text
         margin = EfficiencyMargin.Margin;
-        margin.Top = platMarginTop * scale;
-        margin.Bottom = platMarginBottom * scale;
+        margin.Top = platMarginTop           * scale;
+        margin.Bottom = platMarginBottom     * scale;
         margin.Right = EfficiencyMarginRight * scale;
         EfficiencyMargin.Margin = margin;
         EfficiencyText.FontSize = mediumFont * scale;
 
         //snapit ducat image
         margin = DucatImageSnap.Margin;
-        margin.Top = platMarginTop * scale;
-        margin.Bottom = ducatImageMarginBottom * scale;
+        margin.Top = platMarginTop               * scale;
+        margin.Bottom = ducatImageMarginBottom   * scale;
         margin.Left = ducatImageMarginLeftSanpit * scale;
         DucatImageSnap.Margin = margin;
         DucatImageSnap.Height = platImageHeightWidth * scale;
@@ -352,7 +357,7 @@ public partial class Overlay : Window
         //snapit plat image
         margin = platImage.Margin;
         margin.Bottom = platImageMarginBottom * scale;
-        margin.Left = 61 * scale;
+        margin.Left = 61                      * scale;
         PlatImageSnap.Margin = margin;
         PlatImageSnap.Height = platImageHeightWidth * scale;
         PlatImageSnap.Width = platImage.Height;
@@ -360,7 +365,7 @@ public partial class Overlay : Window
         //snapit plat efficiency image
         margin = EfficiencyPlatinumImage.Margin;
         margin.Bottom = EfficiencyplatImageMarginBottom * scale;
-        margin.Left = EfficiencyplatImageMarginLeft * scale;
+        margin.Left = EfficiencyplatImageMarginLeft     * scale;
         EfficiencyPlatinumImage.Margin = margin;
         EfficiencyPlatinumImage.Height = EfficiencyplatImageHeightWidth * scale;
         EfficiencyPlatinumImage.Width = ducatImage.Height;
@@ -368,7 +373,7 @@ public partial class Overlay : Window
         //snapit ducat efficiency image
         margin = EfficiencyDucatImage.Margin;
         margin.Bottom = EfficiencyducatImageMarginBottom * scale;
-        margin.Left = EfficiencyducatImageMarginLeft * scale;
+        margin.Left = EfficiencyducatImageMarginLeft     * scale;
         EfficiencyDucatImage.Margin = margin;
         EfficiencyDucatImage.Height = EfficiencyducatImageHeightWidth * scale;
         EfficiencyDucatImage.Width = ducatImage.Height;

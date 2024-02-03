@@ -37,10 +37,12 @@ public class TesseractService : ITesseractService
     /// Inventory/Profile engine
     /// </summary>
     public TesseractEngine FirstEngine { get; private set; }
+
     /// <summary>
     /// Second slow pass engine
     /// </summary>
     public TesseractEngine SecondEngine { get; private set; }
+
     /// <summary>
     /// Engines for parallel processing the reward screen and snapit
     /// </summary>
@@ -48,7 +50,10 @@ public class TesseractService : ITesseractService
 
     private static string Locale => ApplicationSettings.GlobalReadonlySettings.Locale;
     private static string AppdataTessdataFolder => CustomEntrypoint.appdata_tessdata_folder;
-    private static readonly string ApplicationDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+
+    private static readonly string ApplicationDirectory =
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+
     private static readonly string DataPath = ApplicationDirectory + @"\tessdata";
 
     public TesseractService()
@@ -90,7 +95,7 @@ public class TesseractService : ITesseractService
     {
         DefaultPageSegMode = PageSegMode.SingleBlock
     };
-        
+
     public void Init()
     {
         LoadEngines();
@@ -114,13 +119,14 @@ public class TesseractService : ITesseractService
         SecondEngine?.Dispose();
         SecondEngine = CreateEngine();
     }
+
     private void getLocaleTessdata()
     {
         var traineddata_hotlink_prefix = "https://raw.githubusercontent.com/WFCD/WFinfo/libs/tessdata/";
         JObject traineddata_checksums = new JObject
         {
-            {"en", "7af2ad02d11702c7092a5f8dd044d52f"},
-            {"ko", "c776744205668b7e76b190cc648765da"}
+            { "en", "7af2ad02d11702c7092a5f8dd044d52f" },
+            { "ko", "c776744205668b7e76b190cc648765da" }
         };
 
         // get trainned data
@@ -129,13 +135,16 @@ public class TesseractService : ITesseractService
 
         WebClient webClient = CustomEntrypoint.createNewWebClient();
 
-        if (!File.Exists(app_data_traineddata_path) || CustomEntrypoint.GetMD5hash(app_data_traineddata_path) != traineddata_checksums.GetValue(Locale).ToObject<string>())
+        if (!File.Exists(app_data_traineddata_path) || CustomEntrypoint.GetMD5hash(app_data_traineddata_path) !=
+            traineddata_checksums.GetValue(Locale).ToObject<string>())
         {
             try
             {
                 webClient.DownloadFile(traineddata_hotlink, app_data_traineddata_path);
             }
-            catch (Exception) { }
+            catch (Exception)
+            {
+            }
         }
     }
 }

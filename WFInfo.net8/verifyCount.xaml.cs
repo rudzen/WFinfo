@@ -11,12 +11,11 @@ namespace WFInfo;
 /// </summary>
 public partial class VerifyCount : Window
 {
-
-    private static string itemPath = Main.AppPath + @"\eqmt_data.json";
+    private static string itemPath = Main.AppPath   + @"\eqmt_data.json";
     private static string backupPath = Main.AppPath + @"\eqmt_data.json.bak";
 
     private List<InventoryItem> latestSnap;
-    public static VerifyCount INSTANCE;
+    public static VerifyCount? INSTANCE;
     private DateTime triggerTime;
 
     public VerifyCount()
@@ -26,7 +25,8 @@ public partial class VerifyCount : Window
         latestSnap = [];
         triggerTime = DateTime.UtcNow;
     }
-    public static void ShowVerifyCount( List<InventoryItem> itemList)
+
+    public static void ShowVerifyCount(List<InventoryItem> itemList)
     {
         if (INSTANCE != null)
         {
@@ -41,26 +41,29 @@ public partial class VerifyCount : Window
     private void SaveClick(object sender, RoutedEventArgs e)
     {
         bool saveFailed = false;
-        foreach (InventoryItem item in latestSnap)
+        const string prime = "Prime";
+        var primes = latestSnap.Where(x => x.Name.Contains(prime));
+        foreach (InventoryItem item in primes)
         {
-            if (item.Name.Contains("Prime"))
-            {
-                string[] nameParts = item.Name.Split(["Prime"], 2, StringSplitOptions.None);
-                string primeName = nameParts[0] + "Prime";
-                string partName = primeName + ( ( nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow") ) ? nameParts[1].Replace(" Blueprint", "") : nameParts[1]);
+            string[] nameParts = item.Name.Split([prime], 2, StringSplitOptions.RemoveEmptyEntries);
+            string primeName = nameParts[0] + prime;
+            string partName = primeName + ((nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow"))
+                ? nameParts[1].Replace(" Blueprint", "")
+                : nameParts[1]);
 
-                Main.AddLog("Saving count \"" + item.Count + "\" for part \"" + partName + "\"");
-                try
-                {
-                    Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"] = item.Count;
-                }
-                catch (Exception ex)
-                {
-                    Main.AddLog("FAILED to save count. Count: " + item.Count + ", Name: " + item.Name + ", primeName: " + primeName + ", partName: " + partName);
-                    saveFailed = true;
-                }
+            Main.AddLog("Saving count \"" + item.Count + "\" for part \"" + partName + "\"");
+            try
+            {
+                Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"] = item.Count;
+            }
+            catch (Exception ex)
+            {
+                Main.AddLog("FAILED to save count. Count: " + item.Count + ", Name: "     + item.Name +
+                            ", primeName: "                 + primeName  + ", partName: " + partName);
+                saveFailed = true;
             }
         }
+
         Main.dataBase.SaveAllJSONs();
         EquipmentWindow.INSTANCE.reloadItems();
         if (saveFailed)
@@ -70,6 +73,7 @@ public partial class VerifyCount : Window
             Main.SpawnErrorPopup(DateTime.UtcNow, (int)((DateTime.UtcNow - triggerTime).TotalSeconds) + 30);
             Main.StatusUpdate("Failed to save one or more item, report to dev", 2);
         }
+
         Hide();
     }
 
@@ -79,6 +83,7 @@ public partial class VerifyCount : Window
         {
             File.Delete(backupPath);
         }
+
         File.Copy(itemPath, backupPath);
         foreach (KeyValuePair<string, JToken> prime in Main.dataBase.equipmentData)
         {
@@ -92,6 +97,7 @@ public partial class VerifyCount : Window
                 }
             }
         }
+
         BackupButton.Visibility = Visibility.Hidden;
         Main.dataBase.SaveAllJSONs();
         EquipmentWindow.INSTANCE.reloadItems();

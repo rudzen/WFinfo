@@ -17,23 +17,35 @@ using Microsoft.Extensions.DependencyInjection;
 using WFInfo.Services;
 using WFInfo.Services.HDRDetection;
 using Windows.Foundation.Metadata;
+using Windows.Graphics.Capture;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
 
-class Main
+internal class Main
 {
     public static Main INSTANCE { get; private set; }
-    public static string AppPath { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+
+    public static string AppPath { get; } =
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+
     public static string buildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-    public static Data dataBase;
-    public static RewardWindow window = new RewardWindow();
-    public static Overlay[] overlays = [new Overlay(), new Overlay(), new Overlay(), new Overlay()];
-    public static EquipmentWindow equipmentWindow = new EquipmentWindow();
-    public static SettingsWindow settingsWindow = new SettingsWindow();
-    public static ThemeAdjuster themeAdjuster = new ThemeAdjuster();
-    public static VerifyCount verifyCount = new VerifyCount();
-    public static AutoCount autoCount = new AutoCount();
+    public static Data dataBase { get; private set; }
+
+    public static RewardWindow window { get; set; } = new RewardWindow();
+    
+    public static Overlay[] overlays { get; set; } = [new Overlay(), new Overlay(), new Overlay(), new Overlay()];
+    
+    public static EquipmentWindow equipmentWindow { get; set; } = new EquipmentWindow();
+    
+    public static SettingsWindow settingsWindow { get; set; } = new SettingsWindow();
+    
+    public static ThemeAdjuster themeAdjuster { get; set; } = new ThemeAdjuster();
+    
+    public static VerifyCount verifyCount { get; set; } = new VerifyCount();
+    
+    public static AutoCount autoCount {get; set;} = new AutoCount();
+    
     public static ErrorDialogue popup;
     public static FullscreenReminder fullscreenpopup;
     public static GFNWarning gfnWarning;
@@ -65,13 +77,13 @@ class Main
     // See comment on Ocr.Init for explanation
     private GdiScreenshotService _gdiScreenshot;
     private WindowsCaptureScreenshotService _windowsScreenshot;
-    
+
     private ITesseractService? _tesseractService;
 
     public Main()
     {
         INSTANCE = this;
-        
+
         StartMessage();
         buildVersion = buildVersion[..buildVersion.LastIndexOf('.')];
 
@@ -83,7 +95,7 @@ class Main
 
         Task.Factory.StartNew(ThreadedDataLoad);
     }
-    
+
     private IServiceCollection ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton(ApplicationSettings.GlobalReadonlySettings);
@@ -95,7 +107,8 @@ class Main
         services.AddGDIScreenshots();
 
         // Only add windows capture on supported platforms (W10+ 2004 / Build 20348 and above)
-        if (ApiInformation.IsTypePresent("Windows.Graphics.Capture.GraphicsCaptureSession") && ApiInformation.IsPropertyPresent("Windows.Graphics.Capture.GraphicsCaptureSession", "IsBorderRequired"))
+        if (ApiInformation.IsTypePresent("Windows.Graphics.Capture.GraphicsCaptureSession") &&
+            ApiInformation.IsPropertyPresent("Windows.Graphics.Capture.GraphicsCaptureSession", nameof(GraphicsCaptureSession.IsBorderRequired)))
         {
             services.AddWindowsCaptureScreenshots();
         }
@@ -107,7 +120,7 @@ class Main
     {
         _tesseractService?.Dispose();
     }
-    
+
     private void InitializeLegacyServices(IServiceProvider services)
     {
         // TODO: Ideally we also inject into Main
@@ -124,7 +137,9 @@ class Main
         // See comment on Ocr.Init for explanation
         var screenshotServices = services.GetServices<IScreenshotService>();
         _gdiScreenshot = screenshotServices.First(ss => ss is GdiScreenshotService) as GdiScreenshotService;
-        _windowsScreenshot = screenshotServices.FirstOrDefault(ss => ss is WindowsCaptureScreenshotService) as WindowsCaptureScreenshotService;
+        _windowsScreenshot =
+            screenshotServices.FirstOrDefault(ss => ss is WindowsCaptureScreenshotService) as
+                WindowsCaptureScreenshotService;
     }
 
     private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
@@ -132,7 +147,7 @@ class Main
         update = new UpdateDialogue(args);
     }
 
-    public void ThreadedDataLoad()
+    public async Task ThreadedDataLoad()
     {
         try
         {
@@ -140,7 +155,8 @@ class Main
 
             // Too many dependencies?
             StatusUpdate("Initializing OCR engine...", 0);
-            OCR.Init(_tesseractService, new SoundPlayer(), ApplicationSettings.GlobalReadonlySettings, _windowInfo, _detector, _gdiScreenshot, _windowsScreenshot);
+            OCR.Init(_tesseractService, new SoundPlayer(), ApplicationSettings.GlobalReadonlySettings, _windowInfo,
+                _detector, _gdiScreenshot, _windowsScreenshot);
 
             StatusUpdate("Updating Databases...", 0);
             dataBase.Update();
@@ -151,13 +167,14 @@ class Main
             {
                 LoggedIn();
             }
+
             StatusUpdate("WFInfo Initialization Complete", 0);
             AddLog("WFInfo has launched successfully");
             FinishedLoading();
 
-            if (dataBase.JWT != null)// if token is loaded in, connect to websocket
+            if (dataBase.JWT != null) // if token is loaded in, connect to websocket
             {
-                bool result = dataBase.OpenWebSocket().Result;
+                bool result = await dataBase.OpenWebSocket();
                 Debug.WriteLine("Logging into websocket success: " + result);
             }
         }
@@ -165,13 +182,14 @@ class Main
         {
             AddLog("LOADING FAILED");
             AddLog(ex.ToString());
-            StatusUpdate(ex.ToString().Contains("invalid_grant") ? "System time out of sync with server\nResync system clock in windows settings": "Launch Failure - Please Restart", 0);
-            RunOnUIThread(() =>
-            {
-                _ = new ErrorDialogue(DateTime.Now, 0);
-            });
+            StatusUpdate(
+                ex.ToString().Contains("invalid_grant")
+                    ? "System time out of sync with server\nResync system clock in windows settings"
+                    : "Launch Failure - Please Restart", 0);
+            RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
     }
+
     private async void TimeoutCheck()
     {
         if (!await dataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
@@ -180,7 +198,8 @@ class Main
         Debug.WriteLine($"Checking if the user has been inactive \nNow: {now}, Lastactive: {latestActive}");
 
         if (!_process.IsRunning && LastMarketStatus != "invisible")
-        {//set user offline if Warframe has closed but no new game was found
+        {
+            //set user offline if Warframe has closed but no new game was found
             Debug.WriteLine($"Warframe was detected as closed");
             //reset warframe process variables, and reset LogCapture so new game process gets noticed
             dataBase.DisableLogCapture();
@@ -216,10 +235,11 @@ class Main
             }
         }
         else if (!UserAway && latestActive <= now)
-        {//set users offline if afk for longer than set timer
+        {
+            //set users offline if afk for longer than set timer
             LastMarketStatusB4AFK = LastMarketStatus;
             Debug.WriteLine($"User is now away - Storing last known user status as: {LastMarketStatusB4AFK}");
-            
+
             UserAway = true;
             if (LastMarketStatus != "invisible")
             {
@@ -234,7 +254,8 @@ class Main
         {
             if (UserAway)
             {
-                Debug.WriteLine($"User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}");
+                Debug.WriteLine(
+                    $"User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}");
             }
             else
             {
@@ -255,14 +276,17 @@ class Main
         Directory.CreateDirectory(AppPath + @"\debug");
         using (StreamWriter sw = File.AppendText(AppPath + @"\debug.log"))
         {
-            sw.WriteLineAsync("--------------------------------------------------------------------------------------------------------------------------------------------");
+            sw.WriteLineAsync(
+                "--------------------------------------------------------------------------------------------------------------------------------------------");
             sw.WriteLineAsync("   STARTING WFINFO " + buildVersion + " at " + DateTime.UtcNow);
-            sw.WriteLineAsync("--------------------------------------------------------------------------------------------------------------------------------------------");
+            sw.WriteLineAsync(
+                "--------------------------------------------------------------------------------------------------------------------------------------------");
         }
     }
 
     public static void AddLog(string argm)
-    { //write to the debug file, includes version and UTCtime
+    {
+        //write to the debug file, includes version and UTCtime
         Debug.WriteLine(argm);
         Directory.CreateDirectory(AppPath);
         try
@@ -288,15 +312,15 @@ class Main
     public void ActivationKeyPressed(object key)
     {
         //Log activation. Can't set activation key to left or right mouse button via UI so not differentiating between MouseButton and Key should be fine
-        Main.AddLog($"User is activating with pressing key: {key} and is holding down:\n" +
-            $"Delete:{Keyboard.IsKeyDown(Key.Delete)}\n" +
-            $"Snapit, {_settings.SnapitModifierKey}:{Keyboard.IsKeyDown(_settings.SnapitModifierKey)}\n" +
-            $"Searchit, {_settings.SearchItModifierKey}:{Keyboard.IsKeyDown(_settings.SearchItModifierKey)}\n" +
-            $"Masterit, {_settings.MasterItModifierKey}:{Keyboard.IsKeyDown(_settings.MasterItModifierKey)}\n" +
-            $"debug, {_settings.DebugModifierKey}:{Keyboard.IsKeyDown(_settings.DebugModifierKey)}");
+        Main.AddLog($"User is activating with pressing key: {key} and is holding down:\n"                              +
+                    $"Delete:{Keyboard.IsKeyDown(Key.Delete)}\n"                                                       +
+                    $"Snapit, {_settings.SnapitModifierKey}:{Keyboard.IsKeyDown(_settings.SnapitModifierKey)}\n"       +
+                    $"Searchit, {_settings.SearchItModifierKey}:{Keyboard.IsKeyDown(_settings.SearchItModifierKey)}\n" +
+                    $"Masterit, {_settings.MasterItModifierKey}:{Keyboard.IsKeyDown(_settings.MasterItModifierKey)}\n" +
+                    $"debug, {_settings.DebugModifierKey}:{Keyboard.IsKeyDown(_settings.DebugModifierKey)}");
 
         if (Keyboard.IsKeyDown(Key.Delete))
-        { 
+        {
             //Close all overlays if hotkey + delete is held down
             foreach (Window overlay in App.Current.Windows)
             {
@@ -305,45 +329,55 @@ class Main
                     overlay.Hide();
                 }
             }
+
             StatusUpdate("Overlays dismissed", 1);
             return;
         }
 
-        if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) && Keyboard.IsKeyDown(_settings.SnapitModifierKey))
-        { //snapit debug
+        if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
+            Keyboard.IsKeyDown(_settings.SnapitModifierKey))
+        {
+            //snapit debug
             AddLog("Loading screenshot from file for snapit");
             StatusUpdate("Offline testing with screenshot for snapit", 0);
             LoadScreenshot(ScreenshotType.SNAPIT);
-        } 
-        else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) && Keyboard.IsKeyDown(_settings.MasterItModifierKey))
-        { //master debug
+        }
+        else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
+                 Keyboard.IsKeyDown(_settings.MasterItModifierKey))
+        {
+            //master debug
             AddLog("Loading screenshot from file for masterit");
             StatusUpdate("Offline testing with screenshot for masterit", 0);
             LoadScreenshot(ScreenshotType.MASTERIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
-        {//normal debug
+        {
+            //normal debug
             AddLog("Loading screenshot from file");
             StatusUpdate("Offline testing with screenshot", 0);
             LoadScreenshot(ScreenshotType.NORMAL);
         }
         else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
-        {//snapit
+        {
+            //snapit
             AddLog("Starting snap it");
             StatusUpdate("Starting snap it", 0);
             OCR.SnapScreenshot();
         }
         else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
-        { //Searchit  
+        {
+            //Searchit  
             AddLog("Starting search it");
             StatusUpdate("Starting search it", 0);
             searchBox.Start();
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
-        {//masterit
+        {
+            //masterit
             AddLog("Starting master it");
             StatusUpdate("Starting master it", 0);
-            Task.Factory.StartNew(() => {
+            Task.Factory.StartNew(() =>
+            {
                 Bitmap bigScreenshot = OCR.CaptureScreenshot();
                 OCR.ProcessProfileScreen(bigScreenshot);
                 bigScreenshot.Dispose();
@@ -360,31 +394,37 @@ class Main
         latestActive = DateTime.UtcNow.AddMinutes(minutesTillAfk);
 
         if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
-        { //check if user pressed activation key
+        {
+            //check if user pressed activation key
 
 
             if (searchBox.IsInUse)
-            { //if key is pressed and searchbox is active then rederect keystokes to it.
+            {
+                //if key is pressed and searchbox is active then rederect keystokes to it.
                 if (Keyboard.IsKeyDown(Key.Escape))
-                { // close it if esc is used.
+                {
+                    // close it if esc is used.
                     searchBox.Finish();
                     return;
                 }
+
                 searchBox.searchField.Focus();
                 return;
             }
 
             ActivationKeyPressed(key);
-
-
         }
-        else if (key == MouseButton.Left && _process.Warframe != null && !_process.Warframe.HasExited && !_process.GameIsStreamed && Overlay.rewardsDisplaying)
+        else if (key == MouseButton.Left  && _process.Warframe != null && !_process.Warframe.HasExited &&
+                 !_process.GameIsStreamed && Overlay.rewardsDisplaying)
         {
-            if (_settings.Display != Display.Overlay && !_settings.AutoList && !_settings.AutoCSV && !_settings.AutoCount)
+            if (_settings.Display != Display.Overlay && !_settings.AutoList && !_settings.AutoCSV &&
+                !_settings.AutoCount)
             {
-                Overlay.rewardsDisplaying = false; //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
+                Overlay.rewardsDisplaying =
+                    false; //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
                 return;
             }
+
             Task.Run((() =>
             {
                 lastClick = System.Windows.Forms.Cursor.Position;
@@ -409,22 +449,25 @@ class Main
         }
 
         if (searchBox.IsInUse)
-        { //if key is pressed and searchbox is active then rederect keystokes to it.
+        {
+            //if key is pressed and searchbox is active then rederect keystokes to it.
             if (key == Key.Escape)
-            { // close it if esc is used.
+            {
+                // close it if esc is used.
                 searchBox.Finish();
                 return;
             }
+
             searchBox.searchField.Focus();
             return;
         }
 
-        
+
         if (key == _settings.ActivationKeyKey)
-        { //check if user pressed activation key
+        {
+            //check if user pressed activation key
 
             ActivationKeyPressed(key);
-
         }
     }
 
@@ -433,7 +476,7 @@ class Main
     {
         popup = new ErrorDialogue(timeStamp, gap);
     }
-    
+
     public static void SpawnFullscreenReminder()
     {
         fullscreenpopup = new FullscreenReminder();
@@ -445,12 +488,13 @@ class Main
     }
 
 
-    public enum ScreenshotType 
+    public enum ScreenshotType
     {
         NORMAL,
         SNAPIT,
         MASTERIT
     }
+
     private void LoadScreenshot(ScreenshotType type)
     {
         // Using WinForms for the openFileDialog because it's simpler and much easier
@@ -479,14 +523,16 @@ class Main
                                 Bitmap image = new Bitmap(file);
                                 _windowInfo.UseImage(image);
                                 OCR.ProcessRewardScreen(image);
-                            } else if (type == ScreenshotType.SNAPIT)
+                            }
+                            else if (type == ScreenshotType.SNAPIT)
                             {
                                 AddLog("Testing snapit on file: " + file);
 
                                 Bitmap image = new Bitmap(file);
                                 _windowInfo.UseImage(image);
                                 OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
-                            } else if (type == ScreenshotType.MASTERIT)
+                            }
+                            else if (type == ScreenshotType.MASTERIT)
                             {
                                 AddLog("Testing masterit on file: " + file);
 
@@ -516,18 +562,16 @@ class Main
 
     // Switch to logged in mode for warfrane.market systems
     public void LoggedIn()
-    { //this is bullshit, but I couldn't call it in login.xaml.cs because it doesn't properly get to the main window
+    {
+        //this is bullshit, but I couldn't call it in login.xaml.cs because it doesn't properly get to the main window
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.LoggedIn(); });
 
         // start the AFK timer
         latestActive = DateTime.UtcNow.AddMinutes(1);
         TimeSpan startTimeSpan = TimeSpan.Zero;
         TimeSpan periodTimeSpan = TimeSpan.FromMinutes(1);
-        
-        timer = new System.Threading.Timer((e) =>
-        {
-            TimeoutCheck();
-        }, null, startTimeSpan, periodTimeSpan);
+
+        timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, startTimeSpan, periodTimeSpan);
     }
 
 
@@ -535,6 +579,7 @@ class Main
     {
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.FinishedLoading(); });
     }
+
     public static void UpdateMarketStatus(string msg)
     {
         Debug.WriteLine($"New market status received: {msg}");
@@ -544,6 +589,7 @@ class Main
             LastMarketStatus = msg;
             Debug.WriteLine($"User is not away. last known market status will be: {LastMarketStatus}");
         }
+
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.UpdateMarketStatus(msg); });
     }
 

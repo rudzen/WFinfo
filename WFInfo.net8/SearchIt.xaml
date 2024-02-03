@@ -6,13 +6,18 @@
         xmlns:local="clr-namespace:WFInfo"
         mc:Ignorable="d"
         WindowStartupLocation="CenterScreen"
-        Title="SearchIt" Height="50" Width="300" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" IsTabStop="False" Focusable="False">
+        Title="SearchIt" Height="50" Width="300" WindowStyle="None" AllowsTransparency="True" ResizeMode="NoResize"
+        ShowInTaskbar="False" Topmost="True" IsTabStop="False" Focusable="False">
     <Window.Background>
-        <ImageBrush ImageSource="Resources/background.jpg"/>
+        <ImageBrush ImageSource="Resources/background.jpg" />
     </Window.Background>
     <Grid>
-        <TextBox x:Name="searchField" HorizontalAlignment="Center" Height="50" TextWrapping="Wrap" VerticalAlignment="Center" Width="300" Background="{x:Null}" BorderBrush="{x:Null}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextChanged="TextChanged" SelectionBrush="{x:Null}" SelectionTextBrush="{x:Null}"/>
-        <Button Content="Button" Width="0" Height="0" IsDefault="True" Click="Search"/>
-        <Label x:Name="placeholder" Content="Search for warframe.market Items" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <TextBox x:Name="searchField" HorizontalAlignment="Center" Height="50" TextWrapping="Wrap"
+                 VerticalAlignment="Center" Width="300" Background="{x:Null}" BorderBrush="{x:Null}"
+                 HorizontalContentAlignment="Center" VerticalContentAlignment="Center" TextChanged="TextChanged"
+                 SelectionBrush="{x:Null}" SelectionTextBrush="{x:Null}" />
+        <Button Content="Button" Width="0" Height="0" IsDefault="True" Click="Search" />
+        <Label x:Name="placeholder" Content="Search for warframe.market Items" HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
     </Grid>
 </Window>

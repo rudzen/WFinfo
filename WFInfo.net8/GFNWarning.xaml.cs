@@ -8,7 +8,6 @@ namespace WFInfo;
 /// </summary>
 public partial class GFNWarning : Window
 {
-
     public GFNWarning()
     {
         InitializeComponent();
@@ -27,5 +26,4 @@ public partial class GFNWarning : Window
         if (e.ChangedButton == MouseButton.Left)
             DragMove();
     }
-
 }

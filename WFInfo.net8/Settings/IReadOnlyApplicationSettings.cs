@@ -11,6 +11,7 @@ public enum Display
     Overlay,
     Light
 }
+
 /// <summary>
 /// Readonly copy of the settings for services to use
 /// </summary>

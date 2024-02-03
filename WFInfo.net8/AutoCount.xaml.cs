@@ -10,7 +10,6 @@ namespace WFInfo;
 /// </summary>
 public partial class AutoCount : Window
 {
-
     //private readonly Settings.SettingsViewModel _viewModel;
     //public Settings.SettingsViewModel SettingsViewModel => _viewModel;
 
@@ -40,6 +39,7 @@ public partial class AutoCount : Window
         */
         InitializeComponent();
     }
+
     public static void ShowAutoCount()
     {
         if (INSTANCE != null)
@@ -68,6 +68,7 @@ public partial class AutoCount : Window
         {
             viewModel.ItemList.FirstOrDefault().AddCount(false);
         }
+
         Main.dataBase.SaveAllJSONs();
         EquipmentWindow.INSTANCE.reloadItems();
     }

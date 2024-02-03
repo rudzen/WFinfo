@@ -22,9 +22,13 @@ class Win32
         var handle = bmp.GetHbitmap();
         try
         {
-            return Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            return Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty,
+                BitmapSizeOptions.FromEmptyOptions());
         }
-        finally { DeleteObject(handle); }
+        finally
+        {
+            DeleteObject(handle);
+        }
     }
 
     [DllImport("user32.dll", SetLastError = true)]
@@ -69,11 +73,12 @@ class Win32
 
     //https://msdn.microsoft.com/en-us/library/windows/desktop/dd145062(v=vs.85).aspx
     [DllImport("User32.dll")]
-    public static extern IntPtr MonitorFromPoint([In]System.Drawing.Point pt, [In]uint dwFlags);
+    public static extern IntPtr MonitorFromPoint([In] System.Drawing.Point pt, [In] uint dwFlags);
 
     //https://msdn.microsoft.com/en-us/library/windows/desktop/dn280510(v=vs.85).aspx
     [DllImport("Shcore.dll")]
-    public static extern IntPtr GetDpiForMonitor([In]IntPtr hmonitor, [In]DpiType dpiType, [Out]out uint dpiX, [Out]out uint dpiY);
+    public static extern IntPtr GetDpiForMonitor([In] IntPtr hmonitor, [In] DpiType dpiType, [Out] out uint dpiX,
+        [Out] out uint dpiY);
 
     const int WS_EX_TRANSPARENT = 0x00000020;
     const int GWL_EXSTYLE = (-20);
@@ -97,5 +102,4 @@ class Win32
         Angular = 1,
         Raw = 2,
     }
-    
 }

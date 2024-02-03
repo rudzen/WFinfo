@@ -1,5 +1,4 @@
-﻿
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Management;
@@ -21,22 +20,24 @@ public class CustomEntrypoint
     private static string[] list_of_dlls =
     [
         @"\x86\" + libtesseract + ".dll",
-            @"\x86\" + liblept + ".dll",
-            @"\x64\" + libtesseract + ".dll",
-            @"\x64\" + liblept + ".dll",
-            @"\Tesseract.dll"
+        @"\x86\" + liblept      + ".dll",
+        @"\x64\" + libtesseract + ".dll",
+        @"\x64\" + liblept      + ".dll",
+        @"\Tesseract.dll"
     ];
 
     private static string[] list_of_checksums =
     [
-        "a87ba6ac613b8ecb5ed033e57b871e6f",     //  x86/tesseract50
-            "e62f9ef3dd31df439fa2a37793b035db",     //  x86/leptonica-1.82.0
-            "446370b590a3c14e0fda0a2029b8e6fa",     //  x64/tesseract50
-            "2813455700fb7c1bc09738ca56ae7da7",     //  x64/leptonica-1.82.0
-            "528d4d1eb0e07cfe1370b592da6f49fd"      //  Tesseract
+        "a87ba6ac613b8ecb5ed033e57b871e6f", //  x86/tesseract50
+        "e62f9ef3dd31df439fa2a37793b035db", //  x86/leptonica-1.82.0
+        "446370b590a3c14e0fda0a2029b8e6fa", //  x64/tesseract50
+        "2813455700fb7c1bc09738ca56ae7da7", //  x64/leptonica-1.82.0
+        "528d4d1eb0e07cfe1370b592da6f49fd"  //  Tesseract
     ];
 
-    private static readonly string appPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+    private static readonly string appPath =
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+
     private static readonly string libs_hotlink_prefix = "https://raw.githubusercontent.com/WFCD/WFinfo/libs";
     private static readonly string tesseract_hotlink_prefix = libs_hotlink_prefix + @"/" + libtesseract + @"/";
     private static string tesseract_hotlink_platform_specific_prefix;
@@ -83,9 +84,12 @@ public class CustomEntrypoint
         {
             using (StreamWriter sw = File.AppendText(appPath + @"\debug.log"))
             {
-                sw.WriteLineAsync("[" + DateTime.UtcNow + "]   Duplicate process found - start canceled. Version: " + version);
+                sw.WriteLineAsync("[" + DateTime.UtcNow + "]   Duplicate process found - start canceled. Version: " +
+                                  version);
             }
-            MessageBox.Show("Another instance of WFInfo is already running, close it and try again", "WFInfo V" + version);
+
+            MessageBox.Show("Another instance of WFInfo is already running, close it and try again",
+                "WFInfo V" + version);
             return;
         }
 
@@ -108,6 +112,7 @@ public class CustomEntrypoint
             {
                 File.Delete(appdata_tessdata_folder + @"\en.traineddata");
             }
+
             File.Move(appdata_tessdata_folder + @"\engbest.traineddata", appdata_tessdata_folder + @"\en.traineddata");
         }
         //
@@ -121,6 +126,7 @@ public class CustomEntrypoint
             if (!File.Exists(path) || GetMD5hash(path) != md5)
                 filesNeeded++;
         }
+
         if (filesNeeded > 0)
         {
             dialogue.SetFilesNeed(filesNeeded);
@@ -140,8 +146,10 @@ public class CustomEntrypoint
                     else
                     {
                         using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-                        sw.WriteLineAsync("--------------------------------------------------------------------------------------------");
-                        sw.WriteLineAsync("--------------------------------------------------------------------------------------------");
+                        sw.WriteLineAsync(
+                            "--------------------------------------------------------------------------------------------");
+                        sw.WriteLineAsync(
+                            "--------------------------------------------------------------------------------------------");
                         sw.WriteLineAsync("[" + DateTime.UtcNow + "]   ERROR DURING INITIAL LOAD");
                         sw.WriteLineAsync("[" + DateTime.UtcNow + "]   " + ex.ToString());
                     }
@@ -157,22 +165,21 @@ public class CustomEntrypoint
             TesseractEnviornment.CustomSearchPath = app_data_tesseract_catalog;
             App.Main();
         }
-
     }
 
     static void MyHandler(object sender, UnhandledExceptionEventArgs args)
     {
         Exception e = (Exception)args.ExceptionObject;
-        AddLog("MyHandler caught: " + e.Message);
+        AddLog("MyHandler caught: "    + e.Message);
         AddLog("Runtime terminating: " + args.IsTerminating);
         AddLog(e.StackTrace);
         AddLog(e.InnerException.Message);
         AddLog(e.InnerException.StackTrace);
-
     }
 
     public static void AddLog(string argm)
-    { //write to the debug file, includes version and UTCtime
+    {
+        //write to the debug file, includes version and UTCtime
         Debug.WriteLine(argm);
         Directory.CreateDirectory(appPath);
         using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
@@ -187,6 +194,7 @@ public class CustomEntrypoint
         {
             proxy = new WebProxy(new Uri(proxy_string));
         }
+
         WebClient webClient = new WebClient() { Proxy = proxy };
         webClient.Headers.Add("User-Agent", "WFInfo/" + build_version);
         return webClient;
@@ -196,7 +204,8 @@ public class CustomEntrypoint
     {
         // Redownload if DLL is not present or got corrupted
         using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-        sw.WriteLineAsync("--------------------------------------------------------------------------------------------------------------------------------------------");
+        sw.WriteLineAsync(
+            "--------------------------------------------------------------------------------------------------------------------------------------------");
 
         try
         {
@@ -215,25 +224,27 @@ public class CustomEntrypoint
         sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Detected Windows version: {Environment.OSVersion}");
 
         //Log .net Version
-        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32).OpenSubKey("SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\\"))
+        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32)
+                                               .OpenSubKey("SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\\"))
         {
             try
             {
                 int releaseKey = Convert.ToInt32(ndpKey.GetValue("Release"));
                 if (true)
                 {
-                    sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Detected .net version: {CheckFor45DotVersion(releaseKey)}");
+                    sw.WriteLineAsync("[" + DateTime.UtcNow +
+                                      $"] Detected .net version: {CheckFor45DotVersion(releaseKey)}");
                 }
             }
             catch (Exception e)
             {
                 sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch .net version due to: {e}");
             }
-
         }
 
         //Log C++ x64 runtimes 14.29
-        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32).OpenSubKey("Installer\\Dependencies"))
+        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
+                                               .OpenSubKey("Installer\\Dependencies"))
         {
             try
             {
@@ -241,7 +252,8 @@ public class CustomEntrypoint
                 {
                     if (item.Contains("VC,redist.x64,amd64"))
                     {
-                        sw.WriteLineAsync("[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
+                        sw.WriteLineAsync(
+                            "[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
                     }
                 }
             }
@@ -249,11 +261,11 @@ public class CustomEntrypoint
             {
                 sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch x64 runtime due to: {e}");
             }
-
         }
 
         //Log C++ x86 runtimes 14.29
-        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32).OpenSubKey("Installer\\Dependencies"))
+        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
+                                               .OpenSubKey("Installer\\Dependencies"))
         {
             try
             {
@@ -261,7 +273,8 @@ public class CustomEntrypoint
                 {
                     if (item.Contains("VC,redist.x86,x86"))
                     {
-                        sw.WriteLineAsync("[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
+                        sw.WriteLineAsync(
+                            "[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
                     }
                 }
             }
@@ -279,6 +292,7 @@ public class CustomEntrypoint
         byte[] hash = md5.ComputeHash(stream);
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
+
     public static string GetMD5hashByURL(string url)
     {
         Debug.WriteLine(url);
@@ -330,6 +344,7 @@ public class CustomEntrypoint
                     await sw.WriteLineAsync("[" + DateTime.UtcNow + "]   " + dll + " couldn't be moved");
                     await sw.WriteLineAsync("[" + DateTime.UtcNow + "]   " + ex.ToString());
                 }
+
                 if (token.IsCancellationRequested)
                     break;
 
@@ -339,24 +354,28 @@ public class CustomEntrypoint
                     {
                         if (dll != @"\Tesseract.dll")
                         {
-                            await webClient.DownloadFileTaskAsync(tesseract_hotlink_platform_specific_prefix + dll.Replace("\\", "/"), app_data_tesseract_catalog + dll);
+                            await webClient.DownloadFileTaskAsync(
+                                tesseract_hotlink_platform_specific_prefix + dll.Replace("\\", "/"),
+                                app_data_tesseract_catalog                 + dll);
                         }
                         else
                         {
-                            await webClient.DownloadFileTaskAsync(tesseract_hotlink_prefix + dll.Replace("\\", "/"), app_data_tesseract_catalog + dll);
+                            await webClient.DownloadFileTaskAsync(tesseract_hotlink_prefix + dll.Replace("\\", "/"),
+                                app_data_tesseract_catalog                                 + dll);
                         }
                     }
-                    catch (Exception) when (stopDownloadTask.Token.IsCancellationRequested) { }
+                    catch (Exception) when (stopDownloadTask.Token.IsCancellationRequested)
+                    {
+                    }
                 }
+
                 dialogue.Dispatcher.Invoke(() => { dialogue.FileComplete(); });
             }
         }
+
         webClient.Dispose();
 
-        dialogue.Dispatcher.Invoke(() =>
-        {
-            dialogue.Close();
-        });
+        dialogue.Dispatcher.Invoke(() => { dialogue.Close(); });
     }
 
     private static Assembly CurrentDomain_AssemblyResolve_Tesseract(object sender, ResolveEventArgs args)
@@ -385,46 +404,57 @@ public class CustomEntrypoint
         {
             return "4.8 or later";
         }
+
         if (releaseKey >= 461808)
         {
             return "4.7.2 or later";
         }
+
         if (releaseKey >= 461308)
         {
             return "4.7.1 or later";
         }
+
         if (releaseKey >= 460798)
         {
             return "4.7 or later";
         }
+
         if (releaseKey >= 394802)
         {
             return "4.6.2 or later";
         }
+
         if (releaseKey >= 394254)
         {
             return "4.6.1 or later";
         }
+
         if (releaseKey >= 393295)
         {
             return "4.6 or later";
         }
+
         if (releaseKey >= 393273)
         {
             return "4.6 RC or later";
         }
+
         if ((releaseKey >= 379893))
         {
             return "4.5.2 or later";
         }
+
         if ((releaseKey >= 378675))
         {
             return "4.5.1 or later";
         }
+
         if ((releaseKey >= 378389))
         {
             return "4.5 or later";
         }
+
         // This line should never execute. A non-null release key should mean 
         // that 4.5 or later is installed. 
         return "No 4.5 or later version detected";

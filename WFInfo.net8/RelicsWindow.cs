@@ -28,7 +28,6 @@ public partial class RelicsWindow : Window
     }
 
 
-   
     private void SingleClickExpand(object sender, RoutedEventArgs e)
     {
         TreeViewItem tvi = e.OriginalSource as TreeViewItem;
@@ -41,7 +40,8 @@ public partial class RelicsWindow : Window
     }
 
     private void WindowLoaded(object sender, RoutedEventArgs e)
-    { // triggers when the window is first loaded, populates all the listviews once.
+    {
+        // triggers when the window is first loaded, populates all the listviews once.
         RelicsViewModel.Instance.InitializeTree();
     }
 }

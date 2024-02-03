@@ -10,14 +10,14 @@ public class SchemeHDRDetector : IHDRDetectorService
     {
         get
         {
-                // Only return guaranteed results
-                foreach (var scheme in _schemes) 
-                {
-                    var result = scheme.Detect();
-                    if (result.IsGuaranteed) return result.IsDetected;
-                }
-
-                return false;
+            // Only return guaranteed results
+            foreach (var scheme in _schemes)
+            {
+                var result = scheme.Detect();
+                if (result.IsGuaranteed) return result.IsDetected;
             }
+
+            return false;
+        }
     }
 }

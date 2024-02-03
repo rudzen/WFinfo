@@ -9,16 +9,15 @@ namespace WFInfo;
 /// Interaction logic for SearchIt.xaml
 /// </summary>
 /// 
-
 public partial class SearchIt : Window
 {
-
     public SearchIt()
     {
         InitializeComponent();
     }
 
     public bool IsInUse { get; set; } = false;
+
     /// <summary>
     /// Launch snapit, prompts user if not logged in
     /// </summary>
@@ -33,6 +32,7 @@ public partial class SearchIt : Window
             Main.login.MoveLogin(Left, Main.searchBox.Top - 130);
             return;
         }
+
         MainWindow.INSTANCE.Topmost = false;
         IsInUse = true;
         Main.searchBox.Show();
@@ -40,6 +40,7 @@ public partial class SearchIt : Window
         Main.searchBox.Topmost = true;
         Win32.BringToFront(Process.GetCurrentProcess());
     }
+
     /// <summary>
     /// Stats a search, it will try to get the closest item from the search box and spawn a create listing screen
     /// </summary>
@@ -57,6 +58,7 @@ public partial class SearchIt : Window
             {
                 Main.listingHelper.SetScreen(Main.listingHelper.ScreensList.Count - 1);
             }
+
             Main.listingHelper.Show();
             Main.listingHelper.BringIntoView();
         }
@@ -64,6 +66,7 @@ public partial class SearchIt : Window
         {
             Main.AddLog(exception.ToString());
         }
+
         Finish();
     }
 
@@ -78,6 +81,7 @@ public partial class SearchIt : Window
         IsInUse = false;
         Hide();
     }
+
     /// <summary>
     /// Helper method to remove the placeholder text
     /// </summary>
@@ -89,5 +93,3 @@ public partial class SearchIt : Window
             placeholder.Visibility = Visibility.Hidden;
     }
 }
-
-

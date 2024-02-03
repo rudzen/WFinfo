@@ -33,7 +33,7 @@ public interface IProcessFinder
     /// Determines whather the game is being streamed.
     /// </summary>
     bool GameIsStreamed { get; }
-        
+
     /// <summary>
     /// Invoked whenever the game process state changes.
     /// </summary>

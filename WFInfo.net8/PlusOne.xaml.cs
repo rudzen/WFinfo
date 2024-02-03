@@ -11,6 +11,7 @@ namespace WFInfo.Resources;
 public partial class PlusOne : Window
 {
     int counter;
+
     public PlusOne()
     {
         InitializeComponent();
@@ -19,6 +20,7 @@ public partial class PlusOne : Window
             Processed();
         key.Close();
     }
+
     private void Minimize(object sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Minimized;
@@ -30,6 +32,7 @@ public partial class PlusOne : Window
         if (e.ChangedButton == MouseButton.Left)
             DragMove();
     }
+
     private void Close(object sender, RoutedEventArgs e)
     {
         Hide();
@@ -46,17 +49,14 @@ public partial class PlusOne : Window
         var message = TextBox.Text == "Optional comment field" ? "" : TextBox.Text;
         try
         {
-            var t = Task.Run(async () =>
-            {
-                await Main.dataBase.PostReview(message);
-            });
+            var t = Task.Run(async () => { await Main.dataBase.PostReview(message); });
             t.Wait();
         }
         catch (System.Exception)
         {
-
             throw;
         }
+
         RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\WFinfo");
         key.SetValue("review", true);
         key.Close();
@@ -83,6 +83,6 @@ public partial class PlusOne : Window
     {
         if (counter == 9) return;
         Height += 22;
-        counter ++;
+        counter++;
     }
 }

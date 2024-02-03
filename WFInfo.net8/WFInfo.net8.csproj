@@ -1,135 +1,136 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DefineConstants>SYSTEM_DRAWING_SUPPORT</DefineConstants>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UseWPF>true</UseWPF>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <DefineConstants>SYSTEM_DRAWING_SUPPORT</DefineConstants>
+        <RootNamespace>WFInfo</RootNamespace>
+    </PropertyGroup>
 
-  <PropertyGroup>
-    <StartupObject>WFInfo.CustomEntrypoint</StartupObject>
-  </PropertyGroup>
+    <PropertyGroup>
+        <StartupObject>WFInfo.CustomEntrypoint</StartupObject>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="Resources\achievment_03.wav" />
-    <None Remove="Resources\Axi.png" />
-    <None Remove="Resources\background.jpg" />
-    <None Remove="Resources\background_dark.jpg" />
-    <None Remove="Resources\discord.png" />
-    <None Remove="Resources\discord_h.png" />
-    <None Remove="Resources\ducat_w.gif" />
-    <None Remove="Resources\foundry.png" />
-    <None Remove="Resources\foundry_h.png" />
-    <None Remove="Resources\gear.png" />
-    <None Remove="Resources\gear_h.png" />
-    <None Remove="Resources\home.png" />
-    <None Remove="Resources\home_h.png" />
-    <None Remove="Resources\info.png" />
-    <None Remove="Resources\info_h.png" />
-    <None Remove="Resources\Lith.png" />
-    <None Remove="Resources\Meso.png" />
-    <None Remove="Resources\Minimise.png" />
-    <None Remove="Resources\NameTray.png" />
-    <None Remove="Resources\Neo.png" />
-    <None Remove="Resources\panelBG.bmp" />
-    <None Remove="Resources\Panel_UV.png" />
-    <None Remove="Resources\Panel_V.png" />
-    <None Remove="Resources\plat.gif" />
-    <None Remove="Resources\plusone.png" />
-    <None Remove="Resources\plusone.psd" />
-    <None Remove="Resources\plusone_h.png" />
-    <None Remove="Resources\Relic.png" />
-    <None Remove="Resources\Relic_h.png" />
-    <None Remove="Resources\Reload.png" />
-    <None Remove="Resources\Reload_h.png" />
-    <None Remove="Resources\SearchIcon.png" />
-    <None Remove="Resources\SearchIcon_h.png" />
-    <None Remove="Resources\search_icon.psd" />
-    <None Remove="Resources\Settings.png" />
-    <None Remove="Resources\Settings_h.png" />
-    <None Remove="Resources\Target.bmp" />
-    <None Remove="Resources\Target.png" />
-    <None Remove="Resources\Target1.png" />
-    <None Remove="Resources\TargetBox.png" />
-    <None Remove="Resources\tressure.png" />
-    <None Remove="Resources\tressure.psd" />
-    <None Remove="Resources\tressure_h.png" />
-    <None Remove="Resources\warning-sign.png" />
-    <None Remove="Resources\WFLogo.ico" />
-    <None Remove="Resources\WFLogo.png" />
-    <None Remove="WFLogo.ico" />
-  </ItemGroup>
+    <ItemGroup>
+        <None Remove="Resources\achievment_03.wav"/>
+        <None Remove="Resources\Axi.png"/>
+        <None Remove="Resources\background.jpg"/>
+        <None Remove="Resources\background_dark.jpg"/>
+        <None Remove="Resources\discord.png"/>
+        <None Remove="Resources\discord_h.png"/>
+        <None Remove="Resources\ducat_w.gif"/>
+        <None Remove="Resources\foundry.png"/>
+        <None Remove="Resources\foundry_h.png"/>
+        <None Remove="Resources\gear.png"/>
+        <None Remove="Resources\gear_h.png"/>
+        <None Remove="Resources\home.png"/>
+        <None Remove="Resources\home_h.png"/>
+        <None Remove="Resources\info.png"/>
+        <None Remove="Resources\info_h.png"/>
+        <None Remove="Resources\Lith.png"/>
+        <None Remove="Resources\Meso.png"/>
+        <None Remove="Resources\Minimise.png"/>
+        <None Remove="Resources\NameTray.png"/>
+        <None Remove="Resources\Neo.png"/>
+        <None Remove="Resources\panelBG.bmp"/>
+        <None Remove="Resources\Panel_UV.png"/>
+        <None Remove="Resources\Panel_V.png"/>
+        <None Remove="Resources\plat.gif"/>
+        <None Remove="Resources\plusone.png"/>
+        <None Remove="Resources\plusone.psd"/>
+        <None Remove="Resources\plusone_h.png"/>
+        <None Remove="Resources\Relic.png"/>
+        <None Remove="Resources\Relic_h.png"/>
+        <None Remove="Resources\Reload.png"/>
+        <None Remove="Resources\Reload_h.png"/>
+        <None Remove="Resources\SearchIcon.png"/>
+        <None Remove="Resources\SearchIcon_h.png"/>
+        <None Remove="Resources\search_icon.psd"/>
+        <None Remove="Resources\Settings.png"/>
+        <None Remove="Resources\Settings_h.png"/>
+        <None Remove="Resources\Target.bmp"/>
+        <None Remove="Resources\Target.png"/>
+        <None Remove="Resources\Target1.png"/>
+        <None Remove="Resources\TargetBox.png"/>
+        <None Remove="Resources\tressure.png"/>
+        <None Remove="Resources\tressure.psd"/>
+        <None Remove="Resources\tressure_h.png"/>
+        <None Remove="Resources\warning-sign.png"/>
+        <None Remove="Resources\WFLogo.ico"/>
+        <None Remove="Resources\WFLogo.png"/>
+        <None Remove="WFLogo.ico"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Autoupdater.NET.Official" Version="1.8.4" />
-    <PackageReference Include="DotNetZip" Version="1.16.0" />
-    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.77" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
-    <PackageReference Include="SharpDX.Mathematics" Version="4.2.0" />
-    <PackageReference Include="System.Management" Version="8.0.0" />
-    <PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
-    <PackageReference Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="Tesseract.Drawing" Version="5.2.0" />
-    <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Autoupdater.NET.Official" Version="1.8.4"/>
+        <PackageReference Include="DotNetZip" Version="1.16.0"/>
+        <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.77"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+        <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0"/>
+        <PackageReference Include="SharpDX.Mathematics" Version="4.2.0"/>
+        <PackageReference Include="System.Management" Version="8.0.0"/>
+        <PackageReference Include="System.Resources.Extensions" Version="8.0.0"/>
+        <PackageReference Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0"/>
+        <PackageReference Include="Tesseract" Version="5.2.0"/>
+        <PackageReference Include="Tesseract.Drawing" Version="5.2.0"/>
+        <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Resource Include="Resources\achievment_03.wav" />
-    <Resource Include="Resources\Axi.png" />
-    <Resource Include="Resources\background.jpg" />
-    <Resource Include="Resources\background_dark.jpg" />
-    <Resource Include="Resources\discord.png" />
-    <Resource Include="Resources\discord_h.png" />
-    <Resource Include="Resources\ducat_w.gif" />
-    <Resource Include="Resources\foundry.png" />
-    <Resource Include="Resources\foundry_h.png" />
-    <Resource Include="Resources\gear.png" />
-    <Resource Include="Resources\gear_h.png" />
-    <Resource Include="Resources\home.png" />
-    <Resource Include="Resources\home_h.png" />
-    <Resource Include="Resources\info.png" />
-    <Resource Include="Resources\info_h.png" />
-    <Resource Include="Resources\Lith.png" />
-    <Resource Include="Resources\Meso.png" />
-    <Resource Include="Resources\Minimise.png" />
-    <Resource Include="Resources\NameTray.png" />
-    <Resource Include="Resources\Neo.png" />
-    <Resource Include="Resources\panelBG.bmp" />
-    <Resource Include="Resources\Panel_UV.png" />
-    <Resource Include="Resources\Panel_V.png" />
-    <Resource Include="Resources\plat.gif" />
-    <Resource Include="Resources\plusone.png" />
-    <Resource Include="Resources\plusone.psd" />
-    <Resource Include="Resources\plusone_h.png" />
-    <Resource Include="Resources\Relic.png" />
-    <Resource Include="Resources\Relic_h.png" />
-    <Resource Include="Resources\Reload.png" />
-    <Resource Include="Resources\Reload_h.png" />
-    <Resource Include="Resources\SearchIcon.png" />
-    <Resource Include="Resources\SearchIcon_h.png" />
-    <Resource Include="Resources\search_icon.psd" />
-    <Resource Include="Resources\Settings.png" />
-    <Resource Include="Resources\Settings_h.png" />
-    <Resource Include="Resources\Target.bmp" />
-    <Resource Include="Resources\Target.png" />
-    <Resource Include="Resources\Target1.png" />
-    <Resource Include="Resources\TargetBox.png" />
-    <Resource Include="Resources\tressure.png" />
-    <Resource Include="Resources\tressure.psd" />
-    <Resource Include="Resources\tressure_h.png" />
-    <Resource Include="Resources\warning-sign.png" />
-    <Resource Include="Resources\WFLogo.ico" />
-    <Resource Include="Resources\WFLogo.png" />
-    <Resource Include="WFLogo.ico" />
-  </ItemGroup>
+    <ItemGroup>
+        <Resource Include="Resources\achievment_03.wav"/>
+        <Resource Include="Resources\Axi.png"/>
+        <Resource Include="Resources\background.jpg"/>
+        <Resource Include="Resources\background_dark.jpg"/>
+        <Resource Include="Resources\discord.png"/>
+        <Resource Include="Resources\discord_h.png"/>
+        <Resource Include="Resources\ducat_w.gif"/>
+        <Resource Include="Resources\foundry.png"/>
+        <Resource Include="Resources\foundry_h.png"/>
+        <Resource Include="Resources\gear.png"/>
+        <Resource Include="Resources\gear_h.png"/>
+        <Resource Include="Resources\home.png"/>
+        <Resource Include="Resources\home_h.png"/>
+        <Resource Include="Resources\info.png"/>
+        <Resource Include="Resources\info_h.png"/>
+        <Resource Include="Resources\Lith.png"/>
+        <Resource Include="Resources\Meso.png"/>
+        <Resource Include="Resources\Minimise.png"/>
+        <Resource Include="Resources\NameTray.png"/>
+        <Resource Include="Resources\Neo.png"/>
+        <Resource Include="Resources\panelBG.bmp"/>
+        <Resource Include="Resources\Panel_UV.png"/>
+        <Resource Include="Resources\Panel_V.png"/>
+        <Resource Include="Resources\plat.gif"/>
+        <Resource Include="Resources\plusone.png"/>
+        <Resource Include="Resources\plusone.psd"/>
+        <Resource Include="Resources\plusone_h.png"/>
+        <Resource Include="Resources\Relic.png"/>
+        <Resource Include="Resources\Relic_h.png"/>
+        <Resource Include="Resources\Reload.png"/>
+        <Resource Include="Resources\Reload_h.png"/>
+        <Resource Include="Resources\SearchIcon.png"/>
+        <Resource Include="Resources\SearchIcon_h.png"/>
+        <Resource Include="Resources\search_icon.psd"/>
+        <Resource Include="Resources\Settings.png"/>
+        <Resource Include="Resources\Settings_h.png"/>
+        <Resource Include="Resources\Target.bmp"/>
+        <Resource Include="Resources\Target.png"/>
+        <Resource Include="Resources\Target1.png"/>
+        <Resource Include="Resources\TargetBox.png"/>
+        <Resource Include="Resources\tressure.png"/>
+        <Resource Include="Resources\tressure.psd"/>
+        <Resource Include="Resources\tressure_h.png"/>
+        <Resource Include="Resources\warning-sign.png"/>
+        <Resource Include="Resources\WFLogo.ico"/>
+        <Resource Include="Resources\WFLogo.png"/>
+        <Resource Include="WFLogo.ico"/>
+    </ItemGroup>
 
 </Project>

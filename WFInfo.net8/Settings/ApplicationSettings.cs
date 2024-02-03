@@ -17,15 +17,20 @@ public class ApplicationSettings : IReadOnlyApplicationSettings
     /// Global singleton access to readonly settings
     /// </summary>
     public static IReadOnlyApplicationSettings GlobalReadonlySettings => GlobalSettings;
+
     /// <summary>
     /// A singleton static instance of the settings class instead of injection
     /// </summary>
     internal static ApplicationSettings GlobalSettings { get; } = new ApplicationSettings();
+
     [JsonIgnore]
     public bool Initialized { get; set; } = false;
+
     public Display Display { get; set; } = Display.Overlay;
+
     [JsonProperty]
     public double MainWindowLocation_X { get; private set; } = 300;
+
     [JsonProperty]
     public double MainWindowLocation_Y { get; private set; } = 300;
 
@@ -35,20 +40,26 @@ public class ApplicationSettings : IReadOnlyApplicationSettings
         get => new Point(MainWindowLocation_X, MainWindowLocation_Y);
         set
         {
-                MainWindowLocation_X = value.X;
-                MainWindowLocation_Y = value.Y;
-            }
+            MainWindowLocation_X = value.X;
+            MainWindowLocation_Y = value.Y;
+        }
     }
 
     [JsonIgnore]
     public bool IsOverlaySelected => Display == Display.Overlay;
+
     [JsonIgnore]
     public bool IsLightSelected => Display == Display.Light;
+
     public string ActivationKey { get; set; } = "Snapshot";
+
     [JsonIgnore]
     public Key? ActivationKeyKey => Enum.TryParse<Key>(ActivationKey, out var res) ? res : (Key?)null;
+
     [JsonIgnore]
-    public MouseButton? ActivationMouseButton => Enum.TryParse<MouseButton>(ActivationKey, out var res) ? res : (MouseButton?)null;
+    public MouseButton? ActivationMouseButton =>
+        Enum.TryParse<MouseButton>(ActivationKey, out var res) ? res : (MouseButton?)null;
+
     public Key DebugModifierKey { get; set; } = Key.LeftShift;
     public Key SearchItModifierKey { get; set; } = Key.OemTilde;
     public Key SnapitModifierKey { get; set; } = Key.LeftCtrl;
@@ -117,11 +128,11 @@ public class ApplicationSettings : IReadOnlyApplicationSettings
     public long FixedAutoDelay { get; set; } = 2000L;
     public string Ignored { get; set; } = null;
     public HdrSupportEnum HdrSupport { get; set; } = HdrSupportEnum.Auto;
+
     [OnError]
     internal void OnError(StreamingContext context, ErrorContext errorContext)
     {
-            Main.AddLog("Failed to parse settings file: " + errorContext.Error.Message);
-            errorContext.Handled = true;
-        }
- 
+        Main.AddLog("Failed to parse settings file: " + errorContext.Error.Message);
+        errorContext.Handled = true;
+    }
 }

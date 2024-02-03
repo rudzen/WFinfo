@@ -28,8 +28,8 @@ public class LowLevelListener : IDisposable
         WM_RBUTTONUP = 0x0205,
         WM_XBUTTONDOWN = 0x020B
     }
-    [StructLayout(LayoutKind.Sequential)]
 
+    [StructLayout(LayoutKind.Sequential)]
     private struct point
     {
         public int x;
@@ -51,6 +51,7 @@ public class LowLevelListener : IDisposable
     }
 
     private bool hooked = false;
+
     public void Hook()
     {
         if (!hooked)
@@ -73,27 +74,26 @@ public class LowLevelListener : IDisposable
 
     private static IntPtr SetHookKB(LowLevelKeyboardProc proc)
     {
-        using (Process curProcess = Process.GetCurrentProcess())
-        using (ProcessModule curModule = curProcess.MainModule)
-        {
-            return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
-        }
+        using Process curProcess = Process.GetCurrentProcess();
+        using ProcessModule curModule = curProcess.MainModule;
+        return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
     }
 
     private static IntPtr SetHookM(LowLevelMouseProc proc)
     {
-        using (Process curProcess = Process.GetCurrentProcess())
-        using (ProcessModule curModule = curProcess.MainModule)
-        {
-            return SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
-        }
+        using Process curProcess = Process.GetCurrentProcess();
+        using ProcessModule curModule = curProcess.MainModule;
+        return SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
     }
 
     public delegate void keyActionHandler(Key key);
+
     public static event keyActionHandler KeyEvent;
 
     public delegate void mouseActionHandler(MouseButton key);
+
     public static event mouseActionHandler MouseEvent;
+
     private static IntPtr HookCallbackKB(int nCode, IntPtr wParam, IntPtr lParam) //handels keyboard input
     {
         if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
@@ -101,6 +101,7 @@ public class LowLevelListener : IDisposable
             int vkCode = Marshal.ReadInt32(lParam);
             OnKeyAction(KeyInterop.KeyFromVirtualKey(vkCode));
         }
+
         return CallNextHookEx(_hookIDKeyboard, nCode, wParam, lParam);
     }
 
@@ -135,7 +136,8 @@ public class LowLevelListener : IDisposable
                 case mouseMessages.WM_MOUSEWHEEL:
                     //Should this stay implemented?
                     break;
-                case mouseMessages.WM_XBUTTONDOWN: //https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-xbuttondown
+                case mouseMessages.WM_XBUTTONDOWN
+                    : //https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-xbuttondown
                     if (hookStruct.pt.y == 1)
                         OnMouseAction(MouseButton.XButton1);
                     else
@@ -145,12 +147,13 @@ public class LowLevelListener : IDisposable
                     break;
             }
         }
+
         return CallNextHookEx(_hookIDMouse, nCode, wParam, lParam);
     }
 
     private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-    private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
+    private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]

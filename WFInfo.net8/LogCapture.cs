@@ -27,7 +27,8 @@ class LogCapture : IDisposable
         Main.AddLog("Starting LogCapture");
         memoryMappedFile = MemoryMappedFile.CreateOrOpen("DBWIN_BUFFER", 4096L);
 
-        bufferReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_BUFFER_READY", out bool createdBuffer);
+        bufferReadyEvent =
+            new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_BUFFER_READY", out bool createdBuffer);
 
         if (!createdBuffer)
         {
@@ -38,24 +39,17 @@ class LogCapture : IDisposable
         var startTimeSpan = TimeSpan.Zero;
         var periodTimeSpan = TimeSpan.FromSeconds(10);
 
-        timer = new Timer((e) =>
-        {
-            GetProcess();
-        }, null, startTimeSpan, periodTimeSpan);
-
+        timer = new Timer((e) => { GetProcess(); }, null, startTimeSpan, periodTimeSpan);
     }
 
     private void Run()
     {
-
         try
         {
             TimeSpan timeout = TimeSpan.FromSeconds(1.0);
             bufferReadyEvent.Set();
             while (!token.IsCancellationRequested)
             {
-
-
                 if (!dataReadyEvent.WaitOne(timeout))
                 {
                     continue;
@@ -78,16 +72,14 @@ class LogCapture : IDisposable
                         }
                     }
                 }
+
                 bufferReadyEvent.Set();
             }
         }
         catch (Exception ex)
         {
             Main.AddLog(ex.ToString());
-            Main.RunOnUIThread(() =>
-            {
-                _ = new ErrorDialogue(DateTime.Now, 0);
-            });
+            Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
         finally
         {

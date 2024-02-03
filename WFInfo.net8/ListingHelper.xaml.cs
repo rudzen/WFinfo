@@ -12,9 +12,11 @@ namespace WFInfo;
 /// </summary>
 public partial class ListingHelper : Window
 {
+    public List<KeyValuePair<string, RewardCollection>> ScreensList { get; set; } =
+        new List<KeyValuePair<string, RewardCollection>>();
 
-    public List<KeyValuePair<string, RewardCollection>> ScreensList { get; set; } = new List<KeyValuePair<string, RewardCollection>>();
     public List<List<string>> PrimeRewards { get; set; } = new List<List<string>>();
+
     //Helper, allowing to store the rewards until needed to be processed
     private int PageIndex { get; set; } = 0;
     private bool updating;
@@ -24,6 +26,7 @@ public partial class ListingHelper : Window
     private static readonly int NormalHeight = 255;
 
     #region default methods
+
     public ListingHelper()
     {
         InitializeComponent();
@@ -47,6 +50,7 @@ public partial class ListingHelper : Window
         if (e.ChangedButton == MouseButton.Left)
             DragMove();
     }
+
     #endregion
 
     #region frontend
@@ -73,10 +77,12 @@ public partial class ListingHelper : Window
         {
             ComboBox.Items.Add(primeItem);
         }
+
         SetCurrentStatus();
         SetListings(screen.Value.RewardIndex);
         updating = false;
     }
+
     /// <summary>
     /// changes screen over if there is a follow up screen
     /// </summary>
@@ -84,22 +90,27 @@ public partial class ListingHelper : Window
     {
         Back.IsEnabled = true;
         if (PrimeRewards.Count > 0)
-        { // if there are new prime rewards
+        {
+            // if there are new prime rewards
             try
             {
                 Next.Content = "...";
-                var rewardCollection = Task.Run(() => Main.listingHelper.GetRewardCollection(PrimeRewards.First())).Result;
+                var rewardCollection =
+                    Task.Run(() => Main.listingHelper.GetRewardCollection(PrimeRewards.First())).Result;
                 if (rewardCollection.PrimeNames.Count != 0)
-                    Main.listingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
+                    Main.listingHelper.ScreensList.Add(
+                        new KeyValuePair<string, RewardCollection>("", rewardCollection));
                 PrimeRewards.RemoveAt(0);
                 Next.Content = "Next";
             }
             catch (Exception exception)
             {
-                Main.AddLog($"Error thrown in NextScreen in ListingHelper.xaml.cs: {exception}, Primerewarwds.count: {PrimeRewards.Count}, SelectedRewardIndex {SelectedRewardIndex}");
+                Main.AddLog(
+                    $"Error thrown in NextScreen in ListingHelper.xaml.cs: {exception}, Primerewarwds.count: {PrimeRewards.Count}, SelectedRewardIndex {SelectedRewardIndex}");
                 throw;
             }
         }
+
         if (ScreensList.Count - 1 == PageIndex) //reached the end of the list
         {
             Next.IsEnabled = false;
@@ -115,20 +126,22 @@ public partial class ListingHelper : Window
     /// </summary>
     public void PreviousScreen(object sender, RoutedEventArgs e)
     {
-
         Next.IsEnabled = true;
 
-        Debug.WriteLine($"There are {ScreensList.Count} screens and: {PrimeRewards} prime rewards. Currently on screen {PageIndex} and trying to go to the previous screen");
+        Debug.WriteLine(
+            $"There are {ScreensList.Count} screens and: {PrimeRewards} prime rewards. Currently on screen {PageIndex} and trying to go to the previous screen");
 
         if (PageIndex == 0)
-        {//reached start of the list
+        {
+            //reached start of the list
             Back.IsEnabled = false;
             return;
         }
+
         PageIndex--;
         SetScreen(PageIndex);
-
     }
+
     /// <summary>
     /// Updates the screen to reflect status
     /// </summary>
@@ -187,20 +200,22 @@ public partial class ListingHelper : Window
             }
             else
             {
-                var newEntry = new KeyValuePair<string, RewardCollection>("Something uncaught went wrong", ScreensList[PageIndex].Value);
+                var newEntry = new KeyValuePair<string, RewardCollection>("Something uncaught went wrong",
+                    ScreensList[PageIndex].Value);
                 ScreensList.RemoveAt(PageIndex);
                 ScreensList.Insert(PageIndex, newEntry);
             }
+
             SetCurrentStatus();
         }
         catch (Exception exception)
         {
             Main.AddLog(exception.ToString());
-            var newEntry = new KeyValuePair<string, RewardCollection>(exception.ToString(), ScreensList[PageIndex].Value);
+            var newEntry =
+                new KeyValuePair<string, RewardCollection>(exception.ToString(), ScreensList[PageIndex].Value);
             ScreensList.RemoveAt(PageIndex);
             ScreensList.Insert(PageIndex, newEntry);
         }
-
     }
 
     /// <summary>
@@ -221,7 +236,8 @@ public partial class ListingHelper : Window
     /// <param name="index">the currently selected prime item</param>
     private void SetListings(int index)
     {
-        Debug.WriteLine($"There are {ScreensList[PageIndex].Value.PrimeNames.Count} of plat values, Setting index to: {index}");
+        Debug.WriteLine(
+            $"There are {ScreensList[PageIndex].Value.PrimeNames.Count} of plat values, Setting index to: {index}");
 
         PlatinumTextBox.Text = ScreensList[PageIndex].Value.PlatinumValues[index].ToString(Main.culture);
 
@@ -338,16 +354,16 @@ public partial class ListingHelper : Window
                     Main.searchBox.searchField.Text = string.Empty;
                 });
             }
-
         }
+
         return new RewardCollection(primeNames, platinumValues, marketListings, index);
     }
 
     private static bool IsItemBanned(string item)
     {
-        return item.ToLower(Main.culture).Contains("kuva") ||
+        return item.ToLower(Main.culture).Contains("kuva")   ||
                item.ToLower(Main.culture).Contains("exilus") ||
-               item.ToLower(Main.culture).Contains("riven") ||
+               item.ToLower(Main.culture).Contains("riven")  ||
                item.ToLower(Main.culture).Contains("ayatan") ||
                item.ToLower(Main.culture).Contains("forma");
     }
@@ -366,9 +382,10 @@ public partial class ListingHelper : Window
             {
                 bannedListing.Add(new MarketListing(0, 0, 0));
             }
+
             return bannedListing;
         }
-        
+
         Debug.WriteLine($"Getting listing for {primeName}");
         var results = Task.Run(async () => await Main.dataBase.GetTopListings(primeName)).Result;
         var listings = new List<MarketListing>();
@@ -382,6 +399,7 @@ public partial class ListingHelper : Window
             Debug.WriteLine($"Getting listing for {listing.ToHumanString()}");
             listings.Add(listing);
         }
+
         return listings;
     }
 
@@ -411,18 +429,22 @@ public partial class ListingHelper : Window
 /// </summary>
 public class RewardCollection
 {
-    public List<string> PrimeNames { get; set; } = new List<string>(4); // the reward items in case user wants to change selection
+    public List<string> PrimeNames { get; set; } =
+        new List<string>(4); // the reward items in case user wants to change selection
+
     public List<short> PlatinumValues { get; set; } = new List<short>(4);
     public List<List<MarketListing>> MarketListings { get; set; } = new List<List<MarketListing>>(5);
     public short RewardIndex { get; set; } = 0;
 
-    public RewardCollection(List<string> primeNames, List<short> platinumValues, List<List<MarketListing>> marketListings, short rewardIndex)
+    public RewardCollection(List<string> primeNames, List<short> platinumValues,
+        List<List<MarketListing>> marketListings, short rewardIndex)
     {
         PrimeNames = primeNames;
         PlatinumValues = platinumValues;
         MarketListings = marketListings;
         RewardIndex = rewardIndex;
     }
+
     /// <summary>
     /// Gets a human friendly version back for logging.
     /// </summary>
@@ -439,18 +461,21 @@ public class RewardCollection
             msg += $"Prime item: \"{item}\", Platinum value: \"{PlatinumValues[index]}\",  Market listings: \n";
 
 
-            msg = MarketListings[index].Aggregate(msg, (current, listing) => current + (listing.ToHumanString() + "\n"));
+            msg = MarketListings[index]
+                .Aggregate(msg, (current, listing) => current + (listing.ToHumanString() + "\n"));
         }
+
         return msg;
     }
 }
+
 /// <summary>
 /// Class to represent a single listing of an item, usually comes in groups of 5
 /// </summary>
 public class MarketListing
 {
-    public short Platinum { get; set; } // plat amount of listing
-    public short Amount { get; set; } //amount user lists
+    public short Platinum { get; set; }   // plat amount of listing
+    public short Amount { get; set; }     //amount user lists
     public short Reputation { get; set; } // user's reputation
 
     public MarketListing(short platinum, short amount, short reputation)
@@ -469,4 +494,3 @@ public class MarketListing
         return "Platinum: " + Platinum + " Amount: " + Amount + " Reputation: " + Reputation;
     }
 }
-

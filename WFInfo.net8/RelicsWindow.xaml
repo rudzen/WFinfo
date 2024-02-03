@@ -7,7 +7,8 @@
     xmlns:local="clr-namespace:WFInfo"
     x:Class="WFInfo.RelicsWindow"
     d:DataContext="{d:DesignInstance Type=local:RelicsViewModel}"
-    Title="Relics" Height="400" Width="550" WindowStyle="None" AllowsTransparency="True" ResizeMode="CanResizeWithGrip" MinHeight="200" Loaded="WindowLoaded">
+    Title="Relics" Height="400" Width="550" WindowStyle="None" AllowsTransparency="True" ResizeMode="CanResizeWithGrip"
+    MinHeight="200" Loaded="WindowLoaded">
     <Window.Resources>
 
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -114,8 +115,9 @@
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ToggleButton">
-                                    <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Background="{TemplateBinding Background}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                                            Background="{TemplateBinding Background}">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                 </ControlTemplate>
                             </Setter.Value>
@@ -181,8 +183,8 @@
             Margin="1,0,1,1">
             <TreeView Background="{x:Null}" BorderBrush="{x:Null}"
                       ItemsSource="{Binding RelicsItemsView}"
-                      TreeViewItem.Selected="SingleClickExpand" 
-                      
+                      TreeViewItem.Selected="SingleClickExpand"
+
                       VirtualizingStackPanel.IsVirtualizing="False"
                       VirtualizingStackPanel.VirtualizationMode="Recycling">
                 <TreeView.ItemTemplate>

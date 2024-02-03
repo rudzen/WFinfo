@@ -9,7 +9,6 @@ namespace WFInfo;
 
 public class INPC : INotifyPropertyChanged
 {
-
     protected bool SetField<T>(ref T backingField, T value, [CallerMemberName] string propName = null)
     {
         bool valueChanged = false;
@@ -27,14 +26,13 @@ public class INPC : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler PropertyChanged = delegate { };
 
-    protected void RaisePropertyChanged([CallerMemberName]string propName = null)
+    protected void RaisePropertyChanged([CallerMemberName] string propName = null)
     {
         if (!string.IsNullOrWhiteSpace(propName) && (PropertyChanged != null))
         {
             PropertyChanged(this, new PropertyChangedEventArgs(propName));
         }
     }
-
 }
 
 public class SimpleCommand : ICommand
@@ -52,7 +50,8 @@ public class SimpleCommand : ICommand
     }
 
     public event EventHandler CanExecuteChanged
-    { // This will never be used, this is just to ignore the warning prompt in VS
+    {
+        // This will never be used, this is just to ignore the warning prompt in VS
         add { }    // doesn't matter
         remove { } // doesn't matter
     }
@@ -72,8 +71,12 @@ public class TreeNode : INPC
     private const double INTACT_CHANCE_COMMON = 0.2533;
     private const double RADIANT_CHANCE_COMMON = 0.1667;
 
-    private static ImageSource PLAT_SRC = (ImageSource)new ImageSourceConverter().ConvertFromString("pack://application:,,,/Resources/plat.gif");
-    private static ImageSource DUCAT_SRC = (ImageSource)new ImageSourceConverter().ConvertFromString("pack://application:,,,/Resources/ducat_w.gif");
+    private static ImageSource PLAT_SRC =
+        (ImageSource)new ImageSourceConverter().ConvertFromString("pack://application:,,,/Resources/plat.gif");
+
+    private static ImageSource DUCAT_SRC =
+        (ImageSource)new ImageSourceConverter().ConvertFromString("pack://application:,,,/Resources/ducat_w.gif");
+
     private static Color RARE_COLOR = Color.FromRgb(255, 215, 0);
     private static Color UNCOMMON_COLOR = Color.FromRgb(192, 192, 192);
     private static Color COMMON_COLOR = Color.FromRgb(205, 127, 50);
@@ -104,90 +107,103 @@ public class TreeNode : INPC
     public bool topLevel = false;
 
     private string _era;
+
     public string Era
     {
-        get { return _era; }
-        set { SetField(ref _era, value); }
+        get => _era;
+        set => SetField(ref _era, value);
     }
 
     private int _sortNum = -1;
+
     public int SortNum
     {
-        get { return _sortNum; }
-        set { SetField(ref _sortNum, value); }
+        get => _sortNum;
+        set => SetField(ref _sortNum, value);
     }
 
     private string _name;
+
     public string Name
     {
-        get { return topLevel ? _era + " " + _name : _name; }
-        set { SetField(ref _name, value); }
+        get => topLevel ? _era + " " + _name : _name;
+        set => SetField(ref _name, value);
     }
+
     public string Name_Sort
     {
-        get { return current != null ? current.SortNum + _era + " " + _name : SortNum + _name; }
-        set { SetField(ref _name, value); }
+        get => current != null ? current.SortNum + _era + " " + _name : SortNum + _name;
+        set => SetField(ref _name, value);
     }
+
     public string EqmtName_Sort
     {
-        get { return SortNum + _name; }
-        set { SetField(ref _name, value); }
+        get => SortNum + _name;
+        set => SetField(ref _name, value);
     }
 
     private Brush _colorBrush = new SolidColorBrush(Color.FromRgb(177, 208, 217));
+
     public Brush NameBrush
     {
-        get { return _colorBrush; }
-        set { SetField(ref _colorBrush, value); }
+        get => _colorBrush;
+        set => SetField(ref _colorBrush, value);
     }
 
     private Color _color = Color.FromRgb(177, 208, 217);
+
     public Color NameColor
     {
-        get { return _color; }
-        set { SetField(ref _color, value); }
+        get => _color;
+        set => SetField(ref _color, value);
     }
 
     private Brush _backcolor = BACK_BRUSH;
+
     public Brush Background_Color
     {
-        get { return _backcolor; }
-        set { SetField(ref _backcolor, value); }
+        get => _backcolor;
+        set => SetField(ref _backcolor, value);
     }
 
     private Thickness _col1margin = new Thickness(0, 0, 18, 0);
+
     public Thickness Col1_Margin1
     {
-        get { return _col1margin; }
-        set { SetField(ref _col1margin, value); }
+        get => _col1margin;
+        set => SetField(ref _col1margin, value);
     }
 
     private Thickness _col1margin2 = new Thickness(0, 0, 0, 0);
+
     public Thickness Col1_Margin2
     {
-        get { return _col1margin2; }
-        set { SetField(ref _col1margin2, value); }
+        get => _col1margin2;
+        set => SetField(ref _col1margin2, value);
     }
 
     private Thickness _col2margin = new Thickness(0, 0, 18, 0);
+
     public Thickness Col2_Margin1
     {
-        get { return _col2margin; }
-        set { SetField(ref _col2margin, value); }
+        get => _col2margin;
+        set => SetField(ref _col2margin, value);
     }
 
     private Thickness _col2margin2 = new Thickness(0, 0, 0, 0);
+
     public Thickness Col2_Margin2
     {
-        get { return _col2margin2; }
-        set { SetField(ref _col2margin2, value); }
+        get => _col2margin2;
+        set => SetField(ref _col2margin2, value);
     }
 
     private string _vaulted;
+
     public string Vaulted
     {
-        get { return _vaulted; }
-        set { SetField(ref _vaulted, value); }
+        get => _vaulted;
+        set => SetField(ref _vaulted, value);
     }
 
     public bool IsVaulted()
@@ -218,12 +234,10 @@ public class TreeNode : INPC
 
         foreach (TreeNode node in Children)
         {
-
             if (node.IsVaulted()) // IsVaulted is true if its not vaulted
             {
-                _intact += node._intact; 
-                _radiant += node._radiant; 
-
+                _intact += node._intact;
+                _radiant += node._radiant;
             }
         }
 
@@ -245,8 +259,8 @@ public class TreeNode : INPC
 
         Col2_Img1 = PLAT_SRC;
         Col2_Img1_Shown = "Visible";
-
     }
+
     public void SetRelicText()
     {
         _intact = 0;
@@ -256,17 +270,17 @@ public class TreeNode : INPC
         {
             if (node.NameColor == RARE_COLOR)
             {
-                _intact += INTACT_CHANCE_RARE * node._plat;
+                _intact += INTACT_CHANCE_RARE   * node._plat;
                 _radiant += RADIANT_CHANCE_RARE * node._plat;
             }
             else if (node.NameColor == UNCOMMON_COLOR)
             {
-                _intact += INTACT_CHANCE_UNCOMMON * node._plat;
+                _intact += INTACT_CHANCE_UNCOMMON   * node._plat;
                 _radiant += RADIANT_CHANCE_UNCOMMON * node._plat;
             }
             else
             {
-                _intact += INTACT_CHANCE_COMMON * node._plat;
+                _intact += INTACT_CHANCE_COMMON   * node._plat;
                 _radiant += RADIANT_CHANCE_COMMON * node._plat;
             }
         }
@@ -299,6 +313,7 @@ public class TreeNode : INPC
         {
             return false; // This is not a set
         }
+
         JObject primeSet = (JObject)primeSetJToken;
 
         string primeSetPlat = primeSet["plat"].ToObject<string>();
@@ -332,7 +347,7 @@ public class TreeNode : INPC
     {
         Plat_Val = plat;
         Owned_Capped_Val = Math.Min(owned, count);
-        Owned_Plat_Val = owned * plat;
+        Owned_Plat_Val = owned  * plat;
         Owned_Ducat_Val = owned * ducat;
         Owned_Val = owned;
         Count_Val = count;
@@ -458,6 +473,7 @@ public class TreeNode : INPC
             prnt = temp.Name + "/" + prnt;
             temp = temp.current;
         }
+
         return prnt;
     }
 
@@ -470,14 +486,17 @@ public class TreeNode : INPC
             prnt = temp.Name + "/" + prnt;
             temp = temp.current;
         }
+
         foreach (KeyValuePair<string, bool> kvp in matchedText)
         {
             prnt += kvp.Key + "(" + kvp.Value + ") ";
         }
+
         Main.AddLog(prnt);
     }
 
-    public bool FilterSearchText(string[] searchText, bool removeLeaves, bool additionalFilter = false, Dictionary<string, bool> matchedText = null)
+    public bool FilterSearchText(string[] searchText, bool removeLeaves, bool additionalFilter = false,
+        Dictionary<string, bool> matchedText = null)
     {
         Dictionary<string, bool> matchedTextCopy = new Dictionary<string, bool>();
 
@@ -509,7 +528,9 @@ public class TreeNode : INPC
             foreach (TreeNode node in filterList)
                 node.ForceVisibility = false;
 
-        ChildrenFiltered = (filterList.Count > 0 && filterList[0].ChildrenFiltered.Count > 0) || removeLeaves ? temp : filterList;
+        ChildrenFiltered = (filterList.Count > 0 && filterList[0].ChildrenFiltered.Count > 0) || removeLeaves
+            ? temp
+            : filterList;
         return temp.Count > 0;
     }
 
@@ -521,7 +542,7 @@ public class TreeNode : INPC
         {
             if (isRelics)
             {
-                if (depth == 0)   // Relics
+                if (depth == 0) // Relics
                 {
                     switch (index)
                     {
@@ -547,7 +568,7 @@ public class TreeNode : INPC
                             break;
                     }
                 }
-                else            // Parts
+                else // Parts
                 {
                     Children = Children.OrderByDescending(p => p.NameColor.G).ToList();
                     ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.NameColor.G).ToList();
@@ -569,7 +590,8 @@ public class TreeNode : INPC
                         break;
                     case 2:
                         Children = Children.OrderBy(p => p.Owned_Capped_Val).OrderBy(p => p.Diff_Val).ToList();
-                        ChildrenFiltered = ChildrenFiltered.OrderBy(p => p.Owned_Capped_Val).OrderBy(p => p.Diff_Val).ToList();
+                        ChildrenFiltered = ChildrenFiltered.OrderBy(p => p.Owned_Capped_Val).OrderBy(p => p.Diff_Val)
+                                                           .ToList();
                         break;
                     case 3:
                         Children = Children.OrderByDescending(p => p.Owned_Val).ToList();
@@ -599,160 +621,183 @@ public class TreeNode : INPC
 
 
     private string _col1_text1 = "INT:";
+
     public string Col1_Text1
     {
-        get { return _col1_text1; }
-        private set { SetField(ref _col1_text1, value); }
+        get => _col1_text1;
+        private set => SetField(ref _col1_text1, value);
     }
 
     private string _col1_text2 = "4.4";
+
     public string Col1_Text2
     {
-        get { return _col1_text2; }
-        private set { SetField(ref _col1_text2, value); }
+        get => _col1_text2;
+        private set => SetField(ref _col1_text2, value);
     }
 
     private ImageSource _col1_img1 = null;
+
     public ImageSource Col1_Img1
     {
-        get { return _col1_img1; }
-        private set { SetField(ref _col1_img1, value); }
+        get => _col1_img1;
+        private set => SetField(ref _col1_img1, value);
     }
 
     private string _grid_shown = "Visible";
+
     public string Grid_Shown
     {
-        get { return _grid_shown; }
-        private set { SetField(ref _grid_shown, value); }
+        get => _grid_shown;
+        private set => SetField(ref _grid_shown, value);
     }
 
     private string _col1_img1_shown = "Visible";
+
     public string Col1_Img1_Shown
     {
-        get { return _col1_img1_shown; }
-        private set { SetField(ref _col1_img1_shown, value); }
+        get => _col1_img1_shown;
+        private set => SetField(ref _col1_img1_shown, value);
     }
 
     private string _col2_text1 = "RAD:";
+
     public string Col2_Text1
     {
-        get { return _col2_text1; }
-        private set { SetField(ref _col2_text1, value); }
+        get => _col2_text1;
+        private set => SetField(ref _col2_text1, value);
     }
 
     private string _col2_text2 = "9.9";
+
     public string Col2_Text2
     {
-        get { return _col2_text2; }
-        private set { SetField(ref _col2_text2, value); }
+        get => _col2_text2;
+        private set => SetField(ref _col2_text2, value);
     }
 
     private string _col2_text3 = "(+5.5)";
+
     public string Col2_Text3
     {
-        get { return _col2_text3; }
-        private set { SetField(ref _col2_text3, value); }
+        get => _col2_text3;
+        private set => SetField(ref _col2_text3, value);
     }
 
     private ImageSource _col2_img1 = null;
+
     public ImageSource Col2_Img1
     {
-        get { return _col2_img1; }
-        private set { SetField(ref _col2_img1, value); }
+        get => _col2_img1;
+        private set => SetField(ref _col2_img1, value);
     }
 
     private string _col2_img1_shown = "Visible";
+
     public string Col2_Img1_Shown
     {
-        get { return _col2_img1_shown; }
-        private set { SetField(ref _col2_img1_shown, value); }
+        get => _col2_img1_shown;
+        private set => SetField(ref _col2_img1_shown, value);
     }
 
     private double _plat = 0;
+
     public double Plat_Val
     {
-        get { return _plat; }
-        set { SetField(ref _plat, value); }
+        get => _plat;
+        set => SetField(ref _plat, value);
     }
 
     private int _ducat = 0;
+
     public int Ducat_Val
     {
-        get { return _ducat; }
-        set { SetField(ref _ducat, value); }
+        get => _ducat;
+        set => SetField(ref _ducat, value);
     }
 
     private int _owned = 0;
+
     public int Owned_Val
     {
-        get { return _owned; }
-        set { SetField(ref _owned, value); }
+        get => _owned;
+        set => SetField(ref _owned, value);
     }
 
     private int _owned_capped = 0;
+
     public int Owned_Capped_Val
     {
-        get { return _owned_capped; }
-        set { SetField(ref _owned_capped, value); }
+        get => _owned_capped;
+        set => SetField(ref _owned_capped, value);
     }
 
     private double _owned_plat = 0;
+
     public double Owned_Plat_Val
     {
-        get { return _owned_plat; }
-        set { SetField(ref _owned_plat, value); }
+        get => _owned_plat;
+        set => SetField(ref _owned_plat, value);
     }
 
     private double _owned_ducat = 0;
+
     public double Owned_Ducat_Val
     {
-        get { return _owned_ducat; }
-        set { SetField(ref _owned_ducat, value); }
+        get => _owned_ducat;
+        set => SetField(ref _owned_ducat, value);
     }
 
     private int _count = 0;
+
     public int Count_Val
     {
-        get { return _count; }
-        set { SetField(ref _count, value); }
+        get => _count;
+        set => SetField(ref _count, value);
     }
+
     private double _diff = 0;
+
     public double Diff_Val
     {
-        get { return _diff; }
-        set { SetField(ref _diff, value); }
+        get => _diff;
+        set => SetField(ref _diff, value);
     }
 
     private double _intact = 0;
+
     public double Intact_Val
     {
-        get { return _intact; }
-        set { SetField(ref _intact, value); }
+        get => _intact;
+        set => SetField(ref _intact, value);
     }
 
     private double _radiant = 0;
+
     public double Radiant_Val
     {
-        get { return _radiant; }
-        set { SetField(ref _radiant, value); }
+        get => _radiant;
+        set => SetField(ref _radiant, value);
     }
 
     private double _bonus = 0;
+
     public double Bonus_Val
     {
-        get { return _bonus; }
-        set { SetField(ref _bonus, value); }
+        get => _bonus;
+        set => SetField(ref _bonus, value);
     }
 
-    public Visibility IsVisible
-    {
-        get { return (_forceVisibility || current == null || current.IsExpanded || topLevel) ? Visibility.Visible : Visibility.Collapsed; }
-    }
+    public Visibility IsVisible =>
+        (_forceVisibility || current == null || current.IsExpanded || topLevel)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     private bool _forceVisibility = false;
+
     public bool ForceVisibility
     {
-        get { return _forceVisibility; }
+        get => _forceVisibility;
         set
         {
             SetField(ref _forceVisibility, value);
@@ -761,9 +806,10 @@ public class TreeNode : INPC
     }
 
     private bool _isExpanded = false;
+
     public bool IsExpanded
     {
-        get { return _isExpanded; }
+        get => _isExpanded;
         set
         {
             SetField(ref _isExpanded, value);
@@ -773,27 +819,31 @@ public class TreeNode : INPC
     }
 
     private List<TreeNode> _childrenFiltered;
+
     public List<TreeNode> ChildrenFiltered
     {
-        get { return _childrenFiltered; }
-        private set { SetField(ref _childrenFiltered, value); }
+        get => _childrenFiltered;
+        private set => SetField(ref _childrenFiltered, value);
     }
 
     private List<TreeNode> _children;
+
     public List<TreeNode> Children
     {
-        get { return _children; }
-        private set { SetField(ref _children, value); }
+        get => _children;
+        private set => SetField(ref _children, value);
     }
 
     private bool _mastered = false;
+
     public bool Mastered
     {
-        get { return _mastered; }
-        set { SetField(ref _mastered, value); }
+        get => _mastered;
+        set => SetField(ref _mastered, value);
     }
 
     public TreeNode current;
+
     public void AddChild(TreeNode kid)
     {
         kid.current = this;
@@ -806,24 +856,27 @@ public class TreeNode : INPC
     }
 
     private ICommand _decrement;
+
     public ICommand DecrementPart
     {
-        get { return _decrement; }
-        private set { SetField(ref _decrement, value); }
+        get => _decrement;
+        private set => SetField(ref _decrement, value);
     }
 
     private ICommand _increment;
+
     public ICommand IncrementPart
     {
-        get { return _increment; }
-        private set { SetField(ref _increment, value); }
+        get => _increment;
+        private set => SetField(ref _increment, value);
     }
-    
+
     private ICommand _markcomplete;
+
     public ICommand MarkComplete
     {
-        get { return _markcomplete; }
-        private set { SetField(ref _markcomplete, value); }
+        get => _markcomplete;
+        private set => SetField(ref _markcomplete, value);
     }
 
     private string dataRef;
@@ -851,7 +904,7 @@ public class TreeNode : INPC
             await System.Threading.Tasks.Task.Run(() => IncrementPartThreaded(current));
         }
     }
-    
+
     public async void MarkCompleteFunc()
     {
         await System.Threading.Tasks.Task.Run(() => MarkSetAsComplete());
@@ -870,7 +923,7 @@ public class TreeNode : INPC
         JObject job = Main.dataBase.equipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         Owned_Val = job["owned"].ToObject<int>();
         Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
-        Owned_Plat_Val = Owned_Val * Plat_Val;
+        Owned_Plat_Val = Owned_Val  * Plat_Val;
         Owned_Ducat_Val = Owned_Val * Ducat_Val;
         PrimeUpdateDiff(false);
     }
@@ -885,7 +938,7 @@ public class TreeNode : INPC
             Main.dataBase.SaveAllJSONs();
             Owned_Val--;
             Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
-            Owned_Plat_Val = Owned_Val * Plat_Val;
+            Owned_Plat_Val = Owned_Val  * Plat_Val;
             Owned_Ducat_Val = Owned_Val * Ducat_Val;
             PrimeUpdateDiff(false);
             int count = Count_Val;
@@ -909,7 +962,7 @@ public class TreeNode : INPC
         Main.dataBase.SaveAllJSONs();
         Owned_Val++;
         Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
-        Owned_Plat_Val = Owned_Val * Plat_Val;
+        Owned_Plat_Val = Owned_Val  * Plat_Val;
         Owned_Ducat_Val = Owned_Val * Ducat_Val;
         PrimeUpdateDiff(false);
         Parent.Owned_Val++;
@@ -936,7 +989,8 @@ public class TreeNode : INPC
         {
             owned = Owned_Capped_Val;
         }
+
         Diff_Val = owned / (double)(Count_Val) - 0.01 * Count_Val;
-        Col1_Text1 = owned + "/" + Count_Val;
+        Col1_Text1 = owned                     + "/" + Count_Val;
     }
 }

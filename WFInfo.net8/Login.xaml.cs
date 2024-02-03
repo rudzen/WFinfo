@@ -10,8 +10,8 @@ namespace WFInfo;
 /// </summary>
 public partial class Login : Window
 {
-
     #region default methods
+
     public Login()
     {
         InitializeComponent();
@@ -38,6 +38,7 @@ public partial class Login : Window
         if (e.ChangedButton == MouseButton.Left)
             DragMove();
     }
+
     #endregion
 
     /// <summary>
@@ -47,7 +48,6 @@ public partial class Login : Window
     /// <param name="e"></param>
     private async void LoginClick(object sender, MouseButtonEventArgs e)
     {
-
         try
         {
             await Main.dataBase.GetUserLogin(Email.Text, Password.Password);
@@ -64,14 +64,13 @@ public partial class Login : Window
             SettingsWindow.Save();
             Main.AddLog("Couldn't login: " + ex);
             string StatusMessage; //StatusMessage = text to display on StatusUpdate() AND the error box under login 
-            byte StatusSeverity; //StatusSeverity = Severity for StatusUpdate()
+            byte StatusSeverity;  //StatusSeverity = Severity for StatusUpdate()
             if (ex.Message.Contains("email"))
             {
                 if (ex.Message.Contains("app.form.invalid"))
                 {
                     StatusMessage = "Invalid email form";
                     StatusSeverity = 2;
-
                 }
                 else
                 {
@@ -94,11 +93,13 @@ public partial class Login : Window
                 StatusMessage = "Too many requests";
                 StatusSeverity = 1; //default to too many requests
             }
+
             Main.SignOut();
             Main.StatusUpdate(StatusMessage, StatusSeverity); //Changing WFinfo status
 
             switch (StatusSeverity)
-            { // copy/paste from Main.cs (statusChange())
+            {
+                // copy/paste from Main.cs (statusChange())
                 case 1: //severe, red text
                     Error.Foreground = Brushes.Red;
                     break;
@@ -109,11 +110,13 @@ public partial class Login : Window
                     Error.Foreground = Brushes.Yellow;
                     break;
             }
+
             Error.Text = StatusMessage; //Displaying the error under the text fields
-            if(Error.Visibility != Visibility.Visible)
+            if (Error.Visibility != Visibility.Visible)
             {
                 Height += 20;
             }
+
             Error.Visibility = Visibility.Visible;
             return;
         }

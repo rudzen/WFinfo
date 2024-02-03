@@ -43,7 +43,10 @@ public partial class MainWindow : Window
             Left = 300;
             Top = 300;
 
-            System.Drawing.Rectangle winBounds = new System.Drawing.Rectangle(Convert.ToInt32(_settingsViewModel.MainWindowLocation.X), Convert.ToInt32(_settingsViewModel.MainWindowLocation.Y), Convert.ToInt32(Width), Convert.ToInt32(Height));
+            System.Drawing.Rectangle winBounds = new System.Drawing.Rectangle(
+                Convert.ToInt32(_settingsViewModel.MainWindowLocation.X),
+                Convert.ToInt32(_settingsViewModel.MainWindowLocation.Y), Convert.ToInt32(Width),
+                Convert.ToInt32(Height));
             foreach (System.Windows.Forms.Screen scr in System.Windows.Forms.Screen.AllScreens)
             {
                 if (scr.Bounds.Contains(winBounds))
@@ -64,7 +67,7 @@ public partial class MainWindow : Window
         {
             Main.AddLog("An error occured while loading the main window: " + e.Message);
         }
-        
+
         Application.Current.MainWindow = this;
     }
 
@@ -75,12 +78,13 @@ public partial class MainWindow : Window
             NullValueHandling = NullValueHandling.Ignore
         };
         jsonSettings.Converters.Add(new StringEnumConverter());
-        if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo\settings.json") && !ApplicationSettings.GlobalSettings.Initialized)
+        if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
+                        @"\WFInfo\settings.json") && !ApplicationSettings.GlobalSettings.Initialized)
         {
-            var jsonText = File.ReadAllText(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo\settings.json");
+            var jsonText = File.ReadAllText(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
+                                            @"\WFInfo\settings.json");
             JsonConvert.PopulateObject(jsonText, ApplicationSettings.GlobalSettings, jsonSettings);
             ApplicationSettings.GlobalSettings.Initialized = true;
-
         }
         else
         {
@@ -109,14 +113,13 @@ public partial class MainWindow : Window
         SettingsWindow.Save();
 
         Main.dataBase.JWT = EncryptedDataService.LoadStoredJWT();
-
     }
 
     public void OnContentRendered(object sender, EventArgs e)
     {
         if (welcomeDialogue != null)
         {
-            welcomeDialogue.Left = Left + Width + 30;
+            welcomeDialogue.Left = Left            + Width + 30;
             welcomeDialogue.Top = Top + Height / 2 - welcomeDialogue.Height / 2;
             welcomeDialogue.Show();
         }
@@ -153,9 +156,11 @@ public partial class MainWindow : Window
     {
         NotifyIcon.Dispose();
         if (Main.dataBase.rememberMe)
-        { // if rememberme was checked then save it
+        {
+            // if rememberme was checked then save it
             EncryptedDataService.PersistJWT(Main.dataBase.JWT);
         }
+
         Application.Current.Shutdown();
     }
 
@@ -177,7 +182,12 @@ public partial class MainWindow : Window
 
     private void RelicsClick(object sender, RoutedEventArgs e)
     {
-        if (Main.dataBase.relicData == null) { ChangeStatus("Relic data not yet loaded in", 2); return; }
+        if (Main.dataBase.relicData == null)
+        {
+            ChangeStatus("Relic data not yet loaded in", 2);
+            return;
+        }
+
         _relicsWindow?.Close();
         _relicsWindow = new RelicsWindow();
         _relicsWindow.Show();
@@ -186,13 +196,23 @@ public partial class MainWindow : Window
 
     private void EquipmentClick(object sender, RoutedEventArgs e)
     {
-        if (Main.dataBase.equipmentData == null) { ChangeStatus("Equipment data not yet loaded in", 2); return; }
+        if (Main.dataBase.equipmentData == null)
+        {
+            ChangeStatus("Equipment data not yet loaded in", 2);
+            return;
+        }
+
         Main.equipmentWindow.Show();
     }
 
     private void Settings_click(object sender, RoutedEventArgs e)
     {
-        if (Main.settingsWindow == null) { ChangeStatus("Settings window not yet loaded in", 2); return; }
+        if (Main.settingsWindow == null)
+        {
+            ChangeStatus("Settings window not yet loaded in", 2);
+            return;
+        }
+
         Main.settingsWindow?.Close();
         Main.settingsWindow = new SettingsWindow();
         Main.settingsWindow.populate();
@@ -267,7 +287,6 @@ public partial class MainWindow : Window
     private void SpawnLogin(object sender, RoutedEventArgs e)
     {
         Main.login.MoveLogin(Left + Width, Top);
-
     }
 
     public void SignOut()
@@ -301,6 +320,7 @@ public partial class MainWindow : Window
                 ComboBox.SelectedIndex = 0;
                 break;
         }
+
         updatesupression = false;
     }
 
@@ -316,22 +336,13 @@ public partial class MainWindow : Window
         switch (ComboBox.SelectedIndex)
         {
             case 0: //Online in game
-                Task.Run(async () =>
-                {
-                    await Main.dataBase.SetWebsocketStatus("in game");
-                });
+                Task.Run(async () => { await Main.dataBase.SetWebsocketStatus("in game"); });
                 break;
             case 1: //Online
-                Task.Run(async () =>
-                {
-                    await Main.dataBase.SetWebsocketStatus("online");
-                });
+                Task.Run(async () => { await Main.dataBase.SetWebsocketStatus("online"); });
                 break;
             case 2: //Invisible
-                Task.Run(async () =>
-                {
-                    await Main.dataBase.SetWebsocketStatus("offline");
-                });
+                Task.Run(async () => { await Main.dataBase.SetWebsocketStatus("offline"); });
                 break;
             case 3: //Sign out
                 LoggOut(null, null);
@@ -340,6 +351,7 @@ public partial class MainWindow : Window
                 {
                     File.Delete(Main.AppPath + @"\jwt_encrypted");
                 }
+
                 break;
         }
     }
@@ -387,8 +399,8 @@ public partial class MainWindow : Window
         {
             ChangeStatus("No recorded rewards found", 2);
             return;
-
         }
+
         Main.listingHelper.SetScreen(0);
         Main.listingHelper.PrimeRewards.Clear();
         WindowState = WindowState.Normal;
@@ -409,6 +421,7 @@ public partial class MainWindow : Window
             Main.StatusUpdate("Still Processing Reward Screen", 2);
             return;
         }
+
         Main.AddLog("Starting search it");
         Main.StatusUpdate("Starting search it", 0);
         Main.searchBox.Start();
@@ -419,7 +432,7 @@ public partial class MainWindow : Window
         var processInfo = new ProcessStartInfo();
         processInfo.FileName = Main.AppPath;
         processInfo.UseShellExecute = true;
-        
+
         Process.Start(processInfo);
     }
 }

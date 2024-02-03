@@ -32,7 +32,6 @@ public partial class SnapItOverlay : Window
         MouseDown += new MouseButtonEventHandler(canvas_MouseDown);
         MouseUp += new MouseButtonEventHandler(canvas_MouseUp);
         MouseMove += new MouseEventHandler(canvas_MouseMove);
-
     }
 
     public void Populate(Bitmap screenshot)
@@ -80,14 +79,20 @@ public partial class SnapItOverlay : Window
         if (canvas.IsMouseCaptured)
             canvas.ReleaseMouseCapture();
         canvas.Cursor = Cursors.Arrow;
-        Main.AddLog("User drew rectangle: Starting point: " + startDrag.ToString() + " Width: " + rectangle.Width + " Height:" + rectangle.Height);
+        Main.AddLog("User drew rectangle: Starting point: " + startDrag.ToString() + " Width: " + rectangle.Width +
+                    " Height:"                              + rectangle.Height);
         if (rectangle.Width < 10 || rectangle.Height < 10)
-        { // box is smaller than 10x10 and thus will never be able to have any text. Also used as a failsave to prevent the program from crashing if the user makes a 0x0 sleection
+        {
+            // box is smaller than 10x10 and thus will never be able to have any text. Also used as a failsave to prevent the program from crashing if the user makes a 0x0 sleection
             Main.AddLog("User selected an area too small");
             Main.StatusUpdate("Please slecet a larger area to scan", 2);
             return;
         }
-        Bitmap cutout = tempImage.Clone(new Rectangle((int)(topLeft.X * _window.DpiScaling), (int)(topLeft.Y * _window.DpiScaling), (int)(rectangle.Width * _window.DpiScaling), (int)(rectangle.Height * _window.DpiScaling)), System.Drawing.Imaging.PixelFormat.DontCare);
+
+        Bitmap cutout = tempImage.Clone(
+            new Rectangle((int)(topLeft.X * _window.DpiScaling), (int)(topLeft.Y        * _window.DpiScaling),
+                (int)(rectangle.Width     * _window.DpiScaling), (int)(rectangle.Height * _window.DpiScaling)),
+            System.Drawing.Imaging.PixelFormat.DontCare);
         Task.Factory.StartNew(() => OCR.ProcessSnapIt(cutout, tempImage, topLeft));
 
         closeOverlay();
@@ -111,7 +116,7 @@ public partial class SnapItOverlay : Window
             topLeft = new System.Drawing.Point((int)x, (int)y);
             rectangle.RenderTransform = new TranslateTransform(x, y);
             //Set its size
-            rectangle.Width = Math.Abs(e.GetPosition(canvas).X - startDrag.X);
+            rectangle.Width = Math.Abs(e.GetPosition(canvas).X  - startDrag.X);
             rectangle.Height = Math.Abs(e.GetPosition(canvas).Y - startDrag.Y);
         }
     }
