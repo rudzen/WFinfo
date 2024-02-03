@@ -9,7 +9,6 @@ using WFInfo.Services.WarframeProcess;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
-
 using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -29,8 +28,9 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
 
     private object _frameLock = new object();
     private Direct3D11CaptureFrame _frame;
-        
-    private DirectXPixelFormat pixelFormat => _useHdr ? DirectXPixelFormat.R16G16B16A16Float : DirectXPixelFormat.R8G8B8A8UIntNormalized;
+
+    private DirectXPixelFormat pixelFormat =>
+        _useHdr ? DirectXPixelFormat.R16G16B16A16Float : DirectXPixelFormat.R8G8B8A8UIntNormalized;
 
     public WindowsCaptureScreenshotService(IProcessFinder process, bool useHdr = true)
     {
@@ -39,18 +39,19 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
 
         const DeviceCreationFlags creationFlags = DeviceCreationFlags.BgraSupport | DeviceCreationFlags.Debug;
         _d3dDevice = new Device(SharpDX.Direct3D.DriverType.Hardware, creationFlags);
-        _device = Direct3D11Helper.CreateDirect3DDeviceFromSharpDxDevice(_d3dDevice);
+        _device = _d3dDevice.CreateDirect3DDeviceFromSharpDxDevice();
 
         if (_process.IsRunning)
             CreateCaptureSession(_process.Warframe);
-            
+
         _process.OnProcessChanged += CreateCaptureSession;
     }
 
     public Task<List<Bitmap>> CaptureScreenshot()
     {
-        Texture2D cpuTexture = null;
-        int width, height;
+        Texture2D cpuTexture;
+        int width;
+        int height;
 
         lock (_frameLock)
         {
@@ -58,7 +59,7 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
             height = _frame.ContentSize.Height;
 
             // Copy resource into memory that can be accessed by the CPU
-            using var capturedTexture = Direct3D11Helper.CreateSharpDXTexture2D(_frame.Surface);
+            using var capturedTexture = _frame.Surface.CreateSharpDXTexture2D();
             var desc = capturedTexture.Description;
             desc.CpuAccessFlags = CpuAccessFlags.Read;
             desc.BindFlags = BindFlags.None;
@@ -79,13 +80,15 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
             sdrSpan = new Span<byte>(mapSource.DataPointer.ToPointer(), mapSource.SlicePitch);
         }
 
-        Bitmap bitmap;
-        if (_useHdr) bitmap = CaptureHdr(hdrSpan, width, height, mapSource.RowPitch / sizeof(ushort));
-        else bitmap = CaptureSdr(sdrSpan, width, height, mapSource.RowPitch);
+        var bitmap = _useHdr
+            ? CaptureHdr(hdrSpan, width, height, mapSource.RowPitch / sizeof(ushort))
+            : CaptureSdr(sdrSpan, width, height, mapSource.RowPitch);
 
         _d3dDevice.ImmediateContext.UnmapSubresource(cpuTexture, 0);
         cpuTexture.Dispose();
 
+        Debug.Print("Captured screenshot " + bitmap.Size);
+        
         var result = new List<Bitmap> { bitmap };
         return Task.FromResult(result);
     }

@@ -24,6 +24,7 @@
 
 using System.Runtime.InteropServices;
 using Windows.Graphics.DirectX.Direct3D11;
+using WinRT;
 
 namespace Composition.WindowsRuntimeHelpers;
 
@@ -47,19 +48,19 @@ public static class Direct3D11Helper
         CharSet = CharSet.Unicode,
         ExactSpelling = true,
         CallingConvention = CallingConvention.StdCall
-        )]
+    )]
     static extern uint CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
 
-    public static IDirect3DDevice? CreateDirect3DDeviceFromSharpDxDevice(SharpDX.Direct3D11.Device sharpDxDevice)
+    public static IDirect3DDevice? CreateDirect3DDeviceFromSharpDxDevice(this SharpDX.Direct3D11.Device sharpDxDevice)
     {
         return CreateDirect3D11DeviceFromDXGIDevice(sharpDxDevice.NativePointer, out var punk) != 0
             ? null
-            : WinRT.MarshalInterface<IDirect3DDevice>.FromAbi(punk);
+            : MarshalInterface<IDirect3DDevice>.FromAbi(punk);
     }
 
-    public static SharpDX.Direct3D11.Texture2D CreateSharpDXTexture2D(IDirect3DSurface surface)
+    public static SharpDX.Direct3D11.Texture2D CreateSharpDXTexture2D(this IDirect3DSurface surface)
     {
-        var access = (IDirect3DDxgiInterfaceAccess)surface;
+        var access = surface.As<IDirect3DDxgiInterfaceAccess>();
         var d3dPointer = access.GetInterface(ID3D11Texture2D);
         var d3dSurface = new SharpDX.Direct3D11.Texture2D(d3dPointer);
         return d3dSurface;
