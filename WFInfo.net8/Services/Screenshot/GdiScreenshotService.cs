@@ -1,19 +1,19 @@
 ﻿using System.Drawing;
 using WFInfo.Services.WindowInfo;
 
-namespace WFInfo.Services.Screenshot
-{
-    public class GdiScreenshotService : IScreenshotService
-    {
-        private static IWindowInfoService _window;
+namespace WFInfo.Services.Screenshot;
 
-        public GdiScreenshotService(IWindowInfoService window) 
-        {
+public class GdiScreenshotService : IScreenshotService
+{
+    private static IWindowInfoService _window;
+
+    public GdiScreenshotService(IWindowInfoService window) 
+    {
             _window = window;
         }
 
-        public Task<List<Bitmap>> CaptureScreenshot()
-        {
+    public Task<List<Bitmap>> CaptureScreenshot()
+    {
             _window.UpdateWindow();
 
             var window = _window.Window;
@@ -42,5 +42,4 @@ namespace WFInfo.Services.Screenshot
             var result = new List<Bitmap> { image };
             return Task.FromResult(result);
         }
-    }
 }

@@ -8,29 +8,29 @@ using System.Windows.Media.Imaging;
 using System.Windows.Forms;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
 
-namespace WFInfo
+namespace WFInfo;
+
+/// <summary>
+/// Interaction logic for verifyCount.xaml
+/// </summary>
+public partial class ThemeAdjuster : Window
 {
-    /// <summary>
-    /// Interaction logic for verifyCount.xaml
-    /// </summary>
-    public partial class ThemeAdjuster : Window
+    private readonly Settings.SettingsViewModel _viewModel;
+    public Settings.SettingsViewModel SettingsViewModel => _viewModel;
+
+    public static ThemeAdjuster INSTANCE;
+    private Bitmap unfiltered;
+    public BitmapImage displayImage;
+
+    public ThemeAdjuster()
     {
-        private readonly Settings.SettingsViewModel _viewModel;
-        public Settings.SettingsViewModel SettingsViewModel => _viewModel;
-
-        public static ThemeAdjuster INSTANCE;
-        private Bitmap unfiltered;
-        public BitmapImage displayImage;
-
-        public ThemeAdjuster()
-        {
             InitializeComponent();
             DataContext = this;
             INSTANCE = this;
             _viewModel = Settings.SettingsViewModel.Instance;
         }
-        public static void ShowThemeAdjuster()
-        {
+    public static void ShowThemeAdjuster()
+    {
             if (INSTANCE != null)
             {
                 INSTANCE.Show();
@@ -38,8 +38,8 @@ namespace WFInfo
             }
         }
 
-        private static BitmapImage BitmapToImageSource(Bitmap bitmap)
-        {
+    private static BitmapImage BitmapToImageSource(Bitmap bitmap)
+    {
             //from https://stackoverflow.com/questions/22499407/how-to-display-a-bitmap-in-a-wpf-image
             using (MemoryStream memory = new MemoryStream())
             {
@@ -55,8 +55,8 @@ namespace WFInfo
             }
         }
 
-        private void ApplyFilter(object sender, RoutedEventArgs e)
-        {
+    private void ApplyFilter(object sender, RoutedEventArgs e)
+    {
             if (unfiltered != null)
             {
                 Bitmap filtered = OCR.ScaleUpAndFilter(unfiltered, WFtheme.CUSTOM, out int[] rowHits, out int[] colHits);
@@ -66,8 +66,8 @@ namespace WFInfo
             }
         }
 
-        private void ShowUnfiltered(object sender, RoutedEventArgs e)
-        {
+    private void ShowUnfiltered(object sender, RoutedEventArgs e)
+    {
             if (unfiltered != null)
             {
                 displayImage = BitmapToImageSource(unfiltered);
@@ -75,8 +75,8 @@ namespace WFInfo
             }
         }
 
-        private void LoadLatest(object sender, RoutedEventArgs e)
-        {
+    private void LoadLatest(object sender, RoutedEventArgs e)
+    {
             List<FileInfo> files = (new DirectoryInfo(Main.AppPath + @"\Debug\")).GetFiles()
                 .Where(f => f.Name.Contains("FullScreenShot"))
                 .ToList();
@@ -108,8 +108,8 @@ namespace WFInfo
             }
 
         }
-        private void LoadFromFile(object sender, RoutedEventArgs e)
-        {
+    private void LoadFromFile(object sender, RoutedEventArgs e)
+    {
             // Using WinForms for the openFileDialog because it's simpler and much easier
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
@@ -157,8 +157,8 @@ namespace WFInfo
             }
         }
 
-        private void ExportFilterJson(object sender, RoutedEventArgs e)
-        {
+    private void ExportFilterJson(object sender, RoutedEventArgs e)
+    {
             JObject exp = new JObject
                 {
                     { "CF_usePrimaryHSL", _viewModel.CF_usePrimaryHSL },
@@ -196,8 +196,8 @@ namespace WFInfo
             filterTextBox.Text = JsonConvert.SerializeObject(exp, Formatting.None);
         }
 
-        private void ImportFilterJson(object sender, RoutedEventArgs e)
-        {
+    private void ImportFilterJson(object sender, RoutedEventArgs e)
+    {
             string input = filterTextBox.Text;
             try
             {
@@ -276,8 +276,8 @@ namespace WFInfo
             }
         }
 
-        private void Hide(object sender, RoutedEventArgs e)
-        {
+    private void Hide(object sender, RoutedEventArgs e)
+    {
             if (unfiltered != null)
             {
                 unfiltered.Dispose();
@@ -288,11 +288,10 @@ namespace WFInfo
             Hide();
         }
 
-        // Allows the draging of the window
-        private new void MouseDown(object sender, MouseButtonEventArgs e)
-        {
+    // Allows the draging of the window
+    private new void MouseDown(object sender, MouseButtonEventArgs e)
+    {
             if (e.ChangedButton == MouseButton.Left)
                 DragMove();
         }
-    }
 }

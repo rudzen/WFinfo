@@ -3,38 +3,38 @@ using System.Windows.Forms;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Settings;
 
-namespace WFInfo.Services.WindowInfo
+namespace WFInfo.Services.WindowInfo;
+
+public class Win32WindowInfoService : IWindowInfoService
 {
-    public class Win32WindowInfoService : IWindowInfoService
-    {
-        public double DpiScaling { get; private set; }
-        public double ScreenScaling 
-        { 
-            get
-            {
-                if (Window.Width * 9 > Window.Height * 16)  // image is less than 16:9 aspect
+    public double DpiScaling { get; private set; }
+    public double ScreenScaling 
+    { 
+        get
+        {
+                if (Window.Width * 9 > Window.Height * 16  // image is less than 16:9 aspect
                     return Window.Height / 1080.0;
                 else
                     return Window.Width / 1920.0; //image is higher than 16:9 aspect
             }
-        }
+    }
 
-        public Rectangle Window { get; private set; }
-        public Point Center => new Point(Window.X + Window.Width / 2, Window.Y + Window.Height / 2);
+    public Rectangle Window { get; private set; }
+    public Point Center => new Point(Window.X + Window.Width / 2, Window.Y + Window.Height / 2);
 
-        public Screen Screen { get; private set; } = Screen.PrimaryScreen;
+    public Screen Screen { get; private set; } = Screen.PrimaryScreen;
 
-        private readonly IProcessFinder _process;
-        private readonly IReadOnlyApplicationSettings _settings;
+    private readonly IProcessFinder _process;
+    private readonly IReadOnlyApplicationSettings _settings;
 
-        public Win32WindowInfoService(IProcessFinder process, IReadOnlyApplicationSettings settings)
-        {
+    public Win32WindowInfoService(IProcessFinder process, IReadOnlyApplicationSettings settings)
+    {
             _process = process;
             _settings = settings;
         }
 
-        public void UpdateWindow()
-        {
+    public void UpdateWindow()
+    {
             if (!_process.IsRunning && !_settings.Debug)
             {
                 Main.AddLog("Failed to find warframe process for window info");
@@ -52,8 +52,8 @@ namespace WFInfo.Services.WindowInfo
             GetWindowRect();
         }
 
-        public void UseImage(Bitmap image)
-        {
+    public void UseImage(Bitmap image)
+    {
             int width = image?.Width ?? Screen.Bounds.Width;
             int height = image?.Height ?? Screen.Bounds.Height;
 
@@ -66,8 +66,8 @@ namespace WFInfo.Services.WindowInfo
                 Main.AddLog("Couldn't Detect Warframe Process. Using Primary Screen Bounds: " + Window.ToString() + " Named: " + Screen.DeviceName);
         }
 
-        private void GetWindowRect()
-        {
+    private void GetWindowRect()
+    {
             if (!Win32.GetWindowRect(_process.HandleRef, out Win32.R osRect))
             {
                 if (_settings.Debug)
@@ -90,8 +90,7 @@ namespace WFInfo.Services.WindowInfo
             else if (Window == null || Window.Left != osRect.Left || Window.Right != osRect.Right || Window.Top != osRect.Top || Window.Bottom != osRect.Bottom)
             { // checks if old window size is the right size if not change it
                 Window = new Rectangle(osRect.Left, osRect.Top, osRect.Right - osRect.Left, osRect.Bottom - osRect.Top); // get Rectangle out of rect
-                                                                                                                         // Rectangle is (x, y, width, height) RECT is (x, y, x+width, y+height) 
-                int GWL_style = -16;
+                                                                                                                         // Rectangle is (x, y, width, height) RECT is (x, y, x+width, y+height)      int GWL_style = -16;
                 uint WS_BORDER = 0x00800000;
                 uint WS_POPUP = 0x80000000;
 
@@ -124,8 +123,8 @@ namespace WFInfo.Services.WindowInfo
             }
         }
 
-        private void GetFullscreenRect()
-        {
+    private void GetFullscreenRect()
+    {
             int width = Screen.Bounds.Width;
             int height = Screen.Bounds.Height;
 
@@ -135,8 +134,8 @@ namespace WFInfo.Services.WindowInfo
             Main.AddLog("Couldn't Detect Warframe Process. Using Primary Screen Bounds: " + Window.ToString() + " Named: " + Screen.DeviceName);
         }
 
-        private void RefreshDPIScaling()
-        {
+    private void RefreshDPIScaling()
+    {
             try
             {
                 var mon = Win32.MonitorFromPoint(new Point(Screen.Bounds.Left + 1, Screen.Bounds.Top + 1), 2);
@@ -153,5 +152,4 @@ namespace WFInfo.Services.WindowInfo
                 DpiScaling = 1;
             }
         }
-    }
 }

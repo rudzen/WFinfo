@@ -3,14 +3,14 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace WFInfo
-{
-    public class EncryptedDataService
-    {
-        private static readonly IDataProtector JwtProtector;
+namespace WFInfo;
 
-        static EncryptedDataService()
-        {
+public class EncryptedDataService
+{
+    private static readonly IDataProtector JwtProtector;
+
+    static EncryptedDataService()
+    {
             var serviceCollection = new ServiceCollection();
             serviceCollection.AddDataProtection();
             var services = serviceCollection.BuildServiceProvider();
@@ -18,8 +18,8 @@ namespace WFInfo
             JwtProtector = provider?.CreateProtector("WFInfo.JWT.v1");
         } 
 
-        public static string LoadStoredJWT()
-        {
+    public static string LoadStoredJWT()
+    {
             try
             {
                 var fileText = File.ReadAllText(Main.AppPath + @"\jwt_encrypted");
@@ -37,12 +37,11 @@ namespace WFInfo
             return null;
         }
         
-        public static void PersistJWT(string jwt)
-        {
+    public static void PersistJWT(string jwt)
+    {
             var encryptedJWT = JwtProtector?.Protect(jwt);
             File.WriteAllText(Main.AppPath + @"\jwt_encrypted", encryptedJWT);
         }
         
         
-    }
 }

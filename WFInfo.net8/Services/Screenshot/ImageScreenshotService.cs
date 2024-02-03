@@ -1,12 +1,12 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
 
-namespace WFInfo.Services.Screenshot
+namespace WFInfo.Services.Screenshot;
+
+public class ImageScreenshotService : IScreenshotService
 {
-    public class ImageScreenshotService : IScreenshotService
+    public async Task<List<Bitmap>> CaptureScreenshot()
     {
-        public async Task<List<Bitmap>> CaptureScreenshot()
-        {
             // Using WinForms for the openFileDialog because it's simpler and much easier
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
@@ -41,5 +41,4 @@ namespace WFInfo.Services.Screenshot
                 }
             }
         }
-    }
 }

@@ -2,35 +2,35 @@
 using System.Runtime.InteropServices;
 using WFInfo.Settings;
 
-namespace WFInfo.Services.WarframeProcess
+namespace WFInfo.Services.WarframeProcess;
+
+public class WarframeProcessFinder : IProcessFinder
 {
-    public class WarframeProcessFinder : IProcessFinder
+    public Process Warframe 
     {
-        public Process Warframe 
+        get
         {
-            get
-            {
                 FindProcess();
                 return _warframe;
             }
-        }
+    }
 
-        public HandleRef HandleRef => IsRunning ? new HandleRef(Warframe, Warframe.MainWindowHandle) : new HandleRef();
-        public bool IsRunning => Warframe != null && !Warframe.HasExited;
-        public bool GameIsStreamed => Warframe?.MainWindowTitle.Contains("GeForce NOW") ?? false;
-        public event ProcessChangedArgs OnProcessChanged;
+    public HandleRef HandleRef => IsRunning ? new HandleRef(Warframe, Warframe.MainWindowHandle) : new HandleRef();
+    public bool IsRunning => Warframe != null && !Warframe.HasExited;
+    public bool GameIsStreamed => Warframe?.MainWindowTitle.Contains("GeForce NOW") ?? false;
+    public event ProcessChangedArgs OnProcessChanged;
 
-        private Process _warframe;
+    private Process _warframe;
 
-        private readonly IReadOnlyApplicationSettings _settings;
+    private readonly IReadOnlyApplicationSettings _settings;
 
-        public WarframeProcessFinder(IReadOnlyApplicationSettings settings)
-        {
+    public WarframeProcessFinder(IReadOnlyApplicationSettings settings)
+    {
             _settings = settings;
         }
 
-        private void FindProcess()
-        {
+    private void FindProcess()
+    {
             // process already found
             if (_warframe != null)
             {
@@ -139,5 +139,4 @@ namespace WFInfo.Services.WarframeProcess
                 OnProcessChanged?.Invoke(_warframe);
             }
         }
-    }
 }

@@ -1,15 +1,15 @@
 ﻿using WFInfo.Services.HDRDetection.Schemes;
 
-namespace WFInfo.Services.HDRDetection
-{
-    public class SchemeHDRDetector : IHDRDetectorService
-    {
-        private readonly List<IHDRDetectionScheme> _schemes = [new GameSettingsHDRDetectionScheme()];
+namespace WFInfo.Services.HDRDetection;
 
-        public bool IsHDR
+public class SchemeHDRDetector : IHDRDetectorService
+{
+    private readonly List<IHDRDetectionScheme> _schemes = [new GameSettingsHDRDetectionScheme()];
+
+    public bool IsHDR
+    {
+        get
         {
-            get
-            {
                 // Only return guaranteed results
                 foreach (var scheme in _schemes) 
                 {
@@ -19,6 +19,5 @@ namespace WFInfo.Services.HDRDetection
 
                 return false;
             }
-        }
     }
 }

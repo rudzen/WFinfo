@@ -1,20 +1,20 @@
 ﻿using System.IO;
 
-namespace WFInfo.Services.HDRDetection.Schemes
+namespace WFInfo.Services.HDRDetection.Schemes;
+
+public class GameSettingsHDRDetectionScheme : IHDRDetectionScheme
 {
-    public class GameSettingsHDRDetectionScheme : IHDRDetectionScheme
+    private string ConfigurationFile
     {
-        private string ConfigurationFile
+        get
         {
-            get
-            {
                 var localAppdata = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
                 return Path.Combine(localAppdata, "Warframe", "EE.cfg");
             }
-        }
+    }
 
-        public HDRDetectionSchemeResult Detect()
-        {
+    public HDRDetectionSchemeResult Detect()
+    {
             if (File.Exists(ConfigurationFile))
             {
                 var contents = File.ReadAllText(ConfigurationFile);
@@ -27,5 +27,4 @@ namespace WFInfo.Services.HDRDetection.Schemes
             // Could still be Auto HDR with old engine?
             return new HDRDetectionSchemeResult(false, false);
         }
-    }
 }
