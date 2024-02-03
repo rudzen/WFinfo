@@ -17,7 +17,7 @@ public interface IProcessFinder
     /// <summary>
     /// Gets the game process, accessing this property will automatically check if the process is still valid. Is <see langword="null"/> when no process can be found.
     /// </summary>
-    Process Warframe { get; }
+    Process? Warframe { get; }
 
     /// <summary>
     /// Gets the game window handle, accessing this property will automatically check if the process is still valid. Is a null pointer when no process is found.

@@ -7,7 +7,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using WFInfo.net8.Services.OpticalCharacterRecognition;
+using Serilog;
+using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
 
 namespace WFInfo;
@@ -17,13 +18,22 @@ namespace WFInfo;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<MainWindow>();
+
+    private static readonly SolidColorBrush[] StatusBrushes =
+    [
+        new(Color.FromRgb(177, 208, 217)),
+        Brushes.Red,
+        Brushes.Orange
+    ];
+
     readonly Main main; //subscriber
     public static MainWindow INSTANCE;
     public static WelcomeDialogue welcomeDialogue;
     public static LowLevelListener listener;
     private static bool updatesupression;
     private RelicsWindow _relicsWindow = new RelicsWindow();
-    private SettingsViewModel _settingsViewModel = SettingsViewModel.Instance;
+    private readonly SettingsViewModel _settingsViewModel = SettingsViewModel.Instance;
 
     public MainWindow()
     {
@@ -61,11 +71,11 @@ public partial class MainWindow : Window
 
             SettingsWindow.Save();
 
-            Closing += new CancelEventHandler(LoggOut);
+            Closing += LoggOut;
         }
         catch (Exception e)
         {
-            Main.AddLog("An error occured while loading the main window: " + e.Message);
+            Logger.Error(e, "An error occured while loading the main window");
         }
 
         Application.Current.MainWindow = this;
@@ -77,21 +87,22 @@ public partial class MainWindow : Window
         {
             NullValueHandling = NullValueHandling.Ignore
         };
+
         jsonSettings.Converters.Add(new StringEnumConverter());
-        if (File.Exists(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                        @"\WFInfo\settings.json") && !ApplicationSettings.GlobalSettings.Initialized)
+        var settingsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WFInfo",
+            "settings.json");
+
+        if (File.Exists(settingsFile) && !ApplicationSettings.GlobalSettings.Initialized)
         {
-            var jsonText = File.ReadAllText(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
-                                            @"\WFInfo\settings.json");
+            var jsonText = File.ReadAllText(settingsFile);
             JsonConvert.PopulateObject(jsonText, ApplicationSettings.GlobalSettings, jsonSettings);
-            ApplicationSettings.GlobalSettings.Initialized = true;
         }
         else
         {
-            ApplicationSettings.GlobalSettings.Initialized = true;
             welcomeDialogue = new WelcomeDialogue();
         }
 
+        ApplicationSettings.GlobalSettings.Initialized = true;
 
         try
         {
@@ -105,7 +116,7 @@ public partial class MainWindow : Window
             }
             catch
             {
-                Main.AddLog("Couldn't Parse Activation Key -- Defaulting to PrintScreen");
+                Logger.Debug("Couldn't Parse Activation Key -- Defaulting to PrintScreen");
                 _settingsViewModel.ActivationKey = "Snapshot";
             }
         }
@@ -135,21 +146,10 @@ public partial class MainWindow : Window
         if (Status == null) return;
         Debug.WriteLine("Status message: " + status);
         Status.Text = status;
-        switch (severity)
-        {
-            case 0: //default, no problem
-                Status.Foreground = new SolidColorBrush(Color.FromRgb(177, 208, 217));
-                break;
-            case 1: //severe, red text
-                Status.Foreground = Brushes.Red;
-                break;
-            case 2: //warning, orange text
-                Status.Foreground = Brushes.Orange;
-                break;
-            default: //Uncaught, big problem
-                Status.Foreground = Brushes.Yellow;
-                break;
-        }
+
+        Status.Foreground = severity is >= 0 and <= 2
+            ? StatusBrushes[severity]
+            : Brushes.Yellow;
     }
 
     public void Exit(object sender, RoutedEventArgs e)
@@ -249,7 +249,7 @@ public partial class MainWindow : Window
             }
             catch (Exception)
             {
-                Main.AddLog("Error in Mouse down in mainwindow");
+                Logger.Debug("Error in Mouse down in mainwindow");
             }
     }
 
@@ -422,7 +422,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        Main.AddLog("Starting search it");
+        Logger.Debug("Starting search it");
         Main.StatusUpdate("Starting search it", 0);
         Main.searchBox.Start();
     }

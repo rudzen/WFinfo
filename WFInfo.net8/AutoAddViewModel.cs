@@ -1,10 +1,13 @@
 ﻿using System.Collections.ObjectModel;
+using Serilog;
 
 namespace WFInfo;
 
-public class AutoAddViewModel : INPC
+public sealed class AutoAddViewModel : INPC
 {
-    private ObservableCollection<AutoAddSingleItem> _itemList;
+    private static readonly ILogger Logger = Log.Logger.ForContext<AutoAddViewModel>();
+
+    private ObservableCollection<AutoAddSingleItem> _itemList = [];
 
     public ObservableCollection<AutoAddSingleItem> ItemList
     {
@@ -14,11 +17,6 @@ public class AutoAddViewModel : INPC
             _itemList = value;
             RaisePropertyChanged();
         }
-    }
-
-    public AutoAddViewModel()
-    {
-        _itemList = [];
     }
 
     public void AddItem(AutoAddSingleItem item)
@@ -36,14 +34,16 @@ public class AutoAddViewModel : INPC
 
 public class AutoAddSingleItem : INPC
 {
-    public AutoAddViewModel _parent;
+    private static readonly ILogger Logger = Log.Logger.ForContext<AutoAddSingleItem>();
 
-    private ObservableCollection<string> _rewardOptions;
+    public AutoAddViewModel? _parent;
+
+    private readonly ObservableCollection<string> _rewardOptions;
 
     public ObservableCollection<string> RewardOptions
     {
         get => _rewardOptions;
-        private set
+        private init
         {
             _rewardOptions = value;
             RaisePropertyChanged();
@@ -80,7 +80,7 @@ public class AutoAddSingleItem : INPC
         }
 
         _parent = parent;
-        Remove = new SimpleCommand(() => RemoveFromParent());
+        Remove = new SimpleCommand(RemoveFromParent);
         Increment = new SimpleCommand(() => AddCount(true));
     }
 
@@ -97,7 +97,7 @@ public class AutoAddSingleItem : INPC
                 ? nameParts[1].Replace(" Blueprint", "")
                 : nameParts[1]);
 
-            Main.AddLog("Incrementing owned amount for part \"" + partName + "\"");
+            Logger.Debug("Incrementing owned amount for part {PartName}", partName);
 
             try
             {
@@ -107,8 +107,7 @@ public class AutoAddSingleItem : INPC
             }
             catch (Exception ex)
             {
-                Main.AddLog("FAILED to increment owned amount, Name: " + item     + ", primeName: "     + primeName +
-                            ", partName: "                             + partName + Environment.NewLine + ex.Message);
+                Logger.Error(ex, "FAILED to increment owned amount, Name: {Item}, primeName: {PrimeName}, partName: {PartName}", item, primeName, partName);
                 saveFailed = true;
             }
         }
@@ -131,11 +130,7 @@ public class AutoAddSingleItem : INPC
 
     private void RemoveFromParent()
     {
-        if (_parent != null)
-        {
-            _parent.RemoveItem(this);
-        }
-
+        _parent?.RemoveItem(this);
         RaisePropertyChanged();
     }
 }

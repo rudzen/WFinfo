@@ -31,7 +31,7 @@ public interface IWindowInfoService
     /// <summary>
     /// Gets the screen the game is currently located on.
     /// </summary>
-    Screen Screen { get; }
+    Screen? Screen { get; }
 
     /// <summary>
     /// Updates all cached info about the window.
@@ -42,5 +42,5 @@ public interface IWindowInfoService
     /// Uses a bitmap to set window info. Any further <see cref="UpdateWindow"/> calls will overwrite this info.
     /// </summary>
     /// <param name="bitmap">Source image</param>
-    void UseImage(Bitmap bitmap);
+    void UseImage(Bitmap? bitmap);
 }

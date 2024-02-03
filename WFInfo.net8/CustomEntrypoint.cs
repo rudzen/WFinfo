@@ -6,7 +6,11 @@ using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Windows.Forms;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Win32;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
 using Tesseract;
 
 namespace WFInfo;
@@ -74,11 +78,17 @@ public class CustomEntrypoint
     public static void Main()
     {
         AppDomain currentDomain = AppDomain.CurrentDomain;
-        currentDomain.UnhandledException += new UnhandledExceptionEventHandler(MyHandler);
+        currentDomain.UnhandledException += MyHandler;
 
+        var configuration = ConfigurationBuilder().Build();
+        var logger = CreateLogger(configuration);
+        
         Directory.CreateDirectory(appPath);
 
         string thisprocessname = Process.GetCurrentProcess().ProcessName;
+        
+        logger.Information("Starting WFInfo V{Version}", build_version);
+        
         string version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
         if (Process.GetProcesses().Count(p => p.ProcessName == thisprocessname) > 1)
         {
@@ -100,7 +110,7 @@ public class CustomEntrypoint
         Directory.CreateDirectory(appdata_tessdata_folder);
 
         cleanLegacyTesseractIfNeeded();
-        CollectDebugInfo();
+        CollectDebugInfo().GetAwaiter().GetResult();
         tesseract_hotlink_platform_specific_prefix = tesseract_hotlink_prefix;
 
         // Refresh traineddata structure
@@ -200,11 +210,11 @@ public class CustomEntrypoint
         return webClient;
     }
 
-    public static void CollectDebugInfo()
+    private static async Task CollectDebugInfo()
     {
         // Redownload if DLL is not present or got corrupted
-        using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-        sw.WriteLineAsync(
+        await using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
+        await sw.WriteLineAsync(
             "--------------------------------------------------------------------------------------------------------------------------------------------");
 
         try
@@ -217,12 +227,15 @@ public class CustomEntrypoint
         }
         catch (Exception e)
         {
-            sw.WriteLineAsync("[" + DateTime.UtcNow + "] Unable to fetch CPU model due to:" + e);
+            await sw.WriteLineAsync("[" + DateTime.UtcNow + "] Unable to fetch CPU model due to:" + e);
         }
 
         //Log OS version
-        sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Detected Windows version: {Environment.OSVersion}");
+        await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Detected Windows version: {Environment.OSVersion}");
 
+        //Log 64 bit application
+        await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] 64bit application: {Environment.Is64BitProcess}");
+        
         //Log .net Version
         using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32)
                                                .OpenSubKey("SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\\"))
@@ -232,13 +245,13 @@ public class CustomEntrypoint
                 int releaseKey = Convert.ToInt32(ndpKey.GetValue("Release"));
                 if (true)
                 {
-                    sw.WriteLineAsync("[" + DateTime.UtcNow +
-                                      $"] Detected .net version: {CheckFor45DotVersion(releaseKey)}");
+                    await sw.WriteLineAsync("[" + DateTime.UtcNow +
+                                            $"] Detected .net version: {CheckFor45DotVersion(releaseKey)}");
                 }
             }
             catch (Exception e)
             {
-                sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch .net version due to: {e}");
+                await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch .net version due to: {e}");
             }
         }
 
@@ -252,14 +265,14 @@ public class CustomEntrypoint
                 {
                     if (item.Contains("VC,redist.x64,amd64"))
                     {
-                        sw.WriteLineAsync(
+                        await sw.WriteLineAsync(
                             "[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
                     }
                 }
             }
             catch (Exception e)
             {
-                sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch x64 runtime due to: {e}");
+                await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch x64 runtime due to: {e}");
             }
         }
 
@@ -273,14 +286,14 @@ public class CustomEntrypoint
                 {
                     if (item.Contains("VC,redist.x86,x86"))
                     {
-                        sw.WriteLineAsync(
+                        await sw.WriteLineAsync(
                             "[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
                     }
                 }
             }
             catch (Exception e)
             {
-                sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch x86 runtime due to: {e}");
+                await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch x86 runtime due to: {e}");
             }
         }
     }
@@ -476,5 +489,52 @@ public class CustomEntrypoint
         byte[] assemblyRawBytes = new byte[stream.Length];
         stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
         return Assembly.Load(assemblyRawBytes);
+    }
+
+    private static ILogger CreateLogger(IConfiguration configuration)
+    {
+        const string defaultTemplate =
+            "[{Timestamp:HH:mm:ss} T:{ThreadId} {Level:u3}] {Message:lj} {SourceContext}{NewLine}{Exception}";
+        LogEventLevel level;
+
+        #if DEBUG
+        level = LogEventLevel.Debug;
+        #else
+        level = LogEventLevel.Information;
+        #endif
+        
+        // Apply the config to the logger
+        Log.Logger = new LoggerConfiguration()
+                     .ReadFrom.Configuration(configuration)
+                     .Enrich.WithThreadId()
+                     .Enrich.FromLogContext()
+#if DEBUG
+                     .WriteTo.File(
+                         restrictedToMinimumLevel: LogEventLevel.Verbose,
+                         outputTemplate: defaultTemplate,
+                         path:Path.Combine(appPath, "wf_info_debug.log.txt"))
+                     .WriteTo.Debug(outputTemplate: defaultTemplate)
+#endif
+                     .CreateLogger();
+        AppDomain.CurrentDomain.ProcessExit += static (_, _) => Log.CloseAndFlush();
+        return Log.Logger;
+    }
+
+    private static IConfigurationBuilder ConfigurationBuilder()
+    {
+#if RELEASE
+        const string envName = "Production";
+#else
+        const string envName = "Development";
+#endif
+        // Create our configuration sources
+        return new ConfigurationBuilder()
+               // Add environment variables
+               .AddEnvironmentVariables()
+               // Set base path for Json files as the startup location of the application
+               .SetBasePath(Directory.GetCurrentDirectory())
+               // Add application settings json files
+               .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+               .AddJsonFile($"appsettings.{envName}.json", optional: true, reloadOnChange: false);
     }
 }

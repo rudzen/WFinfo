@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Serilog;
 using WFInfo.Settings;
 
 namespace WFInfo;
@@ -10,6 +11,8 @@ namespace WFInfo;
 /// </summary>
 public partial class Login : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<Login>();
+
     #region default methods
 
     public Login()
@@ -60,9 +63,9 @@ public partial class Login : Window
         }
         catch (Exception ex)
         {
+            Logger.Error(ex, "Failed to login");
             Main.dataBase.JWT = null;
             SettingsWindow.Save();
-            Main.AddLog("Couldn't login: " + ex);
             string StatusMessage; //StatusMessage = text to display on StatusUpdate() AND the error box under login 
             byte StatusSeverity;  //StatusSeverity = Severity for StatusUpdate()
             if (ex.Message.Contains("email"))

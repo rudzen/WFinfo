@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
+using Serilog;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.Screenshot;
 
@@ -13,6 +14,8 @@ namespace WFInfo.Settings;
 /// </summary>
 public class ApplicationSettings : IReadOnlyApplicationSettings
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<ApplicationSettings>();
+
     /// <summary>
     /// Global singleton access to readonly settings
     /// </summary>
@@ -132,7 +135,7 @@ public class ApplicationSettings : IReadOnlyApplicationSettings
     [OnError]
     internal void OnError(StreamingContext context, ErrorContext errorContext)
     {
-        Main.AddLog("Failed to parse settings file: " + errorContext.Error.Message);
+        Logger.Error("Failed to parse settings file. error={Error}", errorContext.Error.Message);
         errorContext.Handled = true;
     }
 }

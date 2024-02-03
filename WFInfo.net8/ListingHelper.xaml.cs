@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using WebSocketSharp;
 
 namespace WFInfo;
@@ -12,8 +13,9 @@ namespace WFInfo;
 /// </summary>
 public partial class ListingHelper : Window
 {
-    public List<KeyValuePair<string, RewardCollection>> ScreensList { get; set; } =
-        new List<KeyValuePair<string, RewardCollection>>();
+    private static readonly ILogger Logger = Log.Logger.ForContext<ListingHelper>();
+
+    public List<KeyValuePair<string, RewardCollection>> ScreensList { get; private set; } = new();
 
     public List<List<string>> PrimeRewards { get; set; } = new List<List<string>>();
 
@@ -61,7 +63,8 @@ public partial class ListingHelper : Window
     /// <param name="index">The index needed for the screen</param>
     public void SetScreen(int index)
     {
-        Main.AddLog($"Screen list is {ScreensList.Count} long and setting to index: {index}");
+        Logger.Debug("Setting screen index. count={Count},index={Index}", ScreensList.Count, index);
+        
         if (ScreensList.Count == 0)
             Hide();
         if (ScreensList.Count < index || 0 > index)
@@ -96,7 +99,7 @@ public partial class ListingHelper : Window
             {
                 Next.Content = "...";
                 var rewardCollection =
-                    Task.Run(() => Main.listingHelper.GetRewardCollection(PrimeRewards.First())).Result;
+                    Task.Run(() => Main.listingHelper.GetRewardCollection(PrimeRewards[0])).Result;
                 if (rewardCollection.PrimeNames.Count != 0)
                     Main.listingHelper.ScreensList.Add(
                         new KeyValuePair<string, RewardCollection>("", rewardCollection));
@@ -105,8 +108,7 @@ public partial class ListingHelper : Window
             }
             catch (Exception exception)
             {
-                Main.AddLog(
-                    $"Error thrown in NextScreen in ListingHelper.xaml.cs: {exception}, Primerewarwds.count: {PrimeRewards.Count}, SelectedRewardIndex {SelectedRewardIndex}");
+                Logger.Error(exception, "Error thrown in NextScreen. rewardCount={Count}, SelectedRewardIndex={Index}", PrimeRewards.Count, SelectedRewardIndex);
                 throw;
             }
         }
@@ -185,7 +187,7 @@ public partial class ListingHelper : Window
     /// <param name="e"></param>
     private void ConfirmListing(object sender, RoutedEventArgs e)
     {
-        Main.AddLog("Trying to place listing");
+        Logger.Debug("Trying to place listing");
         try
         {
             var primeItem = (string)ComboBox.Items[ComboBox.SelectedIndex];
@@ -210,7 +212,7 @@ public partial class ListingHelper : Window
         }
         catch (Exception exception)
         {
-            Main.AddLog(exception.ToString());
+            Logger.Error(exception, "Failed to place listing");
             var newEntry =
                 new KeyValuePair<string, RewardCollection>(exception.ToString(), ScreensList[PageIndex].Value);
             ScreensList.RemoveAt(PageIndex);

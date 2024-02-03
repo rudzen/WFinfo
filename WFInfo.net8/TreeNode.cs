@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Serilog;
 
 namespace WFInfo;
 
@@ -35,18 +36,11 @@ public class INPC : INotifyPropertyChanged
     }
 }
 
-public class SimpleCommand : ICommand
+public class SimpleCommand(Action? action) : ICommand
 {
-    public SimpleCommand(Action action)
-    {
-        Action = action;
-    }
-
-    public Action Action { get; set; }
-
     public bool CanExecute(object parameter)
     {
-        return (Action != null);
+        return (action != null);
     }
 
     public event EventHandler CanExecuteChanged
@@ -58,12 +52,14 @@ public class SimpleCommand : ICommand
 
     public void Execute(object parameter)
     {
-        Action?.Invoke();
+        action?.Invoke();
     }
 }
 
 public class TreeNode : INPC
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<TreeNode>();
+
     private const double INTACT_CHANCE_RARE = 0.02;
     private const double RADIANT_CHANCE_RARE = 0.1;
     private const double INTACT_CHANCE_UNCOMMON = 0.11;
@@ -492,10 +488,13 @@ public class TreeNode : INPC
             prnt += kvp.Key + "(" + kvp.Value + ") ";
         }
 
-        Main.AddLog(prnt);
+        Logger.Debug("Matched text : {Text}", prnt);
     }
 
-    public bool FilterSearchText(string[] searchText, bool removeLeaves, bool additionalFilter = false,
+    public bool FilterSearchText(
+        IEnumerable<string> searchText,
+        bool removeLeaves,
+        bool additionalFilter = false,
         Dictionary<string, bool> matchedText = null)
     {
         Dictionary<string, bool> matchedTextCopy = new Dictionary<string, bool>();

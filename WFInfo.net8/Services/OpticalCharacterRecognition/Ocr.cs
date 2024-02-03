@@ -3,13 +3,13 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
-using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using Tesseract;
+using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.HDRDetection;
 using WFInfo.Services.Screenshot;
 using WFInfo.Services.WindowInfo;
@@ -21,10 +21,12 @@ using Pen = System.Drawing.Pen;
 using Point = System.Drawing.Point;
 using Rect = Tesseract.Rect;
 
-namespace WFInfo.net8.Services.OpticalCharacterRecognition;
+namespace WFInfo.Services.OpticalCharacterRecognition;
 
 internal class OCR
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<OCR>();
+
     private static readonly string applicationDirectory =
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
@@ -125,7 +127,7 @@ internal class OCR
         GdiScreenshotService gdiScreenshot,
         WindowsCaptureScreenshotService? windowsScreenshot = null)
     {
-        Directory.CreateDirectory(Main.AppPath + @"\Debug");
+        Directory.CreateDirectory(Path.Combine(Main.AppPath, "Debug"));
         _tesseractService = tesseractService;
         _tesseractService.Init();
         _soundPlayer = soundPlayer;
@@ -151,8 +153,7 @@ internal class OCR
 
         processingActive = true;
         Main.StatusUpdate("Processing...", 0);
-        Main.AddLog(
-            "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
+        Logger.Debug("----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
 
         DateTime time = DateTime.UtcNow;
         timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
@@ -192,9 +193,9 @@ internal class OCR
         if (firstChecks == null || firstChecks.Length == 0 || CheckIfError())
         {
             processingActive = false;
-            Main.AddLog(("----  Partial Processing Time, couldn't find rewards " + (watch.ElapsedMilliseconds - start) +
-                         " ms  ------------------------------------------------------------------------------------------")
-                .Substring(0, 108));
+            Logger.Debug(
+                "----  Partial Processing Time, couldn't find rewards {Time} ms  ------------------------------------------------------------------------------------------".Substring(0, 108),
+                (watch.ElapsedMilliseconds - start));
             Main.StatusUpdate("Couldn't find any rewards to display", 2);
             if (firstChecks == null)
             {
@@ -363,7 +364,7 @@ internal class OCR
                 });
             }
 
-            Main.AddLog(("----  Total Processing Time " + (end - start) +
+            Logger.Debug(("----  Total Processing Time " + (end - start) +
                          " ms  ------------------------------------------------------------------------------------------")
                 .Substring(0, 108));
             watch.Stop();
@@ -681,12 +682,11 @@ internal class OCR
         }
 #endif
 
-
-        Main.AddLog("CLOSEST THEME(" + max.ToString("F2", Main.culture) + "): " + active.ToString());
+        Logger.Debug("CLOSEST THEME(" + max.ToString("F2", Main.culture) + "): " + active.ToString());
         closestThresh = max;
         if (_settings.ThemeSelection != WFtheme.AUTO)
         {
-            Main.AddLog("Theme overwrite present, setting to: " + _settings.ThemeSelection.ToString());
+            Logger.Debug("Theme overwrite present, setting to: " + _settings.ThemeSelection.ToString());
             return _settings.ThemeSelection;
         }
 
@@ -858,7 +858,7 @@ internal class OCR
         }
 
         watch.Stop();
-        Main.AddLog("Snap-it finished, displayed reward count:" + resultCount + ", time: " + (end - start) + "ms");
+        Logger.Debug("Snap-it finished, displayed reward count:" + resultCount + ", time: " + (end - start) + "ms");
         if (_settings.SnapitExport)
         {
             File.AppendAllText(
@@ -1200,7 +1200,7 @@ internal class OCR
         if (numberTooLarge > .3 * foundItems.Count || numberTooFewCharacters > .4 * foundItems.Count)
         {
             //Log old noise level heuristics
-            Main.AddLog("numberTooLarge: " + numberTooLarge + ", numberTooFewCharacters: " + numberTooFewCharacters +
+            Logger.Debug("numberTooLarge: " + numberTooLarge + ", numberTooFewCharacters: " + numberTooFewCharacters +
                         ", numberTooLargeButEnoughCharacters: " + numberTooLargeButEnoughCharacters +
                         ", foundItems.Count: " + foundItems.Count);
         }
@@ -1225,7 +1225,7 @@ internal class OCR
         List<InventoryItem> foundItems,
         Font font)
     {
-        Main.AddLog("Starting Item Counting");
+        Logger.Debug("Starting Item Counting");
         Pen darkCyan = new Pen(Brushes.DarkCyan);
         Pen red = new Pen(Brushes.Red);
         Pen cyan = new Pen(Brushes.Cyan);
@@ -1711,13 +1711,11 @@ internal class OCR
     /// <param name="fullShot">Image to scan</param>
     internal static void ProcessProfileScreen(Bitmap fullShot)
     {
-        Stopwatch watch = new Stopwatch();
-        watch.Start();
-        long start = watch.ElapsedMilliseconds;
+        long start = Stopwatch.GetTimestamp();
 
         string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
         fullShot.Save(Main.AppPath + @"\Debug\ProfileImage " + timestamp + ".png");
-        List<InventoryItem> foundParts = FindOwnedItems(fullShot, timestamp, start, watch);
+        List<InventoryItem> foundParts = FindOwnedItems(fullShot, timestamp, in start);
         for (int i = 0; i < foundParts.Count; i++)
         {
             InventoryItem part = foundParts[i];
@@ -1729,7 +1727,7 @@ internal class OCR
             string checkName =
                 Main.dataBase.GetPartName(part.Name + " prime Blueprint", out int primeProximity, true,
                     out _); //also add prime to check if that gives better match. If so, this is a non-prime
-            Main.AddLog("Checking \""  + part.Name.Trim() + "\", ("   + proximity + ")\"" + name + "\", +prime (" +
+            Logger.Debug("Checking \""  + part.Name.Trim() + "\", ("   + proximity + ")\"" + name + "\", +prime (" +
                         primeProximity + ")\""            + checkName + "\"");
 
             //Decide if item is an actual prime, if so mark as mastered
@@ -1743,11 +1741,11 @@ internal class OCR
                 {
                     Main.dataBase.equipmentData[primeName]["mastered"] = true;
 
-                    Main.AddLog("Marked \"" + primeName + "\" as mastered");
+                    Logger.Debug("Marked \"" + primeName + "\" as mastered");
                 }
                 else
                 {
-                    Main.AddLog("Failed to mark \"" + primeName + "\" as mastered");
+                    Logger.Debug("Failed to mark \"" + primeName + "\" as mastered");
                 }
             }
         }
@@ -1755,17 +1753,15 @@ internal class OCR
         Main.dataBase.SaveAllJSONs();
         Main.RunOnUIThread(() => { EquipmentWindow.INSTANCE.reloadItems(); });
 
-        long end = watch.ElapsedMilliseconds;
-        if (end - start < 10000)
+        var end = Stopwatch.GetElapsedTime(start);
+        if (end < TimeSpan.FromSeconds(10))
         {
-            Main.StatusUpdate("Completed Profile Scanning(" + (end - start) + "ms)", 0);
+            Main.StatusUpdate("Completed Profile Scanning(" + end + ")", 0);
         }
         else
         {
-            Main.StatusUpdate("Lower brightness may increase speed(" + (end - start) + "ms)", 1);
+            Main.StatusUpdate("Lower brightness may increase speed(" + end + ")", 1);
         }
-
-        watch.Stop();
     }
 
     /// <summary>
@@ -1797,8 +1793,7 @@ internal class OCR
     /// <param name="ProfileImage">Image of profile screen to scan, debug markings will be drawn on this</param>
     /// <param name="timestamp">Time started at, used for file name</param>
     /// <returns>List of found items</returns>
-    private static List<InventoryItem> FindOwnedItems(Bitmap ProfileImage, string timestamp, long start,
-        Stopwatch watch)
+    private static List<InventoryItem> FindOwnedItems(Bitmap ProfileImage, string timestamp, in long start)
     {
         Pen orange = new Pen(Brushes.Orange);
         Pen red = new Pen(Brushes.Red);
@@ -1809,7 +1804,7 @@ internal class OCR
         List<InventoryItem> foundItems = [];
         Bitmap ProfileImageClean = new Bitmap(ProfileImage);
         int probe_interval = ProfileImage.Width / 120;
-        Main.AddLog("Using probe interval: " + probe_interval);
+        Logger.Debug("Using probe interval: " + probe_interval);
 
         int imgWidth = ProfileImageClean.Width;
         BitmapData lockedBitmapData = ProfileImageClean.LockBits(
@@ -1963,7 +1958,7 @@ internal class OCR
                         {
                             g.DrawRectangle(pink, leftEdge, topEdge, width, height);
                             x = Math.Max(rightEdge, x);
-                            if (watch.ElapsedMilliseconds - start > 10000)
+                            if (Stopwatch.GetElapsedTime(start) > TimeSpan.FromSeconds(10))
                             {
                                 Main.StatusUpdate("High noise, this might be slow", 3);
                             }
@@ -2261,30 +2256,30 @@ internal class OCR
 
         try
         {
-            Main.AddLog($"Fullscreen is {fullScreen.Size}:, trying to clone: {rectangle.Size} at {rectangle.Location}");
+            Logger.Debug($"Fullscreen is {fullScreen.Size}:, trying to clone: {rectangle.Size} at {rectangle.Location}");
             preFilter = fullScreen.Clone(new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop),
                 fullScreen.PixelFormat);
         }
         catch (Exception ex)
         {
-            Main.AddLog("Something went wrong with getting the starting image: " + ex.ToString());
+            Logger.Debug("Something went wrong with getting the starting image: " + ex.ToString());
             throw;
         }
 
         var end = Stopwatch.GetElapsedTime(start);
-        Main.AddLog("Grabbed images " + end);
+        Logger.Debug("Grabbed images " + end);
         start = Stopwatch.GetTimestamp();
 
         active = GetThemeWeighted(out var closest, fullScreen);
 
         end = Stopwatch.GetElapsedTime(start);
-        Main.AddLog("Got theme " + end);
+        Logger.Debug("Got theme " + end);
         start = Stopwatch.GetTimestamp();
 
         int[] rows = new int[preFilter.Height];
         // 0 => 50   27 => 77   50 => 100
 
-        //Main.AddLog("ROWS: 0 to " + preFilter.Height);
+        //Logger.Debug("ROWS: 0 to " + preFilter.Height);
         //var postFilter = preFilter;
         for (int y = 0; y < preFilter.Height; y++)
         {
@@ -2305,7 +2300,7 @@ internal class OCR
         //postFilter.Save(Main.AppPath + @"\Debug\PostFilter" + timestamp + ".png");
 
         end = Stopwatch.GetElapsedTime(start);
-        Main.AddLog("Filtered Image " + end);
+        Logger.Debug("Filtered Image " + end);
         start = Stopwatch.GetTimestamp();
 
         double[] percWeights = new double[51];
@@ -2363,7 +2358,7 @@ internal class OCR
 
         end = Stopwatch.GetElapsedTime(start);
 
-        Main.AddLog("Got scaling " + end);
+        Logger.Debug("Got scaling " + end);
 
         int[] topFive = [-1, -1, -1, -1, -1];
 
@@ -2383,7 +2378,7 @@ internal class OCR
 
         for (int i = 0; i < 5; i++)
         {
-            Main.AddLog("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
+            Logger.Debug("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
                         percWeights[topFive[i]].ToString("F2", Main.culture) + " -- " +
                         topWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
                         midWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
@@ -2425,7 +2420,7 @@ internal class OCR
         }
         catch (Exception ex)
         {
-            Main.AddLog(
+            Logger.Debug(
                 "Something went wrong while trying to copy the right part of the screen into partial screenshot: " +
                 ex.ToString());
             throw;
@@ -2434,7 +2429,7 @@ internal class OCR
         preFilter.Dispose();
 
         end = Stopwatch.GetElapsedTime(beginning);
-        Main.AddLog("Finished function " + end);
+        Logger.Debug("Finished function " + end);
         partialScreenshot.Save(Main.AppPath + @"\Debug\PartialScreenshot" + timestamp + ".png");
         return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
     }
@@ -2486,7 +2481,7 @@ internal class OCR
             if (counts[y] > 5 * counts[y - 1] && counts[y] > height * 2)
             {
                 Bitmap tmp = filtered.Clone(new Rectangle(0, 0, width, y), filtered.PixelFormat);
-                Main.AddLog("Possible selection border in image, cropping height to: " + y + " (was " + height + ")");
+                Logger.Debug("Possible selection border in image, cropping height to: " + y + " (was " + height + ")");
                 filtered.Dispose();
                 filtered = tmp;
             }
@@ -2505,8 +2500,8 @@ internal class OCR
         }
 
         double total = totalEven          + totalOdd;
-        Main.AddLog("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.culture) + "%");
-        Main.AddLog("ODD DISTRIBUTION: "  + (totalOdd  / total * 100).ToString("F2", Main.culture) + "%");
+        Logger.Debug("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.culture) + "%");
+        Logger.Debug("ODD DISTRIBUTION: "  + (totalOdd  / total * 100).ToString("F2", Main.culture) + "%");
 
         int boxWidth = partBox.Width / 4;
         int boxHeight = filtered.Height;
@@ -2673,7 +2668,7 @@ internal class OCR
         ret.Add((currPartTop.Trim() + " " + currPartBot.Trim()).Trim());
 
 
-        Main.AddLog((ret[0].Length == 0 ? ret.Count - 1 : ret.Count) + " Players Found -- Odds (" + oddCount +
+        Logger.Debug((ret[0].Length == 0 ? ret.Count - 1 : ret.Count) + " Players Found -- Odds (" + oddCount +
                     ") vs Evens ("                                   + evenCount                  + ")");
 
         if ((oddCount == 0 && evenCount == 0) || oddCount == evenCount)
@@ -2710,16 +2705,16 @@ internal class OCR
             switch (_settings.HdrSupport)
             {
                 case HdrSupportEnum.On:
-                    Main.AddLog("Using new windows capture API for an HDR screenshot");
+                    Logger.Debug("Using new windows capture API for an HDR screenshot");
                     screenshot = _windowsScreenshot;
                     break;
                 case HdrSupportEnum.Off:
-                    Main.AddLog("Using old GDI service for a SDR screenshot");
+                    Logger.Debug("Using old GDI service for a SDR screenshot");
                     screenshot = _gdiScreenshot;
                     break;
                 case HdrSupportEnum.Auto:
                     var isHdr = _hdrDetector.IsHDR;
-                    Main.AddLog($"Automatically determining HDR status: {isHdr} | Using corresponding service");
+                    Logger.Debug($"Automatically determining HDR status: {isHdr} | Using corresponding service");
                     screenshot = isHdr ? _windowsScreenshot : _gdiScreenshot;
                     break;
                 default:

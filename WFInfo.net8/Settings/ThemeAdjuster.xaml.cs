@@ -6,7 +6,9 @@ using System.Windows.Input;
 using System.Drawing;
 using System.Windows.Media.Imaging;
 using System.Windows.Forms;
+using Serilog;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
+using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
 
@@ -15,6 +17,8 @@ namespace WFInfo;
 /// </summary>
 public partial class ThemeAdjuster : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<ThemeAdjuster>();
+
     private readonly Settings.SettingsViewModel _viewModel;
     public Settings.SettingsViewModel SettingsViewModel => _viewModel;
 
@@ -90,7 +94,7 @@ public partial class ThemeAdjuster : Window
         {
             foreach (FileInfo file in files)
             {
-                Main.AddLog("Loading filter testing with file: " + file.Name);
+                Logger.Debug("Loading filter testing with file: {File}", file.Name);
 
                 //Get the path of specified file
                 image = new Bitmap(file.FullName);
@@ -99,8 +103,7 @@ public partial class ThemeAdjuster : Window
         }
         catch (Exception exc)
         {
-            Main.AddLog(exc.Message);
-            Main.AddLog(exc.StackTrace);
+            Logger.Error(exc, "Failed to load image");
             Main.StatusUpdate("Failed to load image", 1);
         }
 
@@ -132,7 +135,7 @@ public partial class ThemeAdjuster : Window
                         {
                             foreach (string file in openFileDialog.FileNames)
                             {
-                                Main.AddLog("Loading filter testing with file: " + file);
+                                Logger.Debug("Loading filter testing with file: {File}", file);
 
                                 //Get the path of specified file
                                 image = new Bitmap(file);
@@ -141,8 +144,7 @@ public partial class ThemeAdjuster : Window
                         }
                         catch (Exception exc)
                         {
-                            Main.AddLog(exc.Message);
-                            Main.AddLog(exc.StackTrace);
+                            Logger.Error(exc, "Failed to load image");
                             Main.StatusUpdate("Failed to load image", 1);
                         }
 
@@ -274,8 +276,7 @@ public partial class ThemeAdjuster : Window
         }
         catch (Exception exc)
         {
-            Main.AddLog("Custom Filter Import failed. Input: " + Environment.NewLine + input + Environment.NewLine +
-                        "Custom filter import error message: " + exc.Message);
+            Logger.Error(exc, "Custom Filter Import failed. Input: {Input}", input);
             Main.SpawnErrorPopup(DateTime.UtcNow);
         }
     }

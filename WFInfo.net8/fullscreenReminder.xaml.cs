@@ -1,10 +1,13 @@
 ﻿using System.Windows;
 using System.Windows.Input;
+using Serilog;
 
 namespace WFInfo;
 
 public partial class FullscreenReminder : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<FullscreenReminder>(); 
+    
     public FullscreenReminder()
     {
         InitializeComponent();
@@ -14,7 +17,7 @@ public partial class FullscreenReminder : Window
 
     private void DisableOverlayClick(object sender, RoutedEventArgs e)
     {
-        Main.AddLog($"[Fullscreen Reminder] User selected \"Disable overlay mode\" - showing Setting window");
+        Logger.Debug("[Fullscreen Reminder] User selected \"Disable overlay mode\" - showing Setting window");
         Main.settingsWindow.Show();
         Main.settingsWindow.populate();
         Main.settingsWindow.Left = Left;
@@ -25,7 +28,7 @@ public partial class FullscreenReminder : Window
 
     private void NoClick(object sender, RoutedEventArgs e)
     {
-        Main.AddLog($"[Fullscreen Reminder] User selected \"Do nothing\"");
+        Logger.Debug($"[Fullscreen Reminder] User selected \"Do nothing\"");
         Close();
     }
 

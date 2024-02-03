@@ -2,11 +2,13 @@ using System.IO;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace WFInfo;
 
-public class EncryptedDataService
+public sealed class EncryptedDataService
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<EncryptedDataService>();
     private static readonly IDataProtector JwtProtector;
 
     static EncryptedDataService()
@@ -27,11 +29,11 @@ public class EncryptedDataService
         }
         catch (FileNotFoundException e)
         {
-            Main.AddLog($"{e.Message} JWT not set");
+            Logger.Error(e, "JWT not set");
         }
         catch (CryptographicException e)
         {
-            Main.AddLog($"{e.Message} JWT decryption failed");
+            Logger.Error(e, "JWT decryption failed");
         }
 
         return null;

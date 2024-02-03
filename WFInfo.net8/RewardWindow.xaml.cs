@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Input;
+using Serilog;
 
 namespace WFInfo;
 
@@ -8,13 +9,25 @@ namespace WFInfo;
 /// </summary>
 public partial class RewardWindow : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<RewardWindow>();
+
     public RewardWindow()
     {
         InitializeComponent();
     }
 
-    public void loadTextData(string name, string plat, string primeSetPlat, string ducats, string volume, bool vaulted,
-        bool mastered, string owned, int partNumber, bool resize = true, bool hideReward = false)
+    public void loadTextData(
+        string name,
+        string plat,
+        string primeSetPlat,
+        string ducats,
+        string volume,
+        bool vaulted,
+        bool mastered,
+        string owned,
+        int partNumber,
+        bool resize = true,
+        bool hideReward = false)
     {
         Show();
         Topmost = true;
@@ -46,7 +59,7 @@ public partial class RewardWindow : Window
                 firstDucatText.Text = ducats;
                 firstVolumeText.Text = volume + " sold last 48hrs";
                 firstVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                firstOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : "") + owned + " OWNED" : "";
+                firstOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
                 if (resize)
                     Width = 251;
                 break;
@@ -76,7 +89,7 @@ public partial class RewardWindow : Window
                 secondDucatText.Text = ducats;
                 secondVolumeText.Text = volume + " sold last 48hrs";
                 secondVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                secondOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : "") + owned + " OWNED" : "";
+                secondOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
                 if (resize)
                     Width = 501;
                 break;
@@ -106,7 +119,7 @@ public partial class RewardWindow : Window
                 thirdDucatText.Text = ducats;
                 thirdVolumeText.Text = volume + " sold last 48hrs";
                 thirdVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                thirdOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : "") + owned + " OWNED" : "";
+                thirdOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
                 if (resize)
                     Width = 751;
                 break;
@@ -136,13 +149,13 @@ public partial class RewardWindow : Window
                 fourthDucatText.Text = ducats;
                 fourthVolumeText.Text = volume + " sold last 48hrs";
                 fourthVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                fourthOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : "") + owned + " OWNED" : "";
+                fourthOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
                 if (resize)
                     Width = 1000;
                 break;
 
             default:
-                Main.AddLog("something went wrong while displaying: "       + name);
+                Logger.Error("something went wrong while displaying: {Name}", name);
                 Main.StatusUpdate("something went wrong while displaying: " + name + " in window", 1);
                 break;
         }

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using Serilog;
 using WebSocketSharp;
 
 namespace WFInfo;
@@ -11,6 +12,8 @@ namespace WFInfo;
 /// 
 public partial class SearchIt : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<SearchIt>();
+
     public SearchIt()
     {
         InitializeComponent();
@@ -64,7 +67,7 @@ public partial class SearchIt : Window
         }
         catch (Exception exception)
         {
-            Main.AddLog(exception.ToString());
+            Logger.Error(exception, "Failed to search");
         }
 
         Finish();
@@ -75,7 +78,7 @@ public partial class SearchIt : Window
     /// </summary>
     internal void Finish()
     {
-        searchField.Text = "";
+        searchField.Text = string.Empty;
         placeholder.Visibility = Visibility.Visible;
         searchField.Focusable = false;
         IsInUse = false;

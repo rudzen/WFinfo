@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Serilog;
 
 namespace WFInfo;
 
@@ -10,10 +11,12 @@ namespace WFInfo;
 /// </summary>
 public partial class EquipmentWindow : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<EquipmentWindow>();
+
     private List<string> types = ["Warframes", "Primary", "Secondary", "Melee", "Archwing", "Companion"];
     private Dictionary<string, TreeNode> primeTypes;
-    private bool searchActive = false;
-    private bool showAllEqmt = false;
+    private bool searchActive;
+    private bool showAllEqmt;
     private int searchTimerDurationMS = 500;
     public static System.Windows.Forms.Timer searchTimer = new();
     public static string[] searchText;
@@ -58,7 +61,7 @@ public partial class EquipmentWindow : Window
         {
             if (prime.Key.Contains("Prime"))
             {
-                string primeName = prime.Key.Substring(0, prime.Key.IndexOf("Prime") + 5);
+                string primeName = prime.Key[..(prime.Key.IndexOf("Prime") + 5)];
                 string primeType = prime.Value["type"].ToObject<string>();
                 bool mastered = prime.Value["mastered"].ToObject<bool>();
                 if (primeType.Contains("Sentinel") || primeType.Contains("Skin"))
@@ -68,7 +71,7 @@ public partial class EquipmentWindow : Window
 
                 if (!primeTypes.ContainsKey(primeType))
                 {
-                    TreeNode newType = new TreeNode(primeType, "", false, 0);
+                    TreeNode newType = new TreeNode(primeType, string.Empty, false, 0);
                     if (!types.Contains(primeType))
                         types.Add(primeType);
                     newType.SortNum = types.IndexOf(primeType);
@@ -114,14 +117,14 @@ public partial class EquipmentWindow : Window
                     }
                     else
                     {
-                        Main.AddLog("COULDN'T FIND MARKET VALUES FOR: " + primePart.Key);
+                        Logger.Debug("Couldn't find market values for part. name={PrimePart}", primePart.Key);
                         continue;
                     }
 
                     primeNode.AddChild(partNode);
                 }
 
-                if (primeNode.Children.Count() > 0)
+                if (primeNode.Children.Count > 0)
                 {
                     primeNode.GetSetInfo();
                     type.AddChild(primeNode);
@@ -370,7 +373,7 @@ public partial class EquipmentWindow : Window
             primeType.Value.ResetFilter();
 
         if ((bool)vaulted.IsChecked)
-            foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
+            foreach (var primeType in primeTypes)
                 primeType.Value.FilterOutVaulted(true);
 
         if (searchText != null && searchText.Length != 0)

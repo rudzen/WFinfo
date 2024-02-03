@@ -7,8 +7,10 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Authentication;
 using System.Text.RegularExpressions;
+using Serilog;
 using WebSocketSharp;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
+using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using WFInfo.Settings;
@@ -17,6 +19,8 @@ namespace WFInfo;
 
 class Data
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<Data>(); 
+
     public JObject marketItems; // Warframe.market item listing           {<id>: "<name>|<url_name>", ...}
 
     public JObject
@@ -89,7 +93,7 @@ class Data
     readonly HttpClient client;
     private string githubVersion;
     public bool rememberMe { get; set; }
-    private LogCapture EElogWatcher;
+    private LogCapture? EElogWatcher;
     private Task autoThread;
 
     private readonly IReadOnlyApplicationSettings _settings;
@@ -110,7 +114,7 @@ class Data
         _process = process;
         _window = window;
 
-        Main.AddLog("Initializing Databases");
+        Logger.Debug("Initializing Databases");
         marketItemsPath = ApplicationDirectory   + @"\market_items.json";
         marketDataPath = ApplicationDirectory    + @"\market_data.json";
         equipmentDataPath = ApplicationDirectory + @"\eqmt_data.json";
@@ -148,7 +152,7 @@ class Data
             }
             catch (Exception ex)
             {
-                Main.AddLog("Failed to start logcapture, exception: " + ex);
+                Logger.Debug("Failed to start logcapture, exception: " + ex);
                 Main.StatusUpdate("Failed to start capturing log", 1);
             }
         }
@@ -245,12 +249,12 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog("GetTopListings: " + e.Message);
+            Logger.Debug("GetTopListings: " + e.Message);
         }
 
 
         marketItems["version"] = Main.BuildVersion;
-        Main.AddLog("Item database has been downloaded");
+        Logger.Debug("Item database has been downloaded");
     }
 
     // Load market data from Sheets
@@ -269,7 +273,7 @@ class Data
                 DateTime timestamp = marketData["timestamp"].ToObject<DateTime>();
                 if (timestamp > DateTime.Now.AddHours(-12))
                 {
-                    Main.AddLog("Market Databases are up to date");
+                    Logger.Debug("Market Databases are up to date");
                     return false;
                 }
             }
@@ -281,7 +285,7 @@ class Data
         }
         catch
         {
-            Main.AddLog(
+            Logger.Debug(
                 "Failed to refresh items from warframe.market, skipping WFM update for now. Some items might have incomplete info.");
         }
 
@@ -322,14 +326,14 @@ class Data
         marketData["timestamp"] = DateTime.Now;
         marketData["version"] = Main.BuildVersion;
 
-        Main.AddLog("Plat database has been downloaded");
+        Logger.Debug("Plat database has been downloaded");
 
         return true;
     }
 
     private void LoadMarketItem(string item_name, string url)
     {
-        Main.AddLog("Load missing market item: " + item_name);
+        Logger.Debug("Load missing market item: " + item_name);
 
         Thread.Sleep(333);
         WebClient webClient = createWfmClient();
@@ -454,11 +458,11 @@ class Data
                 nameData[ignored.Key] = ignored.Key;
             }
 
-            Main.AddLog("Prime Database has been downloaded");
+            Logger.Debug("Prime Database has been downloaded");
             return true;
         }
 
-        Main.AddLog("Prime Database is up to date");
+        Logger.Debug("Prime Database is up to date");
         return false;
     }
 
@@ -489,7 +493,7 @@ class Data
 
     public bool Update()
     {
-        Main.AddLog("Checking for Updates to Databases");
+        Logger.Debug("Checking for Updates to Databases");
         WebClient webClient = CustomEntrypoint.createNewWebClient();
         JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
         bool saveDatabases = LoadMarket(allFiltered);
@@ -540,7 +544,7 @@ class Data
     {
         try
         {
-            Main.AddLog("Forcing market update");
+            Logger.Debug("Forcing market update");
             WebClient webClient = CustomEntrypoint.createNewWebClient();
             JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
             LoadMarket(allFiltered, true);
@@ -574,8 +578,8 @@ class Data
         }
         catch (Exception ex)
         {
-            Main.AddLog("Market Update Failed");
-            Main.AddLog(ex.ToString());
+            Logger.Debug("Market Update Failed");
+            Logger.Debug(ex.ToString());
             Main.StatusUpdate("Market Update Failed", 0);
             Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
@@ -594,7 +598,7 @@ class Data
     {
         try
         {
-            Main.AddLog("Forcing equipment update");
+            Logger.Debug("Forcing equipment update");
             WebClient webClient = CustomEntrypoint.createNewWebClient();
             JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
             LoadEqmtData(allFiltered, true);
@@ -611,8 +615,8 @@ class Data
         }
         catch (Exception ex)
         {
-            Main.AddLog("Prime Update Failed");
-            Main.AddLog(ex.ToString());
+            Logger.Debug("Prime Update Failed");
+            Logger.Debug(ex.ToString());
             Main.StatusUpdate("Prime Update Failed", 0);
             Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
@@ -977,7 +981,7 @@ class Data
         }
 
         if (!suppressLogging)
-            Main.AddLog("Found part(" + low + "): \"" + lowest_unfiltered + "\" from \"" + name + "\"");
+            Logger.Debug("Found part(" + low + "): \"" + lowest_unfiltered + "\" from \"" + name + "\"");
         return lowest;
     }
 
@@ -1015,7 +1019,7 @@ class Data
             }
         }
 
-        Main.AddLog("Found part(" + low + "): \"" + lowest_unfiltered + "\" from \"" + name + "\"");
+        Logger.Debug("Found part(" + low + "): \"" + lowest_unfiltered + "\" from \"" + name + "\"");
         return lowest;
     }
 
@@ -1128,8 +1132,8 @@ class Data
 
             Overlay.rewardsDisplaying = false;
             string csv = "";
-            Main.AddLog("Looping through rewards");
-            Main.AddLog("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +
+            Logger.Debug("Looping through rewards");
+            Logger.Debug("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +
                         _settings.AutoCount);
             foreach (var rewardscreen in Main.listingHelper.PrimeRewards)
             {
@@ -1141,7 +1145,7 @@ class Data
                         rewards += " || ";
                 }
 
-                Main.AddLog(rewards + ", detected choice: " + Main.listingHelper.SelectedRewardIndex);
+                Logger.Debug(rewards + ", detected choice: " + Main.listingHelper.SelectedRewardIndex);
 
 
                 if (_settings.AutoCSV)
@@ -1197,19 +1201,19 @@ class Data
 
             if (_settings.AutoCount)
             {
-                Main.AddLog("Opening AutoCount interface");
+                Logger.Debug("Opening AutoCount interface");
                 Main.RunOnUIThread(() => { AutoCount.ShowAutoCount(); });
             }
 
             if (_settings.AutoCSV)
             {
-                Main.AddLog("appending rewardExport.csv");
+                Logger.Debug("appending rewardExport.csv");
                 File.AppendAllText(ApplicationDirectory + @"\rewardExport.csv", csv);
             }
 
             if (_settings.AutoList)
             {
-                Main.AddLog("Opening AutoList interface");
+                Logger.Debug("Opening AutoList interface");
                 Main.RunOnUIThread(() =>
                 {
                     if (Main.listingHelper.ScreensList.Count == 1)
@@ -1220,7 +1224,7 @@ class Data
                 });
             }
 
-            Main.AddLog("Clearing listingHelper.PrimeRewards");
+            Logger.Debug("Clearing listingHelper.PrimeRewards");
             Main.RunOnUIThread(() => { Main.listingHelper.PrimeRewards.Clear(); });
         });
     }
@@ -1245,7 +1249,7 @@ class Data
                     OCR.GetThemeWeighted(out double diff);
                     if (!(diff > 40)) continue;
                     while (watch.ElapsedMilliseconds < wait) ;
-                    Main.AddLog("started auto processing");
+                    Logger.Debug("started auto processing");
                     OCR.ProcessRewardScreen();
                     break;
                 }
@@ -1253,7 +1257,7 @@ class Data
             else
             {
                 while (watch.ElapsedMilliseconds < fixedStop) ;
-                Main.AddLog("started auto processing (fixed delay)");
+                Logger.Debug("started auto processing (fixed delay)");
                 OCR.ProcessRewardScreen();
             }
 
@@ -1261,8 +1265,8 @@ class Data
         }
         catch (Exception ex)
         {
-            Main.AddLog("AUTO FAILED");
-            Main.AddLog(ex.ToString());
+            Logger.Debug("AUTO FAILED");
+            Logger.Debug(ex.ToString());
             Main.StatusUpdate("Auto Detection Failed", 0);
             Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
@@ -1294,7 +1298,7 @@ class Data
         var responseBody = await response.Content.ReadAsStringAsync();
         Regex rgxBody = new Regex("\"check_code\": \".*?\"");
         string censoredResponse = rgxBody.Replace(responseBody, "\"check_code\": \"REDACTED\"");
-        Main.AddLog(censoredResponse);
+        Logger.Debug(censoredResponse);
         if (response.IsSuccessStatusCode)
         {
             SetJWT(response.Headers);
@@ -1318,7 +1322,7 @@ class Data
     public async Task<bool> OpenWebSocket()
     {
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-        Main.AddLog("Connecting to websocket");
+        Logger.Debug("Connecting to websocket");
 
         if (marketSocket.IsAlive)
         {
@@ -1329,7 +1333,7 @@ class Data
         {
             if (e.Data.Contains("@WS/ERROR")) // error checking, report back to main.status
             {
-                Main.AddLog(e.Data);
+                Logger.Debug(e.Data);
                 Disconnect();
                 Main.SignOut();
             }
@@ -1357,7 +1361,7 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog("Unable to connect to socket: " + e.Message);
+            Logger.Debug("Unable to connect to socket: " + e.Message);
             return false;
         }
 
@@ -1415,7 +1419,7 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog($"ListItem: {e.Message} ");
+            Logger.Debug($"ListItem: {e.Message} ");
             return false;
         }
     }
@@ -1456,7 +1460,7 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog($"updateListing: {e.Message} ");
+            Logger.Debug($"updateListing: {e.Message} ");
             return false;
         }
     }
@@ -1516,7 +1520,7 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog("SetWebsocketStatus, Was unable to set status due to: " + e);
+            Logger.Debug("SetWebsocketStatus, Was unable to set status due to: " + e);
             throw;
         }
 
@@ -1603,7 +1607,7 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog("GetTopListings: " + e.Message);
+            Logger.Debug("GetTopListings: " + e.Message);
             return null;
         }
     }
@@ -1634,7 +1638,7 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog($"IsJWTvalid: {e.Message} ");
+            Logger.Debug($"IsJWTvalid: {e.Message} ");
             return false;
         }
     }
@@ -1695,7 +1699,7 @@ class Data
         }
         catch (Exception e)
         {
-            Main.AddLog("GetCurrentListing: " + e.Message);
+            Logger.Debug("GetCurrentListing: " + e.Message);
             return null;
         }
     }
@@ -1735,7 +1739,7 @@ class Data
             }
             catch (Exception e)
             {
-                Main.AddLog("PostReview: " + e.Message);
+                Logger.Debug("PostReview: " + e.Message);
                 return false;
             }
         }

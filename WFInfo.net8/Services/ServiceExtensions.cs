@@ -9,14 +9,14 @@ namespace WFInfo.Services;
 // TODO: Convert classes that use these services into services
 public static class ServiceExtensions
 {
-    public static void AddGDIScreenshots(this IServiceCollection services)
+    public static IServiceCollection AddGDIScreenshots(this IServiceCollection services)
     {
-        services.AddSingleton<IScreenshotService, GdiScreenshotService>();
+        return services.AddSingleton<IScreenshotService, GdiScreenshotService>();
     }
 
-    public static void AddWindowsCaptureScreenshots(this IServiceCollection services)
+    public static IServiceCollection AddWindowsCaptureScreenshots(this IServiceCollection services)
     {
-        services.AddSingleton<IScreenshotService, WindowsCaptureScreenshotService>();
+        return services.AddSingleton<IScreenshotService, WindowsCaptureScreenshotService>();
     }
 
     /// <summary>
@@ -25,25 +25,26 @@ public static class ServiceExtensions
     /// </summary>
     /// <param name="services"></param>
     /// <param name="primaryProvider">Whether to use this as the primary image source</param>
-    public static void AddImageScreenshots(this IServiceCollection services, bool primaryProvider = false)
+    public static IServiceCollection AddImageScreenshots(this IServiceCollection services, bool primaryProvider = false)
     {
-        if (primaryProvider) services.AddSingleton<IScreenshotService, ImageScreenshotService>();
-        else services.AddSingleton<ImageScreenshotService>();
+        return primaryProvider
+            ? services.AddSingleton<IScreenshotService, ImageScreenshotService>()
+            : services.AddSingleton<ImageScreenshotService>();
     }
 
-    public static void AddWin32WindowInfo(this IServiceCollection services)
+    public static IServiceCollection AddWin32WindowInfo(this IServiceCollection services)
     {
-        services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
+        return services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
     }
 
-    public static void AddProcessFinder(this IServiceCollection services)
+    public static IServiceCollection AddProcessFinder(this IServiceCollection services)
     {
-        services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
+        return services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
     }
 
-    public static void AddHDRDetection(this IServiceCollection services)
+    public static IServiceCollection AddHDRDetection(this IServiceCollection services)
     {
-        services.AddSingleton<IHDRDetectorService, SchemeHDRDetector>();
+        return services.AddSingleton<IHDRDetectorService, SchemeHDRDetector>();
     }
 
     // TODO: Convert old services

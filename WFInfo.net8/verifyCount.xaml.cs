@@ -2,7 +2,9 @@ using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using Serilog;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
+using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
 
@@ -11,6 +13,8 @@ namespace WFInfo;
 /// </summary>
 public partial class VerifyCount : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<VerifyCount>();
+    
     private static string itemPath = Main.AppPath   + @"\eqmt_data.json";
     private static string backupPath = Main.AppPath + @"\eqmt_data.json.bak";
 
@@ -43,23 +47,24 @@ public partial class VerifyCount : Window
         bool saveFailed = false;
         const string prime = "Prime";
         var primes = latestSnap.Where(x => x.Name.Contains(prime));
-        foreach (InventoryItem item in primes)
+        foreach (var item in primes)
         {
             string[] nameParts = item.Name.Split([prime], 2, StringSplitOptions.RemoveEmptyEntries);
             string primeName = nameParts[0] + prime;
             string partName = primeName + ((nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow"))
-                ? nameParts[1].Replace(" Blueprint", "")
+                ? nameParts[1].Replace(" Blueprint", string.Empty)
                 : nameParts[1]);
 
-            Main.AddLog("Saving count \"" + item.Count + "\" for part \"" + partName + "\"");
+            Logger.Debug("Saving item. count={Count},name={Name}", item.Count, partName);
             try
             {
                 Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"] = item.Count;
             }
             catch (Exception ex)
             {
-                Main.AddLog("FAILED to save count. Count: " + item.Count + ", Name: "     + item.Name +
-                            ", primeName: "                 + primeName  + ", partName: " + partName);
+                Logger.Error(ex, "Failed to save count. count={Count},name={Name},primeName={PrimeName},partName={PartName}", item.Count, item.Name, primeName, partName);
+                // Main.AddLog("FAILED to save count. Count: " + item.Count + ", Name: "     + item.Name +
+                //             ", primeName: "                 + primeName  + ", partName: " + partName);
                 saveFailed = true;
             }
         }

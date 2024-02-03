@@ -3,7 +3,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Serilog;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
+using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WindowInfo;
 
 namespace WFInfo;
@@ -14,6 +16,8 @@ namespace WFInfo;
 /// </summary>
 public partial class SnapItOverlay : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<SnapItOverlay>();
+
     public bool isEnabled;
     public Bitmap tempImage;
     private System.Windows.Point startDrag;
@@ -29,9 +33,9 @@ public partial class SnapItOverlay : Window
         Left = 0;
         Top = 0;
         InitializeComponent();
-        MouseDown += new MouseButtonEventHandler(canvas_MouseDown);
-        MouseUp += new MouseButtonEventHandler(canvas_MouseUp);
-        MouseMove += new MouseEventHandler(canvas_MouseMove);
+        MouseDown += canvas_MouseDown;
+        MouseUp += canvas_MouseUp;
+        MouseMove += canvas_MouseMove;
     }
 
     public void Populate(Bitmap screenshot)
@@ -79,12 +83,12 @@ public partial class SnapItOverlay : Window
         if (canvas.IsMouseCaptured)
             canvas.ReleaseMouseCapture();
         canvas.Cursor = Cursors.Arrow;
-        Main.AddLog("User drew rectangle: Starting point: " + startDrag.ToString() + " Width: " + rectangle.Width +
+        Logger.Debug("User drew rectangle: Starting point: " + startDrag.ToString() + " Width: " + rectangle.Width +
                     " Height:"                              + rectangle.Height);
         if (rectangle.Width < 10 || rectangle.Height < 10)
         {
             // box is smaller than 10x10 and thus will never be able to have any text. Also used as a failsave to prevent the program from crashing if the user makes a 0x0 sleection
-            Main.AddLog("User selected an area too small");
+            Logger.Debug("User selected an area too small");
             Main.StatusUpdate("Please slecet a larger area to scan", 2);
             return;
         }

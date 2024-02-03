@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Text;
+using Serilog;
 using WFInfo.Services.WarframeProcess;
 
 namespace WFInfo;
@@ -9,9 +10,11 @@ public delegate void LogWatcherEventHandler(object sender, string text);
 
 class LogCapture : IDisposable
 {
-    private readonly MemoryMappedFile memoryMappedFile;
-    private readonly EventWaitHandle bufferReadyEvent;
-    private EventWaitHandle dataReadyEvent;
+    private static readonly ILogger Logger = Log.Logger.ForContext<LogCapture>();
+    
+    private readonly MemoryMappedFile? memoryMappedFile;
+    private readonly EventWaitHandle? bufferReadyEvent;
+    private EventWaitHandle? dataReadyEvent;
     readonly CancellationTokenSource tokenSource = new CancellationTokenSource();
     private CancellationToken token;
     private readonly Timer timer;
@@ -24,7 +27,7 @@ class LogCapture : IDisposable
         _process = process;
 
         token = tokenSource.Token;
-        Main.AddLog("Starting LogCapture");
+        Logger.Debug("Starting LogCapture");
         memoryMappedFile = MemoryMappedFile.CreateOrOpen("DBWIN_BUFFER", 4096L);
 
         bufferReadyEvent =
@@ -32,7 +35,7 @@ class LogCapture : IDisposable
 
         if (!createdBuffer)
         {
-            Main.AddLog("The DBWIN_BUFFER_READY event exists.");
+            Logger.Debug("The DBWIN_BUFFER_READY event exists");
             return;
         }
 
@@ -46,30 +49,24 @@ class LogCapture : IDisposable
     {
         try
         {
-            TimeSpan timeout = TimeSpan.FromSeconds(1.0);
+            var timeout = TimeSpan.FromSeconds(1);
             bufferReadyEvent.Set();
             while (!token.IsCancellationRequested)
             {
                 if (!dataReadyEvent.WaitOne(timeout))
-                {
                     continue;
-                }
 
-                if (_process.Warframe != null && !_process.GameIsStreamed)
+                if (_process is { Warframe: not null, GameIsStreamed: false })
                 {
-                    using (MemoryMappedViewStream stream = memoryMappedFile.CreateViewStream())
+                    using MemoryMappedViewStream stream = memoryMappedFile.CreateViewStream();
+                    using BinaryReader reader = new BinaryReader(stream, Encoding.Default);
+                    uint processId = reader.ReadUInt32();
+                    if (processId == _process.Warframe.Id)
                     {
-                        using (BinaryReader reader = new BinaryReader(stream, Encoding.Default))
-                        {
-                            uint processId = reader.ReadUInt32();
-                            if (processId == _process.Warframe.Id)
-                            {
-                                char[] chars = reader.ReadChars(4092);
-                                int index = Array.IndexOf(chars, '\0');
-                                string message = new string(chars, 0, index);
-                                TextChanged(this, message.Trim());
-                            }
-                        }
+                        char[] chars = reader.ReadChars(4092);
+                        int index = Array.IndexOf(chars, '\0');
+                        string message = new string(chars, 0, index);
+                        TextChanged(this, message.Trim());
                     }
                 }
 
@@ -78,19 +75,14 @@ class LogCapture : IDisposable
         }
         catch (Exception ex)
         {
-            Main.AddLog(ex.ToString());
+            Logger.Error(ex, "Error in LogCapture");
             Main.RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
         finally
         {
-            if (memoryMappedFile != null)
-                memoryMappedFile.Dispose();
-
-            if (bufferReadyEvent != null)
-                bufferReadyEvent.Dispose();
-
-            if (dataReadyEvent != null)
-                dataReadyEvent.Dispose();
+            memoryMappedFile?.Dispose();
+            bufferReadyEvent?.Dispose();
+            dataReadyEvent?.Dispose();
         }
     }
 
@@ -101,27 +93,21 @@ class LogCapture : IDisposable
 
         if (!createdData)
         {
-            Main.AddLog("The DBWIN_DATA_READY event exists.");
+            Logger.Debug("The DBWIN_DATA_READY event exists");
             return;
         }
 
-        Task.Factory.StartNew(Run);
+        Task.Factory.StartNew(Run, token);
         timer.Dispose();
     }
 
     public void Dispose()
     {
-        if (memoryMappedFile != null)
-            memoryMappedFile.Dispose();
-
-        if (bufferReadyEvent != null)
-            bufferReadyEvent.Dispose();
-
-        if (dataReadyEvent != null)
-            dataReadyEvent.Dispose();
-
+        memoryMappedFile?.Dispose();
+        bufferReadyEvent?.Dispose();
+        dataReadyEvent?.Dispose();
         tokenSource.Cancel();
         tokenSource.Dispose();
-        Main.AddLog("Stoping LogCapture");
+        Logger.Debug("Stoping LogCapture");
     }
 }

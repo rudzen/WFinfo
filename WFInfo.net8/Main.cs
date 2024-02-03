@@ -18,12 +18,15 @@ using WFInfo.Services;
 using WFInfo.Services.HDRDetection;
 using Windows.Foundation.Metadata;
 using Windows.Graphics.Capture;
-using WFInfo.net8.Services.OpticalCharacterRecognition;
+using Serilog;
+using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
 
 internal class Main
 {
+    private static readonly ILogger Logger = Log.ForContext<Main>();
+    
     public static Main INSTANCE { get; private set; }
 
     public static string AppPath { get; } =
@@ -44,20 +47,21 @@ internal class Main
     
     public static VerifyCount verifyCount { get; set; } = new VerifyCount();
     
-    public static AutoCount autoCount {get; set;} = new AutoCount();
+    public static AutoCount autoCount { get; set; } = new AutoCount();
     
-    public static ErrorDialogue popup;
-    public static FullscreenReminder fullscreenpopup;
-    public static GFNWarning gfnWarning;
-    public static UpdateDialogue update;
-    public static SnapItOverlay snapItOverlayWindow;
-    public static SearchIt searchBox = new SearchIt();
-    public static Login login = new Login();
-    public static ListingHelper listingHelper = new ListingHelper();
-    public static DateTime latestActive;
-    public static PlusOne plusOne = new PlusOne();
-    public static System.Threading.Timer timer;
-    public static System.Drawing.Point lastClick;
+    public static ErrorDialogue popup { get; set; }
+    public static FullscreenReminder fullscreenpopup { get; set; }
+    public static GFNWarning gfnWarning { get; set; }
+    public static UpdateDialogue update { get; set; }
+    public static SnapItOverlay snapItOverlayWindow { get; private set; }
+    public static SearchIt searchBox { get; set; } = new SearchIt();
+    public static Login login { get; set; } = new Login();
+    public static ListingHelper listingHelper { get; set; } = new ListingHelper();
+    public static DateTime latestActive { get; set; }
+    public static PlusOne plusOne { get; set; }  = new PlusOne();
+    public static System.Threading.Timer timer { get; set; }
+    public static System.Drawing.Point lastClick { get; set; }
+    
     private const int minutesTillAfk = 7;
 
     private static bool UserAway { get; set; }
@@ -98,13 +102,12 @@ internal class Main
 
     private IServiceCollection ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton(ApplicationSettings.GlobalReadonlySettings);
-        services.AddSingleton<ITesseractService, TesseractService>();
-        services.AddProcessFinder();
-        services.AddWin32WindowInfo();
-        services.AddHDRDetection();
-
-        services.AddGDIScreenshots();
+        services.AddSingleton(ApplicationSettings.GlobalReadonlySettings)
+                .AddSingleton<ITesseractService, TesseractService>()
+                .AddProcessFinder()
+                .AddWin32WindowInfo()
+                .AddHDRDetection()
+                .AddGDIScreenshots();
 
         // Only add windows capture on supported platforms (W10+ 2004 / Build 20348 and above)
         if (ApiInformation.IsTypePresent("Windows.Graphics.Capture.GraphicsCaptureSession") &&
@@ -169,19 +172,18 @@ internal class Main
             }
 
             StatusUpdate("WFInfo Initialization Complete", 0);
-            AddLog("WFInfo has launched successfully");
+            Logger.Debug("WFInfo has launched successfully");
             FinishedLoading();
 
             if (dataBase.JWT != null) // if token is loaded in, connect to websocket
             {
                 bool result = await dataBase.OpenWebSocket();
-                Debug.WriteLine("Logging into websocket success: " + result);
+                Logger.Debug("Logging into websocket success: {Result}", result);
             }
         }
         catch (Exception ex)
         {
-            AddLog("LOADING FAILED");
-            AddLog(ex.ToString());
+            Logger.Error(ex, "Failed to initialize WFInfo");
             StatusUpdate(
                 ex.ToString().Contains("invalid_grant")
                     ? "System time out of sync with server\nResync system clock in windows settings"
@@ -225,7 +227,7 @@ internal class Main
                 await Task.Run(async () =>
                 {
                     await dataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(false);
-                    string user = dataBase.inGameName.IsNullOrEmpty() ? "user" : dataBase.inGameName;
+                    var user = dataBase.inGameName.IsNullOrEmpty() ? "user" : dataBase.inGameName;
                     StatusUpdate($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0);
                 }).ConfigureAwait(false);
             }
@@ -284,20 +286,20 @@ internal class Main
         }
     }
 
-    public static void AddLog(string argm)
-    {
-        //write to the debug file, includes version and UTCtime
-        Debug.WriteLine(argm);
-        Directory.CreateDirectory(AppPath);
-        try
-        {
-            using (StreamWriter sw = File.AppendText(AppPath + @"\debug.log"))
-                sw.WriteLineAsync("[" + DateTime.UtcNow + " " + buildVersion + "]   " + argm);
-        }
-        catch (Exception)
-        {
-        }
-    }
+    // public static void AddLog(string argm)
+    // {
+    //     //write to the debug file, includes version and UTCtime
+    //     Debug.WriteLine(argm);
+    //     Directory.CreateDirectory(AppPath);
+    //     try
+    //     {
+    //         using (StreamWriter sw = File.AppendText(AppPath + @"\debug.log"))
+    //             sw.WriteLineAsync("[" + DateTime.UtcNow + " " + buildVersion + "]   " + argm);
+    //     }
+    //     catch (Exception)
+    //     {
+    //     }
+    // }
 
     /// <summary>
     /// Sets the status on the main window
@@ -311,13 +313,22 @@ internal class Main
 
     public void ActivationKeyPressed(object key)
     {
+        Logger.Information("User key press. key={Key},delete={Delete},snapit={SnapitKey}:{SnapPressed},searchit={SearchitKey}:{SearchItPressed},masterit={MasteritKey}:{MasteritPressed},debug={DebugKey}:{DebugPressed}",
+            key,
+            Keyboard.IsKeyDown(Key.Delete),
+            _settings.SnapitModifierKey, Keyboard.IsKeyDown(_settings.SnapitModifierKey),
+            _settings.SearchItModifierKey, Keyboard.IsKeyDown(_settings.SearchItModifierKey),
+            _settings.MasterItModifierKey, Keyboard.IsKeyDown(_settings.MasterItModifierKey),
+            _settings.DebugModifierKey, Keyboard.IsKeyDown(_settings.DebugModifierKey)
+            );
+        
         //Log activation. Can't set activation key to left or right mouse button via UI so not differentiating between MouseButton and Key should be fine
-        Main.AddLog($"User is activating with pressing key: {key} and is holding down:\n"                              +
-                    $"Delete:{Keyboard.IsKeyDown(Key.Delete)}\n"                                                       +
-                    $"Snapit, {_settings.SnapitModifierKey}:{Keyboard.IsKeyDown(_settings.SnapitModifierKey)}\n"       +
-                    $"Searchit, {_settings.SearchItModifierKey}:{Keyboard.IsKeyDown(_settings.SearchItModifierKey)}\n" +
-                    $"Masterit, {_settings.MasterItModifierKey}:{Keyboard.IsKeyDown(_settings.MasterItModifierKey)}\n" +
-                    $"debug, {_settings.DebugModifierKey}:{Keyboard.IsKeyDown(_settings.DebugModifierKey)}");
+        // Main.AddLog($"User is activating with pressing key: {key} and is holding down:\n"                              +
+        //             $"Delete:{Keyboard.IsKeyDown(Key.Delete)}\n"                                                       +
+        //             $"Snapit, {_settings.SnapitModifierKey}:{Keyboard.IsKeyDown(_settings.SnapitModifierKey)}\n"       +
+        //             $"Searchit, {_settings.SearchItModifierKey}:{Keyboard.IsKeyDown(_settings.SearchItModifierKey)}\n" +
+        //             $"Masterit, {_settings.MasterItModifierKey}:{Keyboard.IsKeyDown(_settings.MasterItModifierKey)}\n" +
+        //             $"debug, {_settings.DebugModifierKey}:{Keyboard.IsKeyDown(_settings.DebugModifierKey)}");
 
         if (Keyboard.IsKeyDown(Key.Delete))
         {
@@ -338,7 +349,7 @@ internal class Main
             Keyboard.IsKeyDown(_settings.SnapitModifierKey))
         {
             //snapit debug
-            AddLog("Loading screenshot from file for snapit");
+            Logger.Information("Loading screenshot from file for snapit");
             StatusUpdate("Offline testing with screenshot for snapit", 0);
             LoadScreenshot(ScreenshotType.SNAPIT);
         }
@@ -346,41 +357,40 @@ internal class Main
                  Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {
             //master debug
-            AddLog("Loading screenshot from file for masterit");
+            Logger.Information("Loading screenshot from file for masterit");
             StatusUpdate("Offline testing with screenshot for masterit", 0);
             LoadScreenshot(ScreenshotType.MASTERIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
         {
             //normal debug
-            AddLog("Loading screenshot from file");
+            Logger.Information("Loading screenshot from file");
             StatusUpdate("Offline testing with screenshot", 0);
             LoadScreenshot(ScreenshotType.NORMAL);
         }
         else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
         {
             //snapit
-            AddLog("Starting snap it");
+            Logger.Information("Starting snap it");
             StatusUpdate("Starting snap it", 0);
             OCR.SnapScreenshot();
         }
         else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
         {
             //Searchit  
-            AddLog("Starting search it");
+            Logger.Information("Starting search it");
             StatusUpdate("Starting search it", 0);
             searchBox.Start();
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {
             //masterit
-            AddLog("Starting master it");
+            Logger.Information("Starting master it");
             StatusUpdate("Starting master it", 0);
             Task.Factory.StartNew(() =>
             {
-                Bitmap bigScreenshot = OCR.CaptureScreenshot();
+                using Bitmap bigScreenshot = OCR.CaptureScreenshot();
                 OCR.ProcessProfileScreen(bigScreenshot);
-                bigScreenshot.Dispose();
             });
         }
         else if (_settings.Debug || _process.IsRunning)
@@ -396,8 +406,6 @@ internal class Main
         if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
         {
             //check if user pressed activation key
-
-
             if (searchBox.IsInUse)
             {
                 //if key is pressed and searchbox is active then rederect keystokes to it.
@@ -429,8 +437,9 @@ internal class Main
             {
                 lastClick = System.Windows.Forms.Cursor.Position;
                 int index = OCR.GetSelectedReward(lastClick);
-                Main.AddLog("Chosen reward index: " + index);
-                if (index < 0) return;
+                Logger.Debug("Reward chosen. index={Index}", index);
+                if (index < 0)
+                    return;
                 listingHelper.SelectedRewardIndex = (short)index;
             }));
         }
@@ -517,7 +526,7 @@ internal class Main
                         {
                             if (type == ScreenshotType.NORMAL)
                             {
-                                AddLog("Testing file: " + file);
+                                Logger.Debug("Testing file. name={File}", file);
 
                                 //Get the path of specified file
                                 Bitmap image = new Bitmap(file);
@@ -526,7 +535,7 @@ internal class Main
                             }
                             else if (type == ScreenshotType.SNAPIT)
                             {
-                                AddLog("Testing snapit on file: " + file);
+                                Logger.Debug("Testing snapit on file. name={File}", file);
 
                                 Bitmap image = new Bitmap(file);
                                 _windowInfo.UseImage(image);
@@ -534,7 +543,7 @@ internal class Main
                             }
                             else if (type == ScreenshotType.MASTERIT)
                             {
-                                AddLog("Testing masterit on file: " + file);
+                                Logger.Debug("Testing masterit on file. name={File}", file);
 
                                 Bitmap image = new Bitmap(file);
                                 _windowInfo.UseImage(image);
@@ -544,8 +553,7 @@ internal class Main
                     }
                     catch (Exception e)
                     {
-                        AddLog(e.Message);
-                        AddLog(e.StackTrace);
+                        Logger.Error(e, "Failed to load image");
                         StatusUpdate("Failed to load image", 1);
                     }
                 });
@@ -573,7 +581,6 @@ internal class Main
 
         timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, startTimeSpan, periodTimeSpan);
     }
-
 
     public static void FinishedLoading()
     {

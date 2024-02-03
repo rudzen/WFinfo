@@ -11,6 +11,7 @@ using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using Windows.Foundation.Metadata;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace WFInfo.Settings;
 
@@ -781,8 +782,10 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
             NullValueHandling = NullValueHandling.Ignore
         };
         jsonSettings.Converters.Add(new StringEnumConverter());
-        File.WriteAllText(settingsDirectory,
-            JsonConvert.SerializeObject(ApplicationSettings.GlobalSettings, Formatting.Indented, jsonSettings));
+        var s = JsonSerializer.Serialize(ApplicationSettings.GlobalSettings);
+        File.WriteAllText(settingsDirectory, s);
+        // File.WriteAllText(settingsDirectory, 
+        //     JsonConvert.SerializeObject(ApplicationSettings.GlobalSettings, Formatting.Indented, jsonSettings));
     }
 
     public static SettingsViewModel Instance { get; } = new SettingsViewModel(ApplicationSettings.GlobalSettings);

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using Serilog;
 
 namespace WFInfo;
 
@@ -11,6 +12,8 @@ namespace WFInfo;
 /// </summary>
 public partial class ErrorDialogue : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<ErrorDialogue>();
+    
     string startPath = Main.AppPath + @"\Debug";
     string zipPath = Main.AppPath   + @"\generatedZip";
 
@@ -49,42 +52,42 @@ public partial class ErrorDialogue : Window
                 zip.AddFile(startPath + @"\..\eqmt_data.json", "");
             }
             else
-                Main.AddLog(startPath + "eqmt_data.json didn't exist.");
+                Logger.Debug(startPath + "eqmt_data.json didn't exist.");
 
             if (File.Exists(startPath + @"\..\market_data.json"))
             {
                 zip.AddFile(startPath + @"\..\market_data.json", "");
             }
             else
-                Main.AddLog(startPath + "market_data.json didn't exist.");
+                Logger.Debug(startPath + "market_data.json didn't exist.");
 
             if (File.Exists(startPath + @"\..\market_items.json"))
             {
                 zip.AddFile(startPath + @"\..\market_items.json", "");
             }
             else
-                Main.AddLog(startPath + "market_items.json didn't exist.");
+                Logger.Debug(startPath + "market_items.json didn't exist.");
 
             if (File.Exists(startPath + @"\..\name_data.json"))
             {
                 zip.AddFile(startPath + @"\..\name_data.json", "");
             }
             else
-                Main.AddLog(startPath + "name_data.json didn't exist.");
+                Logger.Debug(startPath + "name_data.json didn't exist.");
 
             if (File.Exists(startPath + @"\..\relic_data.json"))
             {
                 zip.AddFile(startPath + @"\..\relic_data.json", "");
             }
             else
-                Main.AddLog(startPath + "relic_data.json didn't exist.");
+                Logger.Debug(startPath + "relic_data.json didn't exist.");
 
             if (File.Exists(startPath + @"\..\settings.json"))
             {
                 zip.AddFile(startPath + @"\..\settings.json", "");
             }
             else
-                Main.AddLog(startPath + "settings.json didn't exist.");
+                Logger.Debug(startPath + "settings.json didn't exist.");
 
             zip.AddFile(startPath + @"\..\debug.log", "");
             zip.Comment = "This zip was created at " + closest.ToString("yyyy-MM-dd_HH-mm-ssff");
@@ -93,7 +96,7 @@ public partial class ErrorDialogue : Window
         }
         catch (Exception ex)
         {
-            Main.AddLog("Unable to zip due to: " + ex.ToString());
+            Logger.Debug("Unable to zip due to: " + ex.ToString());
             throw;
         }
 
