@@ -165,9 +165,7 @@ namespace WFInfo
                 AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve_Tesseract;
                 AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
                 TesseractEnviornment.CustomSearchPath = app_data_tesseract_catalog;
-                App.Main();
             }
-
         }
 
         static void MyHandler(object sender, UnhandledExceptionEventArgs args)
@@ -178,7 +176,6 @@ namespace WFInfo
             AddLog(e.StackTrace);
             AddLog(e.InnerException.Message);
             AddLog(e.InnerException.StackTrace);
-
         }
 
         public static void AddLog(string argm)

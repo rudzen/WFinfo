@@ -5,6 +5,7 @@ using System.Net;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
 using WFInfo.Settings;
 
 namespace WFInfo;
@@ -14,26 +15,27 @@ namespace WFInfo;
 /// </summary>
 public partial class UpdateDialogue : Window
 {
-    UpdateInfoEventArgs updateInfo;
-    readonly WebClient WebClient;
-    private readonly SettingsViewModel settings = SettingsViewModel.Instance;
+    private readonly UpdateInfoEventArgs _updateInfo;
+    
+    private readonly SettingsViewModel _settings;
 
-    public UpdateDialogue(UpdateInfoEventArgs args)
+    public UpdateDialogue(UpdateInfoEventArgs args, IServiceProvider sp)
     {
         InitializeComponent();
-        updateInfo = args;
+        _settings = sp.GetRequiredService<SettingsViewModel>();
+        _updateInfo = args;
 
         string version = args.CurrentVersion.ToString();
-        if (!args.IsUpdateAvailable || (settings.Ignored == version))
+        if (!args.IsUpdateAvailable || (_settings.Ignored == version))
             return;
         version = version[..version.LastIndexOf('.')];
 
         NewVersionText.Text = "WFInfo version "   + version           + " has been released!";
         OldVersionText.Text = "You have version " + Main.BuildVersion + " installed.";
 
-        WebClient = CustomEntrypoint.createNewWebClient();
+        using var webClient = CustomEntrypoint.createNewWebClient();
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-        var data = WebClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases");
+        var data = webClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases");
         JArray releases = JsonConvert.DeserializeObject<JArray>(data);
         foreach (JObject prop in releases)
         {
@@ -65,7 +67,7 @@ public partial class UpdateDialogue : Window
         try
         {
             e.Handled = true;
-            if (AutoUpdater.DownloadUpdate(updateInfo))
+            if (AutoUpdater.DownloadUpdate(_updateInfo))
                 WFInfo.MainWindow.INSTANCE.Exit(null, null);
         }
         catch (Exception exception)
@@ -77,8 +79,8 @@ public partial class UpdateDialogue : Window
 
     private void Skip(object sender, RoutedEventArgs e)
     {
-        settings.Ignored = updateInfo.CurrentVersion.ToString();
-        SettingsWindow.Save();
+        _settings.Ignored = _updateInfo.CurrentVersion.ToString();
+        _settings.Save();
         Close();
     }
 

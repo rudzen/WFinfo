@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.OpticalCharacterRecognition;
 
@@ -16,11 +17,11 @@ public partial class SettingsWindow : Window
 
     public static KeyConverter converter = new KeyConverter();
 
-    public SettingsWindow()
+    public SettingsWindow(IServiceProvider sp)
     {
         InitializeComponent();
         DataContext = this;
-        _viewModel = SettingsViewModel.Instance;
+        _viewModel = sp.GetRequiredService<SettingsViewModel>();
     }
 
     public void populate()
@@ -66,9 +67,9 @@ public partial class SettingsWindow : Window
         Focus();
     }
 
-    public static void Save()
+    public void Save()
     {
-        SettingsViewModel.Instance.Save();
+        _viewModel.Save();
     }
 
     private void Hide(object sender, RoutedEventArgs e)

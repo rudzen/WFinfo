@@ -763,16 +763,15 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) +
         @"\WFInfo\settings.json"; //change to WFInfo after release
 
-    public SettingsViewModel(ApplicationSettings settings)
+    public SettingsViewModel(
+        ApplicationSettings settings,
+        IProcessFinder process,
+        IWindowInfoService windowInfo)
     {
         _settings = settings;
-        this.PropertyChanged += (sender, args) => Save();
-    }
-
-    public void InjectServices(IWindowInfoService windowInfo, IProcessFinder process)
-    {
-        _windowInfo = windowInfo;
         _process = process;
+        _windowInfo = windowInfo;
+        this.PropertyChanged += (sender, args) => Save();
     }
 
     public void Save()
@@ -788,8 +787,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
         //     JsonConvert.SerializeObject(ApplicationSettings.GlobalSettings, Formatting.Indented, jsonSettings));
     }
 
-    public static SettingsViewModel Instance { get; } = new SettingsViewModel(ApplicationSettings.GlobalSettings);
-    private readonly Dictionary<string, string> _validationErrors = new Dictionary<string, string>();
+    private readonly Dictionary<string, string> _validationErrors = new();
 
     public event EventHandler<DataErrorsChangedEventArgs> ErrorsChanged;
     public bool HasErrors => _validationErrors.Count > 0;

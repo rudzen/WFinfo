@@ -20,10 +20,11 @@ using Windows.Foundation.Metadata;
 using Windows.Graphics.Capture;
 using Serilog;
 using WFInfo.Services.OpticalCharacterRecognition;
+using Application = System.Windows.Application;
 
 namespace WFInfo;
 
-internal class Main
+public class Main
 {
     private static readonly ILogger Logger = Log.ForContext<Main>();
     
@@ -41,9 +42,7 @@ internal class Main
     
     public static EquipmentWindow equipmentWindow { get; set; } = new EquipmentWindow();
     
-    public static SettingsWindow settingsWindow { get; set; } = new SettingsWindow();
-    
-    public static ThemeAdjuster themeAdjuster { get; set; } = new ThemeAdjuster();
+    public static SettingsWindow settingsWindow { get; set; }
     
     public static VerifyCount verifyCount { get; set; } = new VerifyCount();
     
@@ -55,7 +54,7 @@ internal class Main
     public static UpdateDialogue update { get; set; }
     public static SnapItOverlay snapItOverlayWindow { get; private set; }
     public static SearchIt searchBox { get; set; } = new SearchIt();
-    public static Login login { get; set; } = new Login();
+    public static Login login { get; set; }
     public static ListingHelper listingHelper { get; set; } = new ListingHelper();
     public static DateTime latestActive { get; set; }
     public static PlusOne plusOne { get; set; }  = new PlusOne();
@@ -79,14 +78,21 @@ internal class Main
     private IHDRDetectorService _detector;
 
     // See comment on Ocr.Init for explanation
-    private GdiScreenshotService _gdiScreenshot;
-    private WindowsCaptureScreenshotService _windowsScreenshot;
+    private IScreenshotService _gdiScreenshot;
+    private IScreenshotService? _windowsScreenshot;
 
     private ITesseractService? _tesseractService;
 
-    public Main()
+    // hack, should not be here, but stuff is too intertwined for now
+    // also, the auto updater needs this to allow for event to be used
+    private readonly IServiceProvider _sp;
+    
+    public Main(IServiceProvider sp)
     {
+        _sp = sp;
         INSTANCE = this;
+        login = sp.GetRequiredService<Login>();
+        settingsWindow = sp.GetRequiredService<SettingsWindow>();
 
         StartMessage();
         buildVersion = buildVersion[..buildVersion.LastIndexOf('.')];
@@ -94,29 +100,10 @@ internal class Main
         AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
         AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
 
-        _services = ConfigureServices(new ServiceCollection()).BuildServiceProvider();
+        _services = sp;//ConfigureServices(new ServiceCollection()).BuildServiceProvider();
         InitializeLegacyServices(_services);
 
         Task.Factory.StartNew(ThreadedDataLoad);
-    }
-
-    private IServiceCollection ConfigureServices(IServiceCollection services)
-    {
-        services.AddSingleton(ApplicationSettings.GlobalReadonlySettings)
-                .AddSingleton<ITesseractService, TesseractService>()
-                .AddProcessFinder()
-                .AddWin32WindowInfo()
-                .AddHDRDetection()
-                .AddGDIScreenshots();
-
-        // Only add windows capture on supported platforms (W10+ 2004 / Build 20348 and above)
-        if (ApiInformation.IsTypePresent("Windows.Graphics.Capture.GraphicsCaptureSession") &&
-            ApiInformation.IsPropertyPresent("Windows.Graphics.Capture.GraphicsCaptureSession", nameof(GraphicsCaptureSession.IsBorderRequired)))
-        {
-            services.AddWindowsCaptureScreenshots();
-        }
-
-        return services;
     }
 
     public void DisposeTesseract()
@@ -134,20 +121,16 @@ internal class Main
         _tesseractService = services.GetRequiredService<ITesseractService>();
 
         dataBase = new Data(ApplicationSettings.GlobalReadonlySettings, _process, _windowInfo);
-        SettingsViewModel.Instance.InjectServices(_windowInfo, _process);
         snapItOverlayWindow = new SnapItOverlay(_windowInfo);
 
-        // See comment on Ocr.Init for explanation
-        var screenshotServices = services.GetServices<IScreenshotService>();
-        _gdiScreenshot = screenshotServices.First(ss => ss is GdiScreenshotService) as GdiScreenshotService;
-        _windowsScreenshot =
-            screenshotServices.FirstOrDefault(ss => ss is WindowsCaptureScreenshotService) as
-                WindowsCaptureScreenshotService;
+        // // See comment on Ocr.Init for explanation
+        _gdiScreenshot = services.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
+        _windowsScreenshot = services.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
     }
 
     private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
     {
-        update = new UpdateDialogue(args);
+        update = new UpdateDialogue(args, _sp);
     }
 
     public async Task ThreadedDataLoad()

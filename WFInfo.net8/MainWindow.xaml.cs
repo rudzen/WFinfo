@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Serilog;
@@ -27,18 +28,23 @@ public partial class MainWindow : Window
         Brushes.Orange
     ];
 
-    readonly Main main; //subscriber
-    public static MainWindow INSTANCE;
-    public static WelcomeDialogue welcomeDialogue;
-    public static LowLevelListener listener;
+    private Main main { get; set; } //subscriber
+    public static MainWindow INSTANCE { get; set; }
+    public static WelcomeDialogue welcomeDialogue { get; set; }
+    public static LowLevelListener listener { get; set; }
     private static bool updatesupression;
     private RelicsWindow _relicsWindow = new RelicsWindow();
-    private readonly SettingsViewModel _settingsViewModel = SettingsViewModel.Instance;
 
-    public MainWindow()
+    private readonly IServiceProvider _sp;
+    private readonly SettingsViewModel _settingsViewModel;
+
+    public MainWindow(IServiceProvider sp)
     {
+        _sp = sp;
         INSTANCE = this;
-        main = new Main();
+        main = new Main(sp);
+        _settingsViewModel = sp.GetRequiredService<SettingsViewModel>();
+        
         listener = new LowLevelListener(); //publisher
         try
         {
@@ -69,7 +75,7 @@ public partial class MainWindow : Window
 
             _settingsViewModel.MainWindowLocation = new Point(Left, Top);
 
-            SettingsWindow.Save();
+            _settingsViewModel.Save();
 
             Closing += LoggOut;
         }
@@ -121,7 +127,7 @@ public partial class MainWindow : Window
             }
         }
 
-        SettingsWindow.Save();
+        _settingsViewModel.Save();
 
         Main.dataBase.JWT = EncryptedDataService.LoadStoredJWT();
     }
@@ -214,7 +220,7 @@ public partial class MainWindow : Window
         }
 
         Main.settingsWindow?.Close();
-        Main.settingsWindow = new SettingsWindow();
+        Main.settingsWindow = _sp.GetRequiredService<SettingsWindow>();
         Main.settingsWindow.populate();
         Main.settingsWindow.Left = Left;
         Main.settingsWindow.Top = Top + Height;
@@ -256,7 +262,7 @@ public partial class MainWindow : Window
     private void OnLocationChanged(object sender, EventArgs e)
     {
         _settingsViewModel.MainWindowLocation = new Point(Left, Top);
-        SettingsWindow.Save();
+        _settingsViewModel.Save();
     }
 
     public void ToForeground(object sender, RoutedEventArgs e)

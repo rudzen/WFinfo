@@ -17,7 +17,7 @@ using WFInfo.Settings;
 
 namespace WFInfo;
 
-class Data
+public sealed class Data
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Data>(); 
 

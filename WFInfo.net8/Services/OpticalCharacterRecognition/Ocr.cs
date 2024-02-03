@@ -124,8 +124,8 @@ internal class OCR
         IReadOnlyApplicationSettings settings,
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
-        GdiScreenshotService gdiScreenshot,
-        WindowsCaptureScreenshotService? windowsScreenshot = null)
+        IScreenshotService gdiScreenshot,
+        IScreenshotService? windowsScreenshot = null)
     {
         Directory.CreateDirectory(Path.Combine(Main.AppPath, "Debug"));
         _tesseractService = tesseractService;

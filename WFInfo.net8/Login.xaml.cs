@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using WFInfo.Settings;
 
@@ -13,11 +14,14 @@ public partial class Login : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Login>();
 
+    private readonly SettingsWindow _settingsWindow;
+
     #region default methods
 
-    public Login()
+    public Login(IServiceProvider sp)
     {
         InitializeComponent();
+        _settingsWindow = sp.GetRequiredService<SettingsWindow>();
     }
 
     /// <summary>
@@ -65,7 +69,7 @@ public partial class Login : Window
         {
             Logger.Error(ex, "Failed to login");
             Main.dataBase.JWT = null;
-            SettingsWindow.Save();
+            _settingsWindow.Save();
             string StatusMessage; //StatusMessage = text to display on StatusUpdate() AND the error box under login 
             byte StatusSeverity;  //StatusSeverity = Severity for StatusUpdate()
             if (ex.Message.Contains("email"))

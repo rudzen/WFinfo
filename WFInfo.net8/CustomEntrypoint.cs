@@ -74,10 +74,9 @@ public class CustomEntrypoint
         }
     }
 
-    [STAThread]
-    public static void Main()
+    // [STAThread]
+    public static void Run(AppDomain currentDomain)
     {
-        AppDomain currentDomain = AppDomain.CurrentDomain;
         currentDomain.UnhandledException += MyHandler;
 
         var configuration = ConfigurationBuilder().Build();
@@ -110,7 +109,7 @@ public class CustomEntrypoint
         Directory.CreateDirectory(appdata_tessdata_folder);
 
         cleanLegacyTesseractIfNeeded();
-        CollectDebugInfo().GetAwaiter().GetResult();
+        //CollectDebugInfo().GetAwaiter().GetResult();
         tesseract_hotlink_platform_specific_prefix = tesseract_hotlink_prefix;
 
         // Refresh traineddata structure
@@ -170,10 +169,10 @@ public class CustomEntrypoint
 
         if (stopDownloadTask is not { IsCancellationRequested: true })
         {
-            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve_Tesseract;
-            AppDomain.CurrentDomain.AssemblyResolve += OnResolveAssembly;
+            currentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve_Tesseract;
+            currentDomain.AssemblyResolve += OnResolveAssembly;
             TesseractEnviornment.CustomSearchPath = app_data_tesseract_catalog;
-            App.Main();
+            //App.Main();
         }
     }
 
@@ -401,7 +400,7 @@ public class CustomEntrypoint
             newPath += ".dll";
 
         if (File.Exists(newPath))
-            return Assembly.LoadFile(newPath);
+            return Assembly.Load(newPath);
 
         return null;
     }

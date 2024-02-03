@@ -11,9 +11,9 @@
         <RootNamespace>WFInfo</RootNamespace>
     </PropertyGroup>
 
-    <PropertyGroup>
-        <StartupObject>WFInfo.CustomEntrypoint</StartupObject>
-    </PropertyGroup>
+<!--    <PropertyGroup>-->
+<!--        <StartupObject>WFInfo.CustomEntrypoint</StartupObject>-->
+<!--    </PropertyGroup>-->
 
     <ItemGroup>
         <None Remove="Resources\achievment_03.wav"/>
@@ -74,6 +74,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
         <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.77"/>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
