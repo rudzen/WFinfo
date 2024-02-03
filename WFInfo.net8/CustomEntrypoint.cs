@@ -325,7 +325,7 @@ public class CustomEntrypoint
     private static async void RefreshTesseractDlls(CancellationToken token)
     {
         WebClient webClient = createNewWebClient();
-        webClient.DownloadProgressChanged += new DownloadProgressChangedEventHandler(DownloadProgressCallback);
+        webClient.DownloadProgressChanged += DownloadProgressCallback;
         token.Register(webClient.CancelAsync);
 
         for (int i = 0; i < list_of_dlls.Length; i++)

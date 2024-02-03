@@ -1739,7 +1739,7 @@ class Data
             }
             catch (Exception e)
             {
-                Logger.Debug("PostReview: " + e.Message);
+                Logger.Error(e, "PostReview");
                 return false;
             }
         }
