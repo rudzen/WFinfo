@@ -53,7 +53,7 @@ public partial class App : Application
 
                     services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
                     services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
-                    
+                    services.AddSingleton<IEncryptedDataService, EncryptedDataService>();
                     services.AddSingleton<IHDRDetectorService, SchemeHDRDetector>();
                     services.AddSingleton<IHDRDetectionScheme, GameSettingsHDRDetectionScheme>();
 
@@ -72,6 +72,8 @@ public partial class App : Application
                     services.AddSingleton<EquipmentWindow>();
 
                     services.AddSingleton<SettingsViewModel>();
+
+                    services.AddDataProtection();
                 })
                 .UseSerilog((context, provider, arg3) =>
                 {

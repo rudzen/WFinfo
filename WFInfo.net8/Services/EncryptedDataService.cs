@@ -6,26 +6,19 @@ using Serilog;
 
 namespace WFInfo;
 
-public sealed class EncryptedDataService
+public sealed class EncryptedDataService(IDataProtectionProvider provider) : IEncryptedDataService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<EncryptedDataService>();
-    private static readonly IDataProtector JwtProtector;
+    private static readonly string FileName = Path.Combine(Main.AppPath, "jwt_encrypted");
 
-    static EncryptedDataService()
-    {
-        var serviceCollection = new ServiceCollection();
-        serviceCollection.AddDataProtection();
-        var services = serviceCollection.BuildServiceProvider();
-        IDataProtectionProvider provider = services.GetService<IDataProtectionProvider>();
-        JwtProtector = provider?.CreateProtector("WFInfo.JWT.v1");
-    }
+    private readonly IDataProtector _jwtProtector = provider.CreateProtector("WFInfo.JWT.v1");
 
-    public static string LoadStoredJWT()
+    public string? LoadStoredJWT()
     {
         try
         {
-            var fileText = File.ReadAllText(Main.AppPath + @"\jwt_encrypted");
-            return JwtProtector?.Unprotect(fileText);
+            var fileText = File.ReadAllText(FileName);
+            return _jwtProtector.Unprotect(fileText);
         }
         catch (FileNotFoundException e)
         {
@@ -39,9 +32,15 @@ public sealed class EncryptedDataService
         return null;
     }
 
-    public static void PersistJWT(string jwt)
+    public void PersistJWT(string? jwt)
     {
-        var encryptedJWT = JwtProtector?.Protect(jwt);
-        File.WriteAllText(Main.AppPath + @"\jwt_encrypted", encryptedJWT);
+        if (jwt is null)
+        {
+            Logger.Warning("JWT is null, not persisting");
+            return;
+        }
+
+        var encryptedJwt = _jwtProtector.Protect(jwt);
+        File.WriteAllText(FileName, encryptedJwt);
     }
 }

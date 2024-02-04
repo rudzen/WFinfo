@@ -34,27 +34,38 @@ public partial class MainWindow : Window
     public static WelcomeDialogue welcomeDialogue { get; set; }
     public static LowLevelListener listener { get; set; }
     private static bool updatesupression;
-    
+
     private readonly IServiceProvider _sp;
     private readonly ApplicationSettings _applicationSettings;
     private readonly SettingsViewModel _settingsViewModel;
     private readonly PlusOne _plusOne;
-    
+
     private readonly RelicsWindow _relicsWindow;
     private readonly EquipmentWindow _equipmentWindow;
 
-    public MainWindow(ApplicationSettings applicationSettings, IServiceProvider sp)
+    private readonly IEncryptedDataService _encryptedDataService;
+    
+    public MainWindow(
+        ApplicationSettings applicationSettings,
+        SettingsViewModel settingsViewModel,
+        PlusOne plusOne,
+        RelicsWindow relicsWindow,
+        EquipmentWindow equipmentWindow,
+        IEncryptedDataService encryptedDataService,
+        IServiceProvider sp)
     {
         _applicationSettings = applicationSettings;
         _sp = sp;
         INSTANCE = this;
         Main = new Main(sp);
-        
-        _settingsViewModel = sp.GetRequiredService<SettingsViewModel>();
-        _plusOne = sp.GetRequiredService<PlusOne>();
 
-        _relicsWindow = sp.GetRequiredService<RelicsWindow>();
-        _equipmentWindow = sp.GetRequiredService<EquipmentWindow>();
+        _settingsViewModel = settingsViewModel;
+        _plusOne = plusOne;
+
+        _relicsWindow = relicsWindow;
+        _equipmentWindow = equipmentWindow;
+
+        _encryptedDataService = encryptedDataService;
         
         listener = new LowLevelListener(); //publisher
         try
@@ -140,7 +151,7 @@ public partial class MainWindow : Window
 
         _settingsViewModel.Save();
 
-        Main.dataBase.JWT = EncryptedDataService.LoadStoredJWT();
+        Main.dataBase.JWT = _encryptedDataService.LoadStoredJWT();
     }
 
     public void OnContentRendered(object sender, EventArgs e)
@@ -175,7 +186,7 @@ public partial class MainWindow : Window
         if (Main.dataBase.rememberMe)
         {
             // if rememberme was checked then save it
-            EncryptedDataService.PersistJWT(Main.dataBase.JWT);
+            _encryptedDataService.PersistJWT(Main.dataBase.JWT);
         }
 
         Application.Current.Shutdown();
