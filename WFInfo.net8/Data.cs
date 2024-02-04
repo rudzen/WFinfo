@@ -22,13 +22,13 @@ public sealed class Data
     private static readonly ILogger Logger = Log.Logger.ForContext<Data>();
 
     // Warframe.market item listing           {<id>: "<name>|<url_name>", ...}
-    public JObject marketItems { get; set; }
+    public JObject MarketItems { get; set; }
 
     // Contains warframe.market ducatonator listing     {<partName>: {"ducats": <ducat_val>,"plat": <plat_val>}, ...}
-    public JObject marketData { get; private set; }
+    public JObject MarketData { get; private set; }
 
     // Contains relicData from Warframe PC Drops        {<Era>: {"A1":{"vaulted": true,<rare1/uncommon[12]/common[123]>: <part>}, ...}, "Meso": ..., "Neo": ..., "Axi": ...}
-    public JObject? relicData { get; private set; }
+    public JObject? RelicData { get; private set; }
 
     /// <summary>
     /// Contains equipmentData from Warframe PC Drops
@@ -36,9 +36,9 @@ public sealed class Data
     /// </para>
     /// </summary>
     // {<EQMT>: {"vaulted": true, "PARTS": {<NAME>:{"relic_name":<name>|"","count":<num>}, ...}},  ...}
-    public JObject? equipmentData { get; private set; }
+    public JObject? EquipmentData { get; private set; }
 
-    private JObject? nameData; // Contains relic to market name translation          {<relic_name>: <market_name>}
+    private JObject? _nameData; // Contains relic to market name translation          {<relic_name>: <market_name>}
 
     private static List<Dictionary<int, List<int>>> korean =
     [
@@ -90,7 +90,7 @@ public sealed class Data
     private LogCapture? EElogWatcher;
     private Task autoThread;
 
-    private readonly IReadOnlyApplicationSettings _settings;
+    private readonly ApplicationSettings _settings;
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _window;
 
@@ -102,7 +102,7 @@ public sealed class Data
         return webClient;
     }
 
-    public Data(IReadOnlyApplicationSettings settings, IProcessFinder process, IWindowInfoService window)
+    public Data(ApplicationSettings settings, IProcessFinder process, IWindowInfoService window)
     {
         _settings = settings;
         _process = process;
@@ -191,7 +191,7 @@ public sealed class Data
     // Load item list from Sheets
     public void ReloadItems()
     {
-        marketItems = new JObject();
+        MarketItems = new JObject();
         WebClient webClient = createWfmClient();
         JObject obj =
             JsonConvert.DeserializeObject<JObject>(
@@ -209,7 +209,7 @@ public sealed class Data
                     name = name.Replace(" Blueprint", "");
                 }
 
-                marketItems[item["id"].ToString()] = name + "|" + item["url_name"];
+                MarketItems[item["id"].ToString()] = name + "|" + item["url_name"];
             }
         }
 
@@ -238,8 +238,8 @@ public sealed class Data
             foreach (var item in items)
             {
                 string name = item["url_name"].ToString();
-                if (name.Contains("prime") && marketItems.ContainsKey(item["id"].ToString()))
-                    marketItems[item["id"].ToString()] = marketItems[item["id"].ToString()] + "|" + item["item_name"];
+                if (name.Contains("prime") && MarketItems.ContainsKey(item["id"].ToString()))
+                    MarketItems[item["id"].ToString()] = MarketItems[item["id"].ToString()] + "|" + item["item_name"];
             }
         }
         catch (Exception e)
@@ -248,7 +248,7 @@ public sealed class Data
         }
 
 
-        marketItems["version"] = Main.BuildVersion;
+        MarketItems["version"] = Main.BuildVersion;
         Logger.Debug("Item database has been downloaded");
     }
 
@@ -257,15 +257,15 @@ public sealed class Data
     {
         if (!force && File.Exists(marketDataPath) && File.Exists(marketItemsPath))
         {
-            if (marketData == null)
-                marketData = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(marketDataPath));
-            if (marketItems == null)
-                marketItems = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(marketItemsPath));
+            if (MarketData == null)
+                MarketData = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(marketDataPath));
+            if (MarketItems == null)
+                MarketItems = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(marketItemsPath));
 
-            if (marketData.TryGetValue("version", out _) &&
-                (marketData["version"].ToObject<string>() == Main.BuildVersion))
+            if (MarketData.TryGetValue("version", out _) &&
+                (MarketData["version"].ToObject<string>() == Main.BuildVersion))
             {
-                DateTime timestamp = marketData["timestamp"].ToObject<DateTime>();
+                DateTime timestamp = MarketData["timestamp"].ToObject<DateTime>();
                 if (timestamp > DateTime.Now.AddHours(-12))
                 {
                     Logger.Debug("Market Databases are up to date");
@@ -284,7 +284,7 @@ public sealed class Data
                 "Failed to refresh items from warframe.market, skipping WFM update for now. Some items might have incomplete info.");
         }
 
-        marketData = new JObject();
+        MarketData = new JObject();
         WebClient webClient = CustomEntrypoint.CreateNewWebClient();
         JArray rows = JsonConvert.DeserializeObject<JArray>(webClient.DownloadString(sheetJsonUrl));
 
@@ -299,7 +299,7 @@ public sealed class Data
                     name = name.Replace(" Blueprint", "");
                 }
 
-                marketData[name] = new JObject
+                MarketData[name] = new JObject
                 {
                     { "plat", double.Parse(row["custom_avg"].ToString(), Main.culture) },
                     { "ducats", 0 },
@@ -315,11 +315,11 @@ public sealed class Data
         // Add default values for ignored items
         foreach (KeyValuePair<string, JToken> ignored in allFiltered["ignored_items"].ToObject<JObject>())
         {
-            marketData[ignored.Key] = ignored.Value;
+            MarketData[ignored.Key] = ignored.Value;
         }
 
-        marketData["timestamp"] = DateTime.Now;
-        marketData["version"] = Main.BuildVersion;
+        MarketData["timestamp"] = DateTime.Now;
+        MarketData["version"] = Main.BuildVersion;
 
         Logger.Debug("Plat database has been downloaded");
 
@@ -366,7 +366,7 @@ public sealed class Data
             ducat = temp.ToObject<string>();
         }
 
-        marketData[item_name] = new JObject
+        MarketData[item_name] = new JObject
         {
             { "ducats", ducat },
             { "plat", stats["avg_price"] },
@@ -376,16 +376,16 @@ public sealed class Data
 
     private bool LoadEqmtData(JObject allFiltered, bool force = false)
     {
-        if (equipmentData == null)
-            equipmentData = File.Exists(equipmentDataPath)
+        if (EquipmentData == null)
+            EquipmentData = File.Exists(equipmentDataPath)
                 ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(equipmentDataPath))
                 : new JObject();
-        if (relicData == null)
-            relicData = File.Exists(relicDataPath)
+        if (RelicData == null)
+            RelicData = File.Exists(relicDataPath)
                 ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(relicDataPath))
                 : new JObject();
-        if (nameData == null)
-            nameData = File.Exists(nameDataPath)
+        if (_nameData == null)
+            _nameData = File.Exists(nameDataPath)
                 ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(nameDataPath))
                 : new JObject();
 
@@ -394,55 +394,55 @@ public sealed class Data
         // fill in relicData
 
         DateTime filteredDate = allFiltered["timestamp"].ToObject<DateTime>().ToLocalTime().AddHours(-1);
-        DateTime eqmtDate = equipmentData.TryGetValue("timestamp", out _)
-            ? equipmentData["timestamp"].ToObject<DateTime>()
+        DateTime eqmtDate = EquipmentData.TryGetValue("timestamp", out _)
+            ? EquipmentData["timestamp"].ToObject<DateTime>()
             : filteredDate;
 
         if (force || eqmtDate.CompareTo(filteredDate) <= 0)
         {
-            equipmentData["timestamp"] = DateTime.Now;
-            relicData["timestamp"] = DateTime.Now;
-            nameData = new JObject();
+            EquipmentData["timestamp"] = DateTime.Now;
+            RelicData["timestamp"] = DateTime.Now;
+            _nameData = new JObject();
 
             foreach (KeyValuePair<string, JToken> era in allFiltered["relics"].ToObject<JObject>())
             {
-                relicData[era.Key] = new JObject();
+                RelicData[era.Key] = new JObject();
                 foreach (KeyValuePair<string, JToken> relic in era.Value.ToObject<JObject>())
-                    relicData[era.Key][relic.Key] = relic.Value;
+                    RelicData[era.Key][relic.Key] = relic.Value;
             }
 
             foreach (KeyValuePair<string, JToken> prime in allFiltered["eqmt"].ToObject<JObject>())
             {
                 string primeName = prime.Key.Substring(0, prime.Key.IndexOf("Prime") + 5);
-                if (!equipmentData.TryGetValue(primeName, out _))
-                    equipmentData[primeName] = new JObject();
-                equipmentData[primeName]["vaulted"] = prime.Value["vaulted"];
-                equipmentData[primeName]["type"] = prime.Value["type"];
-                if (!equipmentData[primeName].ToObject<JObject>().TryGetValue("mastered", out _))
-                    equipmentData[primeName]["mastered"] = false;
+                if (!EquipmentData.TryGetValue(primeName, out _))
+                    EquipmentData[primeName] = new JObject();
+                EquipmentData[primeName]["vaulted"] = prime.Value["vaulted"];
+                EquipmentData[primeName]["type"] = prime.Value["type"];
+                if (!EquipmentData[primeName].ToObject<JObject>().TryGetValue("mastered", out _))
+                    EquipmentData[primeName]["mastered"] = false;
 
-                if (!equipmentData[primeName].ToObject<JObject>().TryGetValue("parts", out _))
-                    equipmentData[primeName]["parts"] = new JObject();
+                if (!EquipmentData[primeName].ToObject<JObject>().TryGetValue("parts", out _))
+                    EquipmentData[primeName]["parts"] = new JObject();
 
 
                 foreach (KeyValuePair<string, JToken> part in prime.Value["parts"].ToObject<JObject>())
                 {
                     string partName = part.Key;
-                    if (!equipmentData[primeName]["parts"].ToObject<JObject>().TryGetValue(partName, out _))
-                        equipmentData[primeName]["parts"][partName] = new JObject();
-                    if (!equipmentData[primeName]["parts"][partName].ToObject<JObject>().TryGetValue("owned", out _))
-                        equipmentData[primeName]["parts"][partName]["owned"] = 0;
-                    equipmentData[primeName]["parts"][partName]["vaulted"] = part.Value["vaulted"];
-                    equipmentData[primeName]["parts"][partName]["count"] = part.Value["count"];
-                    equipmentData[primeName]["parts"][partName]["ducats"] = part.Value["ducats"];
+                    if (!EquipmentData[primeName]["parts"].ToObject<JObject>().TryGetValue(partName, out _))
+                        EquipmentData[primeName]["parts"][partName] = new JObject();
+                    if (!EquipmentData[primeName]["parts"][partName].ToObject<JObject>().TryGetValue("owned", out _))
+                        EquipmentData[primeName]["parts"][partName]["owned"] = 0;
+                    EquipmentData[primeName]["parts"][partName]["vaulted"] = part.Value["vaulted"];
+                    EquipmentData[primeName]["parts"][partName]["count"] = part.Value["count"];
+                    EquipmentData[primeName]["parts"][partName]["ducats"] = part.Value["ducats"];
 
 
                     string gameName = IsBlueprint(in prime, in part) ? $"{part.Key} Blueprint" : part.Key;
 
-                    if (marketData.TryGetValue(partName, out _))
+                    if (MarketData.TryGetValue(partName, out _))
                     {
-                        nameData[gameName] = partName;
-                        marketData[partName]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.culture);
+                        _nameData[gameName] = partName;
+                        MarketData[partName]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.culture);
                     }
                 }
             }
@@ -450,7 +450,7 @@ public sealed class Data
             // Add default values for ignored items
             foreach (KeyValuePair<string, JToken> ignored in allFiltered["ignored_items"].ToObject<JObject>())
             {
-                nameData[ignored.Key] = ignored.Key;
+                _nameData[ignored.Key] = ignored.Key;
             }
 
             Logger.Debug("Prime Database has been downloaded");
@@ -479,11 +479,11 @@ public sealed class Data
     private void RefreshMarketDucats()
     {
         //equipmentData[primeName]["parts"][partName]["ducats"]
-        foreach (KeyValuePair<string, JToken> prime in equipmentData)
+        foreach (KeyValuePair<string, JToken> prime in EquipmentData)
             if (prime.Key != "timestamp")
-                foreach (KeyValuePair<string, JToken> part in equipmentData[prime.Key]["parts"].ToObject<JObject>())
-                    if (marketData.TryGetValue(part.Key, out _))
-                        marketData[part.Key]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.culture);
+                foreach (KeyValuePair<string, JToken> part in EquipmentData[prime.Key]["parts"].ToObject<JObject>())
+                    if (MarketData.TryGetValue(part.Key, out _))
+                        MarketData[part.Key]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.culture);
     }
 
     public bool Update()
@@ -493,14 +493,14 @@ public sealed class Data
         JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
         bool saveDatabases = LoadMarket(allFiltered);
 
-        foreach (KeyValuePair<string, JToken> elem in marketItems)
+        foreach (KeyValuePair<string, JToken> elem in MarketItems)
         {
             if (elem.Key != "version")
             {
                 string[] split = elem.Value.ToString().Split('|');
                 string itemName = split[0];
                 string itemUrl = split[1];
-                if (!itemName.Contains(" Set") && !marketData.TryGetValue(itemName, out _))
+                if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
                 {
                     LoadMarketItem(itemName, itemUrl);
                     saveDatabases = true;
@@ -508,7 +508,7 @@ public sealed class Data
             }
         }
 
-        if (marketData["timestamp"] == null)
+        if (MarketData["timestamp"] == null)
         {
             Main.RunOnUIThread(() => { MainWindow.INSTANCE.MarketData.Content = "VERIFY"; });
             Main.RunOnUIThread(() => { MainWindow.INSTANCE.DropData.Content = "TIME"; });
@@ -518,14 +518,14 @@ public sealed class Data
 
         Main.RunOnUIThread(() =>
         {
-            MainWindow.INSTANCE.MarketData.Content = marketData["timestamp"].ToObject<DateTime>()
+            MainWindow.INSTANCE.MarketData.Content = MarketData["timestamp"].ToObject<DateTime>()
                                                                             .ToString("MMM dd - HH:mm", Main.culture);
         });
 
         saveDatabases = LoadEqmtData(allFiltered, saveDatabases);
         Main.RunOnUIThread(() =>
         {
-            MainWindow.INSTANCE.DropData.Content = equipmentData["timestamp"].ToObject<DateTime>()
+            MainWindow.INSTANCE.DropData.Content = EquipmentData["timestamp"].ToObject<DateTime>()
                                                                              .ToString("MMM dd - HH:mm", Main.culture);
         });
 
@@ -544,14 +544,14 @@ public sealed class Data
             JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
             LoadMarket(allFiltered, true);
 
-            foreach (KeyValuePair<string, JToken> elem in marketItems)
+            foreach (KeyValuePair<string, JToken> elem in MarketItems)
             {
                 if (elem.Key != "version")
                 {
                     string[] split = elem.Value.ToString().Split('|');
                     string itemName = split[0];
                     string itemUrl = split[1];
-                    if (!itemName.Contains(" Set") && !marketData.TryGetValue(itemName, out _))
+                    if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
                     {
                         LoadMarketItem(itemName, itemUrl);
                     }
@@ -560,11 +560,11 @@ public sealed class Data
 
             RefreshMarketDucats();
 
-            SaveDatabase(marketItemsPath, marketItems);
-            SaveDatabase(marketDataPath, marketData);
+            SaveDatabase(marketItemsPath, MarketItems);
+            SaveDatabase(marketDataPath, MarketData);
             Main.RunOnUIThread(() =>
             {
-                MainWindow.INSTANCE.MarketData.Content = marketData["timestamp"].ToObject<DateTime>()
+                MainWindow.INSTANCE.MarketData.Content = MarketData["timestamp"].ToObject<DateTime>()
                     .ToString("MMM dd - HH:mm", Main.culture);
                 Main.StatusUpdate("Market Update Complete", 0);
                 MainWindow.INSTANCE.ReloadDrop.IsEnabled = true;
@@ -582,11 +582,11 @@ public sealed class Data
 
     public void SaveAllJSONs()
     {
-        SaveDatabase(equipmentDataPath, equipmentData);
-        SaveDatabase(relicDataPath, relicData);
-        SaveDatabase(nameDataPath, nameData);
-        SaveDatabase(marketItemsPath, marketItems);
-        SaveDatabase(marketDataPath, marketData);
+        SaveDatabase(equipmentDataPath, EquipmentData);
+        SaveDatabase(relicDataPath, RelicData);
+        SaveDatabase(nameDataPath, _nameData);
+        SaveDatabase(marketItemsPath, MarketItems);
+        SaveDatabase(marketDataPath, MarketData);
     }
 
     public void ForceEquipmentUpdate()
@@ -600,7 +600,7 @@ public sealed class Data
             SaveAllJSONs();
             Main.RunOnUIThread(() =>
             {
-                MainWindow.INSTANCE.DropData.Content = equipmentData["timestamp"].ToObject<DateTime>()
+                MainWindow.INSTANCE.DropData.Content = EquipmentData["timestamp"].ToObject<DateTime>()
                     .ToString("MMM dd - HH:mm", Main.culture);
                 Main.StatusUpdate("Prime Update Complete", 0);
 
@@ -622,7 +622,7 @@ public sealed class Data
         if (name.IndexOf("Prime") < 0)
             return false;
         string eqmt = name.Substring(0, name.IndexOf("Prime") + 5);
-        return equipmentData[eqmt]["parts"][name]["vaulted"].ToObject<bool>();
+        return EquipmentData[eqmt]["parts"][name]["vaulted"].ToObject<bool>();
     }
 
     public bool IsPartMastered(string name)
@@ -630,7 +630,7 @@ public sealed class Data
         if (name.IndexOf("Prime") < 0)
             return false;
         string eqmt = name.Substring(0, name.IndexOf("Prime") + 5);
-        return equipmentData[eqmt]["mastered"].ToObject<bool>();
+        return EquipmentData[eqmt]["mastered"].ToObject<bool>();
     }
 
     public string PartsOwned(string name)
@@ -638,7 +638,7 @@ public sealed class Data
         if (name.IndexOf("Prime") < 0)
             return "0";
         string eqmt = name.Substring(0, name.IndexOf("Prime") + 5);
-        string owned = equipmentData[eqmt]["parts"][name]["owned"].ToString();
+        string owned = EquipmentData[eqmt]["parts"][name]["owned"].ToString();
         if (owned == "0")
             return "0";
         return owned;
@@ -651,7 +651,7 @@ public sealed class Data
         if (primeIndex < 0)
             return "0";
         string eqmt = name[..(primeIndex + 5)];
-        string count = equipmentData[eqmt]["parts"][name]["count"].ToString();
+        string count = EquipmentData[eqmt]["parts"][name]["count"].ToString();
         if (count == "0")
             return "0";
         return count;
@@ -771,7 +771,7 @@ public sealed class Data
     {
         bool saveDatabases = false;
         string localeName = "";
-        foreach (var marketItem in marketItems)
+        foreach (var marketItem in MarketItems)
         {
             if (marketItem.Key == "version")
                 continue;
@@ -955,7 +955,7 @@ public sealed class Data
         string lowest_unfiltered = null;
         low = 9999;
         multipleLowest = false;
-        foreach (KeyValuePair<string, JToken> prop in nameData)
+        foreach (KeyValuePair<string, JToken> prop in _nameData)
         {
             int val = LevenshteinDistance(prop.Key, name);
             if (val < low)
@@ -988,7 +988,7 @@ public sealed class Data
         string lowest = null;
         string lowest_unfiltered = null;
         low = 9999;
-        foreach (KeyValuePair<string, JToken> prop in nameData)
+        foreach (KeyValuePair<string, JToken> prop in _nameData)
         {
             if (prop.Value.ToString().ToLower(Main.culture).Contains(name.ToLower(Main.culture)))
             {
@@ -1004,7 +1004,7 @@ public sealed class Data
 
         if (low > 10)
         {
-            foreach (KeyValuePair<string, JToken> prop in nameData)
+            foreach (KeyValuePair<string, JToken> prop in _nameData)
             {
                 int val = LevenshteinDistance(prop.Value.ToString(), name);
                 if (val < low)
@@ -1067,7 +1067,7 @@ public sealed class Data
         string eraName = null;
         JObject job = null;
 
-        foreach (KeyValuePair<string, JToken> era in relicData)
+        foreach (KeyValuePair<string, JToken> era in RelicData)
         {
             if (!era.Key.Contains("timestamp"))
             {
@@ -1157,7 +1157,7 @@ public sealed class Data
                     {
                         if (i < rewardscreen.Count)
                         {
-                            JObject job = Main.dataBase.marketData.GetValue(rewardscreen[i]).ToObject<JObject>();
+                            JObject job = Main.dataBase.MarketData.GetValue(rewardscreen[i]).ToObject<JObject>();
                             string plat = job["plat"].ToObject<string>();
                             string ducats = job["ducats"].ToObject<string>();
                             csv += "," + rewardscreen[i] + "," + plat + "," + ducats;
@@ -1233,16 +1233,16 @@ public sealed class Data
             var watch = Stopwatch.StartNew();
             long stop = watch.ElapsedMilliseconds + 5000;
             long wait = watch.ElapsedMilliseconds;
-            long fixedStop = watch.ElapsedMilliseconds + ApplicationSettings.GlobalReadonlySettings.FixedAutoDelay;
+            long fixedStop = watch.ElapsedMilliseconds + _settings.FixedAutoDelay;
 
             _window.UpdateWindow();
 
-            if (ApplicationSettings.GlobalReadonlySettings.ThemeSelection == WFtheme.AUTO)
+            if (_settings.ThemeSelection == WFtheme.AUTO)
             {
                 while (watch.ElapsedMilliseconds < stop)
                 {
                     if (watch.ElapsedMilliseconds <= wait) continue;
-                    wait += ApplicationSettings.GlobalReadonlySettings.AutoDelay;
+                    wait += _settings.AutoDelay;
                     OCR.GetThemeWeighted(out double diff);
                     if (!(diff > 40)) continue;
                     while (watch.ElapsedMilliseconds < wait) ;
@@ -1469,7 +1469,7 @@ public sealed class Data
     /// <returns>Warframe.market prime item ID</returns>
     public string PrimeItemToItemID(string primeItem)
     {
-        foreach (var marketItem in marketItems)
+        foreach (var marketItem in MarketItems)
         {
             if (marketItem.Value.ToString().Split('|').First().Equals(primeItem, StringComparison.OrdinalIgnoreCase))
             {
@@ -1559,7 +1559,7 @@ public sealed class Data
 
     public string GetUrlName(string primeName)
     {
-        foreach (var marketItem in marketItems)
+        foreach (var marketItem in MarketItems)
         {
             string[] vals = marketItem.Value.ToString().Split('|');
             if (vals.Length > 2 && vals[0].Equals(primeName, StringComparison.OrdinalIgnoreCase))

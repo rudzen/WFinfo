@@ -781,10 +781,8 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
             NullValueHandling = NullValueHandling.Ignore
         };
         jsonSettings.Converters.Add(new StringEnumConverter());
-        var s = JsonSerializer.Serialize(ApplicationSettings.GlobalSettings);
-        File.WriteAllText(settingsDirectory, s);
-        // File.WriteAllText(settingsDirectory, 
-        //     JsonConvert.SerializeObject(ApplicationSettings.GlobalSettings, Formatting.Indented, jsonSettings));
+        var data = JsonConvert.SerializeObject(_settings, Formatting.Indented, jsonSettings);
+        File.WriteAllText(settingsDirectory, data);
     }
 
     private readonly Dictionary<string, string> _validationErrors = new();

@@ -19,7 +19,7 @@ public partial class FullscreenReminder : Window
     {
         Logger.Debug("[Fullscreen Reminder] User selected \"Disable overlay mode\" - showing Setting window");
         Main.settingsWindow.Show();
-        Main.settingsWindow.populate();
+        Main.settingsWindow.Populate();
         Main.settingsWindow.Left = Left;
         Main.settingsWindow.Top = Top + Height;
         Main.settingsWindow.Show();

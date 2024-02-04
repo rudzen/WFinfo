@@ -305,7 +305,7 @@ public class TreeNode : INPC
     public bool GetSetInfo()
     {
         string primeSetName = Main.dataBase.GetSetName(Name);
-        if (!Main.dataBase.marketData.TryGetValue(primeSetName, out JToken primeSetJToken))
+        if (!Main.dataBase.MarketData.TryGetValue(primeSetName, out JToken primeSetJToken))
         {
             return false; // This is not a set
         }
@@ -321,7 +321,7 @@ public class TreeNode : INPC
         Owned_Ducat_Val = 0;
         Owned_Val = 0;
         Count_Val = 0;
-        Mastered = Main.dataBase.equipmentData[this.dataRef]["mastered"].ToObject<bool>();
+        Mastered = Main.dataBase.EquipmentData[this.dataRef]["mastered"].ToObject<bool>();
         foreach (TreeNode kid in Children)
         {
             Owned_Capped_Val += kid.Owned_Capped_Val;
@@ -917,7 +917,7 @@ public class TreeNode : INPC
     public void ReloadPartOwned(TreeNode Parent)
     {
         //DOES NOT UPDATE PARENT
-        JObject job = Main.dataBase.equipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        JObject job = Main.dataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         Owned_Val = job["owned"].ToObject<int>();
         Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
         Owned_Plat_Val = Owned_Val  * Plat_Val;
@@ -927,7 +927,7 @@ public class TreeNode : INPC
 
     private void DecrementPartThreaded(TreeNode Parent)
     {
-        JObject job = Main.dataBase.equipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        JObject job = Main.dataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         int owned = Owned_Val;
         if (owned > 0)
         {
@@ -952,7 +952,7 @@ public class TreeNode : INPC
 
     private void IncrementPartThreaded(TreeNode Parent)
     {
-        JObject job = Main.dataBase.equipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        JObject job = Main.dataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         int count = Count_Val;
         int owned = Owned_Val;
         job["owned"] = owned + 1;
@@ -974,7 +974,7 @@ public class TreeNode : INPC
 
     private void MarkSetAsComplete()
     {
-        Main.dataBase.equipmentData[this.dataRef]["mastered"] = !Mastered;
+        Main.dataBase.EquipmentData[this.dataRef]["mastered"] = !Mastered;
         Mastered = !Mastered;
         Main.dataBase.SaveAllJSONs();
     }

@@ -12,19 +12,19 @@ namespace WFInfo.Settings;
 /// <summary>
 /// Singleton class for storing and retrieving settings which can be serialized to a file.
 /// </summary>
-public class ApplicationSettings : IReadOnlyApplicationSettings
+public sealed class ApplicationSettings
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ApplicationSettings>();
 
     /// <summary>
     /// Global singleton access to readonly settings
     /// </summary>
-    public static IReadOnlyApplicationSettings GlobalReadonlySettings => GlobalSettings;
+    // public static IReadOnlyApplicationSettings GlobalReadonlySettings => GlobalSettings;
 
     /// <summary>
     /// A singleton static instance of the settings class instead of injection
     /// </summary>
-    internal static ApplicationSettings GlobalSettings { get; } = new ApplicationSettings();
+    // internal static ApplicationSettings GlobalSettings { get; } = new ApplicationSettings();
 
     [JsonIgnore]
     public bool Initialized { get; set; } = false;

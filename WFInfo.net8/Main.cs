@@ -40,7 +40,6 @@ public class Main
 
     public static Data dataBase { get; private set; }
     public static RewardWindow window { get; set; } = new RewardWindow();
-    public static Overlay[] overlays { get; set; } = [new Overlay(), new Overlay(), new Overlay(), new Overlay()];
     public static SettingsWindow settingsWindow { get; private set; }
     public static AutoCount autoCount { get; set; } = new AutoCount();
     public static ErrorDialogue popup { get; set; }
@@ -64,8 +63,9 @@ public class Main
     private System.Drawing.Point _lastClick;
     private System.Threading.Timer _timer;
 
+
     // Instance services
-    private readonly IReadOnlyApplicationSettings _settings;
+    private readonly ApplicationSettings _settings;
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _windowInfo;
     private readonly IHDRDetectorService _detector;
@@ -75,6 +75,8 @@ public class Main
     private readonly IScreenshotService? _windowsScreenshot;
 
     private readonly ITesseractService? _tesseractService;
+
+    private readonly Overlay[] _overlays;
 
     // hack, should not be here, but stuff is too intertwined for now
     // also, the auto updater needs this to allow for event to be used
@@ -86,7 +88,7 @@ public class Main
         var splitIndex = version.LastIndexOf('.');
         BuildVersion = version[..splitIndex];
     }
-    
+
     public Main(IServiceProvider sp)
     {
         _sp = sp;
@@ -94,11 +96,13 @@ public class Main
         login = sp.GetRequiredService<Login>();
         settingsWindow = sp.GetRequiredService<SettingsWindow>();
 
-        _settings = sp.GetRequiredService<IReadOnlyApplicationSettings>();
+        _settings = sp.GetRequiredService<ApplicationSettings>();
         _process = sp.GetRequiredService<IProcessFinder>();
         _windowInfo = sp.GetRequiredService<IWindowInfoService>();
         _detector = sp.GetRequiredService<IHDRDetectorService>();
         _tesseractService = sp.GetRequiredService<ITesseractService>();
+
+        _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
         dataBase = sp.GetRequiredService<Data>();
         snapItOverlayWindow = new SnapItOverlay(_windowInfo);
@@ -129,17 +133,15 @@ public class Main
     {
         try
         {
-            //RelicsWindow.LoadNodesOnThread();
-
             // Too many dependencies?
             StatusUpdate("Initializing OCR engine...", 0);
-            OCR.Init(_tesseractService, new SoundPlayer(), ApplicationSettings.GlobalReadonlySettings, _windowInfo,
-                _detector, _gdiScreenshot, _windowsScreenshot);
+            OCR.Init(_tesseractService, new SoundPlayer(), _settings, _windowInfo,
+                _detector, _overlays, _gdiScreenshot, _windowsScreenshot);
 
             StatusUpdate("Updating Databases...", 0);
             dataBase.Update();
 
-            if (ApplicationSettings.GlobalReadonlySettings.Auto)
+            if (_settings.Auto)
                 dataBase.EnableLogCapture();
             if (dataBase.IsJWTvalid().Result)
             {
@@ -171,7 +173,7 @@ public class Main
     {
         if (!await dataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
             return;
-        
+
         DateTime now = DateTime.UtcNow;
         Logger.Debug("Checking if the user has been inactive. Now={Now}, lastActive={LastActive}", now, _latestActive);
 
@@ -181,7 +183,7 @@ public class Main
             Logger.Debug("Warframe was detected as closed");
             //reset warframe process variables, and reset LogCapture so new game process gets noticed
             dataBase.DisableLogCapture();
-            if (ApplicationSettings.GlobalReadonlySettings.Auto)
+            if (_settings.Auto)
                 dataBase.EnableLogCapture();
 
             await Task.Run(async () =>
@@ -229,7 +231,8 @@ public class Main
         else
         {
             if (UserAway)
-                Logger.Debug("User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
+                Logger.Debug("User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}",
+                    LastMarketStatusB4AFK);
             else
                 Logger.Debug("User is active - no status change needed");
         }
@@ -265,14 +268,15 @@ public class Main
 
     private void ActivationKeyPressed(object key)
     {
-        Logger.Information("User key press. key={Key},delete={Delete},snapit={SnapitKey}:{SnapPressed},searchit={SearchitKey}:{SearchItPressed},masterit={MasteritKey}:{MasteritPressed},debug={DebugKey}:{DebugPressed}",
+        Logger.Information(
+            "User key press. key={Key},delete={Delete},snapit={SnapitKey}:{SnapPressed},searchit={SearchitKey}:{SearchItPressed},masterit={MasteritKey}:{MasteritPressed},debug={DebugKey}:{DebugPressed}",
             key,
             Keyboard.IsKeyDown(Key.Delete),
             _settings.SnapitModifierKey, Keyboard.IsKeyDown(_settings.SnapitModifierKey),
             _settings.SearchItModifierKey, Keyboard.IsKeyDown(_settings.SearchItModifierKey),
             _settings.MasterItModifierKey, Keyboard.IsKeyDown(_settings.MasterItModifierKey),
             _settings.DebugModifierKey, Keyboard.IsKeyDown(_settings.DebugModifierKey)
-            );
+        );
 
         if (Keyboard.IsKeyDown(Key.Delete))
         {
@@ -280,9 +284,9 @@ public class Main
             foreach (Window overlay in App.Current.Windows)
             {
                 // TODO (rudzen) : this is a hack, we should not be checking for the type of the window
-                
+
                 // if (overlay.GetType() == typeof(Overlay))
-                
+
                 if (overlay.GetType().ToString() == "WFInfo.Overlay")
                 {
                     overlay.Hide();
@@ -378,7 +382,7 @@ public class Main
                 && _settings is { AutoList: false, AutoCSV: false, AutoCount: false })
             {
                 //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
-                Overlay.rewardsDisplaying = false; 
+                Overlay.rewardsDisplaying = false;
                 return;
             }
 

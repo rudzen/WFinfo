@@ -10,28 +10,27 @@ namespace WFInfo.Settings;
 /// </summary>
 public partial class SettingsWindow : Window
 {
-    private readonly SettingsViewModel _viewModel;
-    public SettingsViewModel SettingsViewModel => _viewModel;
+    public SettingsViewModel SettingsViewModel { get; }
 
-    public static KeyConverter converter = new();
+    private bool IsActivationFocused => Activation_key_box.IsFocused;
 
     public SettingsWindow(SettingsViewModel settingsViewModel)
     {
         InitializeComponent();
         DataContext = this;
-        _viewModel = settingsViewModel;
+        SettingsViewModel = settingsViewModel;
     }
 
-    public void populate()
+    public void Populate()
     {
         Overlay_sliders.Visibility = Visibility.Collapsed; // default hidden for the majority of states
 
-        if (_viewModel.Display == Display.Overlay)
+        if (SettingsViewModel.Display == Display.Overlay)
         {
             OverlayRadio.IsChecked = true;
             Overlay_sliders.Visibility = Visibility.Visible;
         }
-        else if (_viewModel.Display == Display.Light)
+        else if (SettingsViewModel.Display == Display.Light)
         {
             LightRadio.IsChecked = true;
         }
@@ -40,7 +39,7 @@ public partial class SettingsWindow : Window
             WindowRadio.IsChecked = true;
         }
 
-        if (_viewModel.Auto)
+        if (SettingsViewModel.Auto)
         {
             autoCheckbox.IsChecked = true;
             Autolist.IsEnabled = true;
@@ -56,7 +55,7 @@ public partial class SettingsWindow : Window
 
         foreach (ComboBoxItem localeItem in localeCombobox.Items)
         {
-            if (_viewModel.Locale.Equals(localeItem.Tag.ToString()))
+            if (SettingsViewModel.Locale.Equals(localeItem.Tag.ToString()))
             {
                 localeItem.IsSelected = true;
             }
@@ -67,7 +66,7 @@ public partial class SettingsWindow : Window
 
     public void Save()
     {
-        _viewModel.Save();
+        SettingsViewModel.Save();
     }
 
     private void Hide(object sender, RoutedEventArgs e)
@@ -86,7 +85,7 @@ public partial class SettingsWindow : Window
 
     private void WindowChecked(object sender, RoutedEventArgs e)
     {
-        _viewModel.Display = Display.Window;
+        SettingsViewModel.Display = Display.Window;
         Overlay_sliders.Visibility = Visibility.Collapsed;
         clipboardCheckbox.IsEnabled = true;
         Save();
@@ -94,7 +93,7 @@ public partial class SettingsWindow : Window
 
     private void OverlayChecked(object sender, RoutedEventArgs e)
     {
-        _viewModel.Display = Display.Overlay;
+        SettingsViewModel.Display = Display.Overlay;
         Overlay_sliders.Visibility = Visibility.Visible;
         clipboardCheckbox.IsEnabled = true;
         Save();
@@ -102,8 +101,8 @@ public partial class SettingsWindow : Window
 
     private void AutoClicked(object sender, RoutedEventArgs e)
     {
-        _viewModel.Auto = autoCheckbox.IsChecked.Value;
-        if (_viewModel.Auto)
+        SettingsViewModel.Auto = autoCheckbox.IsChecked.Value;
+        if (SettingsViewModel.Auto)
         {
             var message = "Do you want to enable the new auto mode?" + Environment.NewLine +
                           "This connects to the warframe debug logger to detect the reward window." +
@@ -128,7 +127,7 @@ public partial class SettingsWindow : Window
             }
             else
             {
-                _viewModel.Auto = false;
+                SettingsViewModel.Auto = false;
                 autoCheckbox.IsChecked = false;
                 Main.dataBase.DisableLogCapture();
                 Autolist.IsEnabled = false;
@@ -138,7 +137,7 @@ public partial class SettingsWindow : Window
         }
         else
         {
-            _viewModel.Auto = false;
+            SettingsViewModel.Auto = false;
             Autolist.IsEnabled = false;
             Autocsv.IsEnabled = false;
             Autoadd.IsEnabled = false;
@@ -148,44 +147,41 @@ public partial class SettingsWindow : Window
         Save();
     }
 
-
-    public bool IsActivationFocused => Activation_key_box.IsFocused;
-
     private void ActivationMouseDown(object sender, MouseEventArgs e)
     {
-        if (IsActivationFocused)
-        {
-            MouseButton key = MouseButton.Left;
+        if (!IsActivationFocused)
+            return;
+        
+        MouseButton key = MouseButton.Left;
 
-            if (e.MiddleButton == MouseButtonState.Pressed)
-                key = MouseButton.Middle;
-            else if (e.XButton1 == MouseButtonState.Pressed)
-                key = MouseButton.XButton1;
-            else if (e.XButton2 == MouseButtonState.Pressed)
-                key = MouseButton.XButton2;
+        if (e.MiddleButton == MouseButtonState.Pressed)
+            key = MouseButton.Middle;
+        else if (e.XButton1 == MouseButtonState.Pressed)
+            key = MouseButton.XButton1;
+        else if (e.XButton2 == MouseButtonState.Pressed)
+            key = MouseButton.XButton2;
 
-            if (key != MouseButton.Left)
-            {
-                e.Handled = true;
-                _viewModel.ActivationKey = key.ToString();
-                hidden.Focus();
-            }
-        }
+        if (key == MouseButton.Left)
+            return;
+        
+        e.Handled = true;
+        SettingsViewModel.ActivationKey = key.ToString();
+        hidden.Focus();
     }
 
     private void ActivationUp(object sender, KeyEventArgs e)
     {
         e.Handled = true;
 
-        if (e.Key == _viewModel.SearchItModifierKey || e.Key == _viewModel.SnapitModifierKey ||
-            e.Key == _viewModel.MasterItModifierKey)
+        if (e.Key == SettingsViewModel.SearchItModifierKey || e.Key == SettingsViewModel.SnapitModifierKey ||
+            e.Key == SettingsViewModel.MasterItModifierKey)
         {
             hidden.Focus();
             return;
         }
 
         Key key = e.Key != Key.System ? e.Key : e.SystemKey;
-        _viewModel.ActivationKey = key.ToString();
+        SettingsViewModel.ActivationKey = key.ToString();
         hidden.Focus();
     }
 
@@ -199,19 +195,18 @@ public partial class SettingsWindow : Window
         ComboBoxItem item = (ComboBoxItem)localeCombobox.SelectedItem;
 
         string selectedLocale = item.Tag.ToString();
-        _viewModel.Locale = selectedLocale;
+        SettingsViewModel.Locale = selectedLocale;
         Save();
 
         _ = OCR.updateEngineAsync();
-
         _ = Task.Run(async () => { Main.dataBase.ReloadItems(); });
     }
 
     private void LightRadioChecked(object sender, RoutedEventArgs e)
     {
-        _viewModel.Display = Display.Light;
+        SettingsViewModel.Display = Display.Light;
         Overlay_sliders.Visibility = Visibility.Collapsed;
-        _viewModel.Clipboard = true;
+        SettingsViewModel.Clipboard = true;
         clipboardCheckbox.IsChecked = true;
         clipboardCheckbox.IsEnabled = false;
         Save();
@@ -221,14 +216,14 @@ public partial class SettingsWindow : Window
     {
         e.Handled = true;
 
-        if (e.Key == _viewModel.SnapitModifierKey || e.Key == _viewModel.MasterItModifierKey)
+        if (e.Key == SettingsViewModel.SnapitModifierKey || e.Key == SettingsViewModel.MasterItModifierKey)
         {
             hidden.Focus();
             return;
         }
 
         Key key = e.Key != Key.System ? e.Key : e.SystemKey;
-        _viewModel.SearchItModifierKey = key;
+        SettingsViewModel.SearchItModifierKey = key;
         hidden.Focus();
     }
 
@@ -236,14 +231,14 @@ public partial class SettingsWindow : Window
     {
         e.Handled = true;
 
-        if (e.Key == _viewModel.SearchItModifierKey || e.Key == _viewModel.MasterItModifierKey)
+        if (e.Key == SettingsViewModel.SearchItModifierKey || e.Key == SettingsViewModel.MasterItModifierKey)
         {
             hidden.Focus();
             return;
         }
 
         Key key = e.Key != Key.System ? e.Key : e.SystemKey;
-        _viewModel.SnapitModifierKey = key;
+        SettingsViewModel.SnapitModifierKey = key;
         hidden.Focus();
     }
 
@@ -252,14 +247,14 @@ public partial class SettingsWindow : Window
     {
         e.Handled = true;
 
-        if (e.Key == _viewModel.SearchItModifierKey || e.Key == _viewModel.SnapitModifierKey)
+        if (e.Key == SettingsViewModel.SearchItModifierKey || e.Key == SettingsViewModel.SnapitModifierKey)
         {
             hidden.Focus();
             return;
         }
 
         Key key = e.Key != Key.System ? e.Key : e.SystemKey;
-        _viewModel.MasterItModifierKey = key;
+        SettingsViewModel.MasterItModifierKey = key;
         hidden.Focus();
     }
 

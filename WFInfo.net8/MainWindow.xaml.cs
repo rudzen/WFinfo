@@ -36,14 +36,16 @@ public partial class MainWindow : Window
     private static bool updatesupression;
     
     private readonly IServiceProvider _sp;
+    private readonly ApplicationSettings _applicationSettings;
     private readonly SettingsViewModel _settingsViewModel;
     private readonly PlusOne _plusOne;
     
     private readonly RelicsWindow _relicsWindow;
     private readonly EquipmentWindow _equipmentWindow;
 
-    public MainWindow(IServiceProvider sp)
+    public MainWindow(ApplicationSettings applicationSettings, IServiceProvider sp)
     {
+        _applicationSettings = applicationSettings;
         _sp = sp;
         INSTANCE = this;
         Main = new Main(sp);
@@ -107,17 +109,17 @@ public partial class MainWindow : Window
         var settingsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WFInfo",
             "settings.json");
 
-        if (File.Exists(settingsFile) && !ApplicationSettings.GlobalSettings.Initialized)
+        if (File.Exists(settingsFile) && !_applicationSettings.Initialized)
         {
             var jsonText = File.ReadAllText(settingsFile);
-            JsonConvert.PopulateObject(jsonText, ApplicationSettings.GlobalSettings, jsonSettings);
+            JsonConvert.PopulateObject(jsonText, _applicationSettings, jsonSettings);
         }
         else
         {
             welcomeDialogue = new WelcomeDialogue();
         }
 
-        ApplicationSettings.GlobalSettings.Initialized = true;
+        _applicationSettings.Initialized = true;
 
         try
         {
@@ -197,7 +199,7 @@ public partial class MainWindow : Window
 
     private void RelicsClick(object sender, RoutedEventArgs e)
     {
-        if (Main.dataBase.relicData == null)
+        if (Main.dataBase.RelicData == null)
         {
             ChangeStatus("Relic data not yet loaded in", 2);
             return;
@@ -209,7 +211,7 @@ public partial class MainWindow : Window
 
     private void EquipmentClick(object sender, RoutedEventArgs e)
     {
-        if (Main.dataBase.equipmentData == null)
+        if (Main.dataBase.EquipmentData == null)
         {
             ChangeStatus("Equipment data not yet loaded in", 2);
             return;
@@ -220,7 +222,7 @@ public partial class MainWindow : Window
 
     private void Settings_click(object sender, RoutedEventArgs e)
     {
-        Main.settingsWindow.populate();
+        Main.settingsWindow.Populate();
         Main.settingsWindow.Left = Left;
         Main.settingsWindow.Top = Top + Height;
         Main.settingsWindow.Show();

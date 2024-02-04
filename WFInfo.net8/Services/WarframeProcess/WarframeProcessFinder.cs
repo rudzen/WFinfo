@@ -25,9 +25,9 @@ public sealed class WarframeProcessFinder : IProcessFinder
 
     private Process? _warframe;
 
-    private readonly IReadOnlyApplicationSettings _settings;
+    private readonly ApplicationSettings _settings;
 
-    public WarframeProcessFinder(IReadOnlyApplicationSettings settings)
+    public WarframeProcessFinder(ApplicationSettings settings)
     {
         _settings = settings;
     }
@@ -65,7 +65,7 @@ public sealed class WarframeProcessFinder : IProcessFinder
                 //try and catch any UAC related issues
                 try
                 {
-                    bool _ = _warframe.HasExited;
+                    _ = _warframe.HasExited;
                     OnProcessChanged?.Invoke(_warframe);
                     return;
                 }

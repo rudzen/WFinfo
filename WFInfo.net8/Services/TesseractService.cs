@@ -48,7 +48,8 @@ public class TesseractService : ITesseractService
     /// </summary>
     public TesseractEngine[] Engines { get; } = new TesseractEngine[4];
 
-    private static string Locale => ApplicationSettings.GlobalReadonlySettings.Locale;
+    private readonly string _locale;
+    
     private static string AppdataTessdataFolder => CustomEntrypoint.appdata_tessdata_folder;
 
     private static readonly string ApplicationDirectory =
@@ -56,8 +57,9 @@ public class TesseractService : ITesseractService
 
     private static readonly string DataPath = ApplicationDirectory + @"\tessdata";
 
-    public TesseractService()
+    public TesseractService(ApplicationSettings applicationSettings)
     {
+        _locale = applicationSettings.Locale;
         getLocaleTessdata();
         FirstEngine = CreateEngine();
         SecondEngine = CreateEngine();
@@ -91,7 +93,7 @@ public class TesseractService : ITesseractService
         Dispose(false);
     }
 
-    private TesseractEngine CreateEngine() => new TesseractEngine(DataPath, Locale)
+    private TesseractEngine CreateEngine() => new TesseractEngine(DataPath, _locale)
     {
         DefaultPageSegMode = PageSegMode.SingleBlock
     };
@@ -130,13 +132,13 @@ public class TesseractService : ITesseractService
         };
 
         // get trainned data
-        string traineddata_hotlink = traineddata_hotlink_prefix  + Locale + ".traineddata";
-        string app_data_traineddata_path = AppdataTessdataFolder + @"\"   + Locale + ".traineddata";
+        string traineddata_hotlink = traineddata_hotlink_prefix  + _locale + ".traineddata";
+        string app_data_traineddata_path = AppdataTessdataFolder + @"\"   + _locale + ".traineddata";
 
         WebClient webClient = CustomEntrypoint.CreateNewWebClient();
 
         if (!File.Exists(app_data_traineddata_path) || CustomEntrypoint.GetMD5hash(app_data_traineddata_path) !=
-            traineddata_checksums.GetValue(Locale).ToObject<string>())
+            traineddata_checksums.GetValue(_locale).ToObject<string>())
         {
             try
             {

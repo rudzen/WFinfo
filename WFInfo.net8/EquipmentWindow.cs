@@ -59,7 +59,7 @@ public partial class EquipmentWindow : Window
     private void Populate()
     {
         primeTypes = new Dictionary<string, TreeNode>();
-        foreach (KeyValuePair<string, JToken> prime in Main.dataBase.equipmentData)
+        foreach (KeyValuePair<string, JToken> prime in Main.dataBase.EquipmentData)
         {
             if (prime.Key.Contains("Prime"))
             {
@@ -96,17 +96,17 @@ public partial class EquipmentWindow : Window
                     TreeNode partNode = new TreeNode(partName,
                         primePart.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "", false, 0);
                     partNode.MakeClickable(primePart.Key);
-                    if (Main.dataBase.marketData.TryGetValue(primePart.Key.ToString(), out JToken marketValues))
+                    if (Main.dataBase.MarketData.TryGetValue(primePart.Key.ToString(), out JToken marketValues))
                         partNode.SetPrimePart(marketValues["plat"].ToObject<double>(),
                             marketValues["ducats"].ToObject<int>(), primePart.Value["owned"].ToObject<int>(),
                             primePart.Value["count"].ToObject<int>());
-                    else if (Main.dataBase.equipmentData.TryGetValue(primePart.Key, out JToken job))
+                    else if (Main.dataBase.EquipmentData.TryGetValue(primePart.Key, out JToken job))
                     {
                         double plat = 0.0;
                         double ducats = 0.0;
                         foreach (KeyValuePair<string, JToken> subPartPart in job["parts"].ToObject<JObject>())
                         {
-                            if (Main.dataBase.marketData.TryGetValue(subPartPart.Key.ToString(),
+                            if (Main.dataBase.MarketData.TryGetValue(subPartPart.Key.ToString(),
                                     out JToken subMarketValues))
                             {
                                 int temp = subPartPart.Value["count"].ToObject<int>();

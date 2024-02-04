@@ -6,7 +6,7 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services.WindowInfo;
 
-public class Win32WindowInfoService(IProcessFinder process, IReadOnlyApplicationSettings settings)
+public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings)
     : IWindowInfoService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Win32WindowInfoService>();

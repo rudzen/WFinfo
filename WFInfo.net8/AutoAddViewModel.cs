@@ -101,9 +101,9 @@ public class AutoAddSingleItem : INPC
 
             try
             {
-                int count = Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"].ToObject<int>();
+                int count = Main.dataBase.EquipmentData[primeName]["parts"][partName]["owned"].ToObject<int>();
 
-                Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"] = count + 1;
+                Main.dataBase.EquipmentData[primeName]["parts"][partName]["owned"] = count + 1;
             }
             catch (Exception ex)
             {

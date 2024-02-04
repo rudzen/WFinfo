@@ -73,11 +73,12 @@ public partial class Overlay : Window
     private readonly DispatcherTimer hider = new DispatcherTimer();
 
     public static bool rewardsDisplaying;
-    private readonly IReadOnlyApplicationSettings _settings = ApplicationSettings.GlobalReadonlySettings;
+    
+    private readonly ApplicationSettings _settings;
 
-
-    public Overlay()
+    public Overlay(ApplicationSettings applicationSettings)
     {
+        _settings = applicationSettings;
         hider.Interval = TimeSpan.FromSeconds(10);
         hider.Tick += HideOverlay;
         InitializeComponent();

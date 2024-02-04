@@ -58,7 +58,7 @@ public partial class VerifyCount : Window
             Logger.Debug("Saving item. count={Count},name={Name}", item.Count, partName);
             try
             {
-                Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"] = item.Count;
+                Main.dataBase.EquipmentData[primeName]["parts"][partName]["owned"] = item.Count;
             }
             catch (Exception ex)
             {
@@ -90,7 +90,7 @@ public partial class VerifyCount : Window
         }
 
         File.Copy(itemPath, backupPath);
-        foreach (KeyValuePair<string, JToken> prime in Main.dataBase.equipmentData)
+        foreach (KeyValuePair<string, JToken> prime in Main.dataBase.EquipmentData)
         {
             string primeName = prime.Key.Substring(0, prime.Key.IndexOf("Prime") + 5);
             if (prime.Key.Contains("Prime"))
@@ -98,7 +98,7 @@ public partial class VerifyCount : Window
                 foreach (KeyValuePair<string, JToken> primePart in prime.Value["parts"].ToObject<JObject>())
                 {
                     string partName = primePart.Key;
-                    Main.dataBase.equipmentData[primeName]["parts"][partName]["owned"] = 0;
+                    Main.dataBase.EquipmentData[primeName]["parts"][partName]["owned"] = 0;
                 }
             }
         }

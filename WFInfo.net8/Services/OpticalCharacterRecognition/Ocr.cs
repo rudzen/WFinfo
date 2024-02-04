@@ -107,9 +107,11 @@ internal class OCR
 
     private static ITesseractService _tesseractService;
     private static ISoundPlayer _soundPlayer;
-    private static IReadOnlyApplicationSettings _settings;
+    private static ApplicationSettings _settings;
     private static IWindowInfoService _window;
     private static IHDRDetectorService _hdrDetector;
+    
+    private static Overlay[] _overlays;
 
     private static IScreenshotService _gdiScreenshot;
     private static IScreenshotService? _windowsScreenshot;
@@ -121,9 +123,10 @@ internal class OCR
     public static void Init(
         ITesseractService tesseractService,
         ISoundPlayer soundPlayer,
-        IReadOnlyApplicationSettings settings,
+        ApplicationSettings settings,
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
+        Overlay[] overlays,
         IScreenshotService gdiScreenshot,
         IScreenshotService? windowsScreenshot = null)
     {
@@ -134,6 +137,7 @@ internal class OCR
         _settings = settings;
         _window = window;
         _hdrDetector = hdrDetector;
+        _overlays = overlays;
 
         _gdiScreenshot = gdiScreenshot;
         _windowsScreenshot = windowsScreenshot;
@@ -219,15 +223,12 @@ internal class OCR
             clipboard = string.Empty;
             int width = (int)(pixleRewardWidth * _window.ScreenScaling * uiScaling) + 10;
             int startX = _window.Center.X - width / 2                               + (int)(width * 0.004);
+            
             if (firstChecks.Length % 2 == 1)
-            {
                 startX += width / 8;
-            }
 
             if (firstChecks.Length <= 2)
-            {
                 startX += 2 * (width / 8);
-            }
 
             int overWid = (int)(width / (4.1 * _window.DpiScaling));
             int startY = (int)(_window.Center.Y / _window.DpiScaling - 20 * _window.ScreenScaling * uiScaling);
@@ -241,8 +242,8 @@ internal class OCR
 
                 string correctName = Main.dataBase.GetPartName(part, out firstProximity[i], false, out _);
                 string primeSetName = Main.dataBase.GetSetName(correctName);
-                JObject job = (JObject)Main.dataBase.marketData.GetValue(correctName);
-                JObject primeSet = (JObject)Main.dataBase.marketData.GetValue(primeSetName);
+                JObject job = (JObject)Main.dataBase.MarketData.GetValue(correctName);
+                JObject primeSet = (JObject)Main.dataBase.MarketData.GetValue(primeSetName);
                 string ducats = job["ducats"].ToObject<string>();
                 if (int.Parse(ducats, Main.culture) == 0)
                 {
@@ -315,10 +316,10 @@ internal class OCR
 
                     if (_settings.IsOverlaySelected)
                     {
-                        Main.overlays[partNumber].LoadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted,
+                        _overlays[partNumber].LoadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted,
                             mastered, $"{partsOwned} / {partsCount}", "", hideRewardInfo, false);
-                        Main.overlays[partNumber].Resize(overWid);
-                        Main.overlays[partNumber]
+                        _overlays[partNumber].Resize(overWid);
+                        _overlays[partNumber]
                             .Display(
                                 (int)((startX + width / 4 * partNumber + _settings.OverlayXOffsetValue) /
                                       _window.DpiScaling),
@@ -345,7 +346,7 @@ internal class OCR
             Main.StatusUpdate("Completed processing (" + (end - start) + "ms)", 0);
 
             if (Main.listingHelper.PrimeRewards.Count                                      == 0 ||
-                Main.listingHelper.PrimeRewards.Last().Except(primeRewards).ToList().Count != 0)
+                Main.listingHelper.PrimeRewards[^1].Except(primeRewards).ToList().Count != 0)
             {
                 Main.listingHelper.PrimeRewards.Add(primeRewards);
             }
@@ -356,11 +357,11 @@ internal class OCR
                 {
                     foreach (int item in unownedItems)
                     {
-                        Main.overlays[item].BestOwnedChoice();
+                        _overlays[item].BestOwnedChoice();
                     }
 
-                    Main.overlays[bestDucatItem].BestDucatChoice();
-                    Main.overlays[bestPlatItem].BestPlatChoice();
+                    _overlays[bestDucatItem].BestDucatChoice();
+                    _overlays[bestPlatItem].BestPlatChoice();
                 });
             }
 
@@ -791,8 +792,8 @@ internal class OCR
             bool doWarn = part.Warning;
             part.Name = name;
             foundParts[i] = part;
-            JObject job = Main.dataBase.marketData.GetValue(name).ToObject<JObject>();
-            JObject primeSet = (JObject)Main.dataBase.marketData.GetValue(primeSetName);
+            JObject job = Main.dataBase.MarketData.GetValue(name).ToObject<JObject>();
+            JObject primeSet = (JObject)Main.dataBase.MarketData.GetValue(primeSetName);
             string plat = job["plat"].ToObject<string>();
             string primeSetPlat = null;
             if (primeSet != null)
@@ -826,10 +827,9 @@ internal class OCR
                 width = _settings.MaxOverlayWidth;
             }
 
-
             Main.RunOnUIThread(() =>
             {
-                Overlay itemOverlay = new Overlay();
+                Overlay itemOverlay = new Overlay(_settings);
                 itemOverlay.LoadTextData(name, plat, primeSetPlat, ducats, volume, vaulted, mastered, partsOwned,
                     partsDetected, false, doWarn);
                 itemOverlay.toSnapit();
@@ -1737,9 +1737,9 @@ internal class OCR
                 string[] nameParts = name.Split(["Prime"], 2, StringSplitOptions.None);
                 string primeName = nameParts[0] + "Prime";
 
-                if (Main.dataBase.equipmentData[primeName].ToObject<JObject>().TryGetValue("mastered", out _))
+                if (Main.dataBase.EquipmentData[primeName].ToObject<JObject>().TryGetValue("mastered", out _))
                 {
-                    Main.dataBase.equipmentData[primeName]["mastered"] = true;
+                    Main.dataBase.EquipmentData[primeName]["mastered"] = true;
 
                     Logger.Debug("Marked \"" + primeName + "\" as mastered");
                 }

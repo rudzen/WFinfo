@@ -56,8 +56,7 @@ public partial class App : Application
 
                     services.AddSingleton<Data>();
 
-                    services.AddSingleton(ApplicationSettings.GlobalReadonlySettings)
-                            .AddSingleton<ITesseractService, TesseractService>();
+                    services.AddSingleton<ITesseractService, TesseractService>();
 
                     services.AddSingleton<ApplicationSettings>();
 
@@ -90,7 +89,6 @@ public partial class App : Application
 
                     // .CreateLogger();
                 })
-                // .ConfigureLogging(logging => { logging.AddConsole(); })
                 .Build();
     }
 
@@ -128,9 +126,9 @@ public partial class App : Application
         LogEventLevel level;
 
 #if DEBUG
-        level = LogEventLevel.Debug;
+        level = LogEventLevel.Verbose;
 #else
-        level = LogEventLevel.Information;
+        level = LogEventLevel.Debug;
 #endif
 
         // Apply the config to the logger
