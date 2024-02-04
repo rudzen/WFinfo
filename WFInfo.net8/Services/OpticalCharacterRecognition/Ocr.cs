@@ -3,9 +3,13 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
+#if RELEASE
+using System.Numerics;
+#endif
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using Tesseract;
@@ -110,17 +114,38 @@ internal class OCR
     private static ApplicationSettings _settings;
     private static IWindowInfoService _window;
     private static IHDRDetectorService _hdrDetector;
-    
+
     private static Overlay[] _overlays;
 
     private static IScreenshotService _gdiScreenshot;
     private static IScreenshotService? _windowsScreenshot;
 
+    public static void Init(IServiceProvider sp, Overlay[] overlays)
+    {
+        var tesseractService = sp.GetRequiredService<ITesseractService>();
+        var soundPlayer = sp.GetRequiredService<ISoundPlayer>();
+        var settings = sp.GetRequiredService<ApplicationSettings>();
+        var window = sp.GetRequiredService<IWindowInfoService>();
+        var hdrDetector = sp.GetRequiredService<IHDRDetectorService>();
+        var gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
+        var windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
+        Init(
+            tesseractService: tesseractService,
+            soundPlayer: soundPlayer,
+            settings: settings,
+            window: window,
+            hdrDetector: hdrDetector,
+            overlays: overlays,
+            gdiScreenshot: gdiScreenshot,
+            windowsScreenshot: windowsScreenshot
+        );
+    }
+
     // You might be asking yourself "Why are you injecting specific services? That's not good practice at all!"
     // Now I can either do this and switch between these two based on settings
     // Or I can make this a scoped service, with each scope being a new screenshot request and dynamically choose the right service using a IScreenshotServiceFactory
     // Unfortunately option 2 means rewriting like half of this thing so I'm sticking with a hack
-    public static void Init(
+    private static void Init(
         ITesseractService tesseractService,
         ISoundPlayer soundPlayer,
         ApplicationSettings settings,
@@ -143,6 +168,11 @@ internal class OCR
         _windowsScreenshot = windowsScreenshot;
     }
 
+    public static void DisposeTesseract()
+    {
+        _tesseractService?.Dispose();
+    }
+
     internal static void ProcessRewardScreen(Bitmap? file = null)
     {
         #region initializers
@@ -157,7 +187,8 @@ internal class OCR
 
         processingActive = true;
         Main.StatusUpdate("Processing...", 0);
-        Logger.Debug("----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
+        Logger.Debug(
+            "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
 
         DateTime time = DateTime.UtcNow;
         timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
@@ -198,7 +229,8 @@ internal class OCR
         {
             processingActive = false;
             Logger.Debug(
-                "----  Partial Processing Time, couldn't find rewards {Time} ms  ------------------------------------------------------------------------------------------".Substring(0, 108),
+                "----  Partial Processing Time, couldn't find rewards {Time} ms  ------------------------------------------------------------------------------------------"
+                    .Substring(0, 108),
                 (watch.ElapsedMilliseconds - start));
             Main.StatusUpdate("Couldn't find any rewards to display", 2);
             if (firstChecks == null)
@@ -223,7 +255,7 @@ internal class OCR
             clipboard = string.Empty;
             int width = (int)(pixleRewardWidth * _window.ScreenScaling * uiScaling) + 10;
             int startX = _window.Center.X - width / 2                               + (int)(width * 0.004);
-            
+
             if (firstChecks.Length % 2 == 1)
                 startX += width / 8;
 
@@ -345,7 +377,7 @@ internal class OCR
             var end = watch.ElapsedMilliseconds;
             Main.StatusUpdate("Completed processing (" + (end - start) + "ms)", 0);
 
-            if (Main.listingHelper.PrimeRewards.Count                                      == 0 ||
+            if (Main.listingHelper.PrimeRewards.Count                                   == 0 ||
                 Main.listingHelper.PrimeRewards[^1].Except(primeRewards).ToList().Count != 0)
             {
                 Main.listingHelper.PrimeRewards.Add(primeRewards);
@@ -366,7 +398,7 @@ internal class OCR
             }
 
             Logger.Debug(("----  Total Processing Time " + (end - start) +
-                         " ms  ------------------------------------------------------------------------------------------")
+                          " ms  ------------------------------------------------------------------------------------------")
                 .Substring(0, 108));
             watch.Stop();
         }
@@ -454,12 +486,15 @@ internal class OCR
         if (numberOfRewardsDisplayed == 3)
         {
             var offset = selectionRectangle.Width / 8;
-            selectionRectangle = selectionRectangle with { X = selectionRectangle.X + offset, Width = selectionRectangle.Width - offset * 2 };
+            selectionRectangle = selectionRectangle with
+            {
+                X = selectionRectangle.X + offset, Width = selectionRectangle.Width - offset * 2
+            };
         }
 
         if (!selectionRectangle.Contains(lastClick))
             return -1;
-        
+
         var middelHeight = top + bottom / 4;
         var length = mostWidth / 8;
 
@@ -867,8 +902,11 @@ internal class OCR
         }
     }
 
-    private static List<(Bitmap, Rectangle)> DivideSnapZones(Bitmap filteredImage, Bitmap filteredImageClean,
-        int[] rowHits, int[] colHits)
+    private static List<(Bitmap, Rectangle)> DivideSnapZones(
+        Bitmap filteredImage,
+        Bitmap filteredImageClean,
+        int[] rowHits,
+        int[] colHits)
     {
         Pen brown = new Pen(Brushes.Brown);
         Pen white = new Pen(Brushes.White);
@@ -882,7 +920,8 @@ internal class OCR
             if ((double)(rowHits[i]) / filteredImage.Width > _settings.SnapRowTextDensity)
             {
                 int j = 0;
-                while (i + j < filteredImage.Height && (double)(rowHits[i + j]) / filteredImage.Width > _settings.SnapRowEmptyDensity)
+                while (i + j                                          < filteredImage.Height &&
+                       (double)(rowHits[i + j]) / filteredImage.Width > _settings.SnapRowEmptyDensity)
                 {
                     j++;
                 }
@@ -1201,8 +1240,8 @@ internal class OCR
         {
             //Log old noise level heuristics
             Logger.Debug("numberTooLarge: " + numberTooLarge + ", numberTooFewCharacters: " + numberTooFewCharacters +
-                        ", numberTooLargeButEnoughCharacters: " + numberTooLargeButEnoughCharacters +
-                        ", foundItems.Count: " + foundItems.Count);
+                         ", numberTooLargeButEnoughCharacters: " + numberTooLargeButEnoughCharacters +
+                         ", foundItems.Count: " + foundItems.Count);
         }
 
         filteredImage.Save(Main.AppPath + @"\Debug\SnapItImageBounds " + timestamp + ".png");
@@ -1231,7 +1270,6 @@ internal class OCR
         Pen cyan = new Pen(Brushes.Cyan);
         using (Graphics g = Graphics.FromImage(filteredImage))
         {
-
             //sort for easier processing in loop below
             List<InventoryItem> foundItemsBottom = foundItems.OrderBy(o => o.Bounding.Bottom).ToList();
             //filter out bad parts for more accurate grid
@@ -1247,7 +1285,7 @@ internal class OCR
             }
 
             List<InventoryItem> foundItemsLeft = foundItemsBottom.OrderBy(o => o.Bounding.Left).ToList();
-            
+
             //features of grid system
             List<Rectangle> rows = [];
             List<Rectangle> columns = [];
@@ -1573,7 +1611,7 @@ internal class OCR
                     unfilteredImage.UnlockBits(lockedBitmapData);
 
                     //recalculate centers to be relative to whole image
-                    rightmost = rightmost   + Left + 1;
+                    rightmost = rightmost + Left + 1;
                     xCenter += Left;
                     yCenter += Top;
                     xCenterNew += Left;
@@ -1728,7 +1766,7 @@ internal class OCR
                 Main.dataBase.GetPartName(part.Name + " prime Blueprint", out int primeProximity, true,
                     out _); //also add prime to check if that gives better match. If so, this is a non-prime
             Logger.Debug("Checking \""  + part.Name.Trim() + "\", ("   + proximity + ")\"" + name + "\", +prime (" +
-                        primeProximity + ")\""            + checkName + "\"");
+                         primeProximity + ")\""            + checkName + "\"");
 
             //Decide if item is an actual prime, if so mark as mastered
             if (proximity < 3 && proximity < primeProximity && part.Name.Length > 6 && name.Contains("Prime"))
@@ -2256,7 +2294,8 @@ internal class OCR
 
         try
         {
-            Logger.Debug($"Fullscreen is {fullScreen.Size}:, trying to clone: {rectangle.Size} at {rectangle.Location}");
+            Logger.Debug(
+                $"Fullscreen is {fullScreen.Size}:, trying to clone: {rectangle.Size} at {rectangle.Location}");
             preFilter = fullScreen.Clone(new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop),
                 fullScreen.PixelFormat);
         }
@@ -2379,10 +2418,10 @@ internal class OCR
         for (int i = 0; i < 5; i++)
         {
             Logger.Debug("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
-                        percWeights[topFive[i]].ToString("F2", Main.culture) + " -- " +
-                        topWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
-                        midWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
-                        botWeights[topFive[i]].ToString("F2", Main.culture));
+                         percWeights[topFive[i]].ToString("F2", Main.culture) + " -- " +
+                         topWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
+                         midWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
+                         botWeights[topFive[i]].ToString("F2", Main.culture));
         }
 
         using (Graphics g = Graphics.FromImage(fullScreen))
@@ -2429,7 +2468,7 @@ internal class OCR
         preFilter.Dispose();
 
         end = Stopwatch.GetElapsedTime(beginning);
-        Logger.Debug("Finished function " + end);
+        Logger.Debug("Finished function "   + end);
         partialScreenshot.Save(Main.AppPath + @"\Debug\PartialScreenshot" + timestamp + ".png");
         return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
     }
@@ -2499,7 +2538,7 @@ internal class OCR
             throw new Exception("Unable to find any parts");
         }
 
-        double total = totalEven          + totalOdd;
+        double total = totalEven           + totalOdd;
         Logger.Debug("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.culture) + "%");
         Logger.Debug("ODD DISTRIBUTION: "  + (totalOdd  / total * 100).ToString("F2", Main.culture) + "%");
 
@@ -2664,7 +2703,7 @@ internal class OCR
 
 
         Logger.Debug((ret[0].Length == 0 ? ret.Count - 1 : ret.Count) + " Players Found -- Odds (" + oddCount +
-                    ") vs Evens ("                                   + evenCount                  + ")");
+                     ") vs Evens ("                                   + evenCount                  + ")");
 
         if ((oddCount == 0 && evenCount == 0) || oddCount == evenCount)
         {
@@ -2717,7 +2756,7 @@ internal class OCR
                         $"HDR support option '{_settings.HdrSupport}' does not have a corresponding screenshot service.");
             }
         }
-        
+
         var image = screenshot.CaptureScreenshot().Result[0];
         var fileName =
             $@"{Main.AppPath}\Debug\FullScreenShot {DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture)}.png";

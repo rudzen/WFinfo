@@ -2,12 +2,7 @@ using System.Reflection;
 
 namespace WFInfo;
 
-internal interface ISoundPlayer
-{
-    void Play();
-}
-
-public class SoundPlayer : ISoundPlayer
+public sealed class SoundPlayer : ISoundPlayer
 {
     private readonly System.Media.SoundPlayer _player;
 

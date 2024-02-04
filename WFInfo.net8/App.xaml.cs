@@ -10,6 +10,7 @@ using Serilog.Events;
 using WFInfo.Resources;
 using WFInfo.Services.HDRDetection;
 using WFInfo.Services.HDRDetection.Schemes;
+using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
@@ -54,6 +55,7 @@ public partial class App : Application
                     services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
                     services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
                     services.AddSingleton<IEncryptedDataService, EncryptedDataService>();
+                    services.AddSingleton<ISoundPlayer, SoundPlayer>();
                     services.AddSingleton<IHDRDetectorService, SchemeHDRDetector>();
                     services.AddSingleton<IHDRDetectionScheme, GameSettingsHDRDetectionScheme>();
 
@@ -113,7 +115,7 @@ public partial class App : Application
     {
         if (WFInfo.MainWindow.INSTANCE != null)
         {
-            WFInfo.Main.INSTANCE.DisposeTesseract();
+            OCR.DisposeTesseract();
             WFInfo.MainWindow.listener.Dispose();
             WFInfo.MainWindow.INSTANCE.Exit(null, null);
         }

@@ -18,11 +18,8 @@ public partial class SnapItOverlay : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<SnapItOverlay>();
 
-    public bool isEnabled;
-    public Bitmap tempImage;
     private System.Windows.Point startDrag;
     private System.Drawing.Point topLeft;
-
     private readonly IWindowInfoService _window;
 
     public SnapItOverlay(IWindowInfoService window)
@@ -37,6 +34,10 @@ public partial class SnapItOverlay : Window
         MouseUp += canvas_MouseUp;
         MouseMove += canvas_MouseMove;
     }
+    
+    public bool isEnabled { get; set; }
+    
+    public Bitmap tempImage { get; set; }
 
     public void Populate(Bitmap screenshot)
     {
@@ -49,14 +50,14 @@ public partial class SnapItOverlay : Window
         //Set the start point
         startDrag = e.GetPosition(canvas);
         //Move the selection marquee on top of all other objects in canvas
-        Canvas.SetZIndex(rectangle, canvas.Children.Count);
+        Panel.SetZIndex(rectangle, canvas.Children.Count);
         //Capture the mouse
         if (!canvas.IsMouseCaptured)
             canvas.CaptureMouse();
         canvas.Cursor = Cursors.Cross;
     }
 
-    public void closeOverlay()
+    public void CloseOverlay()
     {
         rectangle.Width = 0;
         rectangle.Height = 0;
@@ -99,7 +100,7 @@ public partial class SnapItOverlay : Window
             System.Drawing.Imaging.PixelFormat.DontCare);
         Task.Factory.StartNew(() => OCR.ProcessSnapIt(cutout, tempImage, topLeft));
 
-        closeOverlay();
+        CloseOverlay();
     }
 
     private void canvas_MouseMove(object sender, MouseEventArgs e)

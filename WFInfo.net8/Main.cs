@@ -9,13 +9,10 @@ using AutoUpdaterDotNET;
 using System.Windows;
 using System.Windows.Forms;
 using WebSocketSharp;
-using WFInfo.Resources;
 using WFInfo.Settings;
-using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using Microsoft.Extensions.DependencyInjection;
-using WFInfo.Services.HDRDetection;
 using Serilog;
 using WFInfo.Services.OpticalCharacterRecognition;
 
@@ -61,20 +58,14 @@ public class Main
 
     private DateTime _latestActive;
     private System.Drawing.Point _lastClick;
+    
+    // ReSharper disable once NotAccessedField.Local
     private System.Threading.Timer _timer;
-
 
     // Instance services
     private readonly ApplicationSettings _settings;
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _windowInfo;
-    private readonly IHDRDetectorService _detector;
-
-    // See comment on Ocr.Init for explanation
-    private readonly IScreenshotService _gdiScreenshot;
-    private readonly IScreenshotService? _windowsScreenshot;
-
-    private readonly ITesseractService? _tesseractService;
 
     private readonly Overlay[] _overlays;
 
@@ -99,17 +90,11 @@ public class Main
         _settings = sp.GetRequiredService<ApplicationSettings>();
         _process = sp.GetRequiredService<IProcessFinder>();
         _windowInfo = sp.GetRequiredService<IWindowInfoService>();
-        _detector = sp.GetRequiredService<IHDRDetectorService>();
-        _tesseractService = sp.GetRequiredService<ITesseractService>();
-
-        _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
         dataBase = sp.GetRequiredService<Data>();
         snapItOverlayWindow = new SnapItOverlay(_windowInfo);
 
-        // See comment on Ocr.Init for explanation (todo: no longer relevant?)
-        _gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
-        _windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
+        _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
         StartMessage();
 
@@ -117,11 +102,6 @@ public class Main
         AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
 
         Task.Factory.StartNew(ThreadedDataLoad);
-    }
-
-    public void DisposeTesseract()
-    {
-        _tesseractService?.Dispose();
     }
 
     private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
@@ -135,8 +115,7 @@ public class Main
         {
             // Too many dependencies?
             StatusUpdate("Initializing OCR engine...", 0);
-            OCR.Init(_tesseractService, new SoundPlayer(), _settings, _windowInfo,
-                _detector, _overlays, _gdiScreenshot, _windowsScreenshot);
+            OCR.Init(_sp, _overlays);
 
             StatusUpdate("Updating Databases...", 0);
             dataBase.Update();
@@ -405,7 +384,7 @@ public class Main
         // close the snapit overlay when *any* key is pressed down
         if (snapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
         {
-            snapItOverlayWindow.closeOverlay();
+            snapItOverlayWindow.CloseOverlay();
             StatusUpdate("Closed snapit", 0);
             return;
         }
