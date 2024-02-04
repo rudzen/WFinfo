@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Windows;
 using Windows.Foundation.Metadata;
 using Windows.Graphics.Capture;
@@ -37,6 +39,28 @@ public partial class App : Application
                 })
                 .ConfigureServices((context, services) =>
                 {
+                    var proxyString2 = context.Configuration.GetValue<string>("http_proxy");
+                    var proxyString = Environment.GetEnvironmentVariable("http_proxy");
+
+                    if (proxyString is not null)
+                    {
+                        services.AddHttpClient("proxied")
+                                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                                {
+                                    Proxy = new WebProxy(new Uri(proxyString)),
+                                    UseCookies = false
+                                });
+                    }
+                    else
+                    {
+                        services.AddHttpClient("proxied")
+                                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+                                {
+                                    UseCookies = false
+                                });
+                    }
+
+                    // client.Timeout = TimeSpan.FromSeconds(30);
                     services.AddKeyedSingleton<IScreenshotService, GdiScreenshotService>(ScreenshotTypes.Gdi);
                     services.AddKeyedSingleton<IScreenshotService, ImageScreenshotService>(ScreenshotTypes
                         .ImageScreenshot);
@@ -125,7 +149,7 @@ public partial class App : Application
             await _host.StopAsync(TimeSpan.FromSeconds(5));
         }
     }
-    
+
     private static Serilog.ILogger CreateLogger(IConfiguration configuration)
     {
         const string defaultTemplate =

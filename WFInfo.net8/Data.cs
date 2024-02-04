@@ -84,7 +84,7 @@ public sealed class Data
     private readonly string sheetJsonUrl = "https://api.warframestat.us/wfinfo/prices";
 
     public string inGameName { get; private set; } = string.Empty;
-    readonly HttpClient client;
+    private readonly HttpClient _client;
     private string githubVersion;
     public bool rememberMe { get; set; }
     private LogCapture? EElogWatcher;
@@ -102,7 +102,11 @@ public sealed class Data
         return webClient;
     }
 
-    public Data(ApplicationSettings settings, IProcessFinder process, IWindowInfoService window)
+    public Data(
+        ApplicationSettings settings,
+        IProcessFinder process,
+        IWindowInfoService window,
+        IHttpClientFactory httpClientFactory)
     {
         _settings = settings;
         _process = process;
@@ -117,16 +121,7 @@ public sealed class Data
 
         Directory.CreateDirectory(ApplicationDirectory);
 
-        // Create websocket for WFM
-        var proxyString = Environment.GetEnvironmentVariable("http_proxy");
-        var proxy = proxyString is not null ? new WebProxy(new Uri(proxyString)) : null;
-
-        HttpClientHandler handler = new HttpClientHandler
-        {
-            Proxy = proxy
-        };
-        handler.UseCookies = false;
-        client = new HttpClient(handler);
+        _client = httpClientFactory.CreateClient("proxied");
 
         marketSocket.SslConfiguration.EnabledSslProtocols = SslProtocols.None;
     }
@@ -217,7 +212,7 @@ public sealed class Data
             request.Headers.Add("language", _settings.Locale);
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
-            var response = await client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+            var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
             var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
             Debug.WriteLine(body);
 
@@ -1269,11 +1264,9 @@ public sealed class Data
     /// <returns>A task to be awaited</returns>
     public async Task GetUserLogin(string email, string password)
     {
-        var request = new HttpRequestMessage()
-        {
-            RequestUri = new Uri("https://api.warframe.market/v1/auth/signin"),
-            Method = HttpMethod.Post,
-        };
+        using var request = new HttpRequestMessage();
+        request.RequestUri = new Uri("https://api.warframe.market/v1/auth/signin");
+        request.Method = HttpMethod.Post;
         var content =
             $"{{ \"email\":\"{email}\",\"password\":\"{password.Replace(@"\", @"\\")}\", \"auth_type\": \"header\"}}";
         request.Content = new StringContent(content, System.Text.Encoding.UTF8, "application/json");
@@ -1282,8 +1275,8 @@ public sealed class Data
         request.Headers.Add("accept", "application/json");
         request.Headers.Add("platform", "pc");
         request.Headers.Add("auth_type", "header");
-        var response = await client.SendAsync(request);
-        var responseBody = await response.Content.ReadAsStringAsync();
+        var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+        var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
         Regex rgxBody = new Regex("\"check_code\": \".*?\"");
         string censoredResponse = rgxBody.Replace(responseBody, "\"check_code\": \"REDACTED\"");
         Logger.Debug(censoredResponse);
@@ -1298,8 +1291,6 @@ public sealed class Data
             string censoredEmail = rgxEmail.Replace(email, "*");
             throw new Exception($"GetUserLogin, {responseBody}Email: {censoredEmail}, Pw length: {password.Length}");
         }
-
-        request.Dispose();
     }
 
     /// <summary>
@@ -1383,11 +1374,9 @@ public sealed class Data
     {
         try
         {
-            using var request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri("https://api.warframe.market/v1/profile/orders"),
-                Method = HttpMethod.Post,
-            };
+            using var request = new HttpRequestMessage();
+            request.RequestUri = new Uri("https://api.warframe.market/v1/profile/orders");
+            request.Method = HttpMethod.Post;
             var itemId = PrimeItemToItemID(primeItem);
             var json =
                 $"{{\"order_type\":\"sell\",\"item_id\":\"{itemId}\",\"platinum\":{platinum},\"quantity\":{quantity}}}";
@@ -1398,10 +1387,12 @@ public sealed class Data
             request.Headers.Add("platform", "pc");
             request.Headers.Add("auth_type", "header");
 
-            var response = await client.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+            var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 
-            if (!response.IsSuccessStatusCode) throw new Exception(responseBody);
+            if (!response.IsSuccessStatusCode)
+                throw new Exception(responseBody);
+            
             SetJWT(response.Headers);
             return true;
         }
@@ -1423,11 +1414,9 @@ public sealed class Data
     {
         try
         {
-            using var request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri("https://api.warframe.market/v1/profile/orders/" + listingId),
-                Method = HttpMethod.Put,
-            };
+            using var request = new HttpRequestMessage();
+            request.RequestUri = new Uri("https://api.warframe.market/v1/profile/orders/" + listingId);
+            request.Method = HttpMethod.Put;
             var json =
                 $"{{\"order_id\":\"{listingId}\", \"platinum\": {platinum}, \"quantity\":{quantity + 1}, \"visible\":true}}";
             request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
@@ -1437,13 +1426,12 @@ public sealed class Data
             request.Headers.Add("platform", "pc");
             request.Headers.Add("auth_type", "header");
 
-            var response = await client.SendAsync(request);
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+            var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 
             if (!response.IsSuccessStatusCode) throw new Exception(responseBody);
 
             SetJWT(response.Headers);
-            request.Dispose();
             return true;
         }
         catch (Exception e)
@@ -1574,18 +1562,16 @@ public sealed class Data
 
         try
         {
-            using var request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri("https://api.warframe.market/v1/items/" + urlName + "/orders/top"),
-                Method = HttpMethod.Get
-            };
+            using var request = new HttpRequestMessage();
+            request.RequestUri = new Uri("https://api.warframe.market/v1/items/" + urlName + "/orders/top");
+            request.Method = HttpMethod.Get;
             request.Headers.Add("Authorization", "JWT " + JWT);
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
             request.Headers.Add("auth_type", "header");
-            var response = await client.SendAsync(request);
-            var body = await response.Content.ReadAsStringAsync();
+            var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
             var payload = JsonConvert.DeserializeObject<JObject>(body);
             if (body.Length < 3)
                 throw new Exception("No sell orders found: " + payload);
@@ -1611,15 +1597,14 @@ public sealed class Data
 
         try
         {
-            using var request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri("https://api.warframe.market/v1/profile"),
-                Method = HttpMethod.Get,
-            };
+            using var request = new HttpRequestMessage();
+            request.RequestUri = new Uri("https://api.warframe.market/v1/profile");
+            request.Method = HttpMethod.Get;
             request.Headers.Add("Authorization", "JWT " + JWT);
-            var response = await client.SendAsync(request);
+            var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
             SetJWT(response.Headers);
-            var profile = JsonConvert.DeserializeObject<JObject>(await response.Content.ReadAsStringAsync());
+            var data = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var profile = JsonConvert.DeserializeObject<JObject>(data);
             profile["profile"]["check_code"] = "REDACTED"; // remnove the code that can compromise an account.
             Debug.WriteLine($"JWT check response: {profile["profile"]}");
             return !(bool)profile["profile"]["anonymous"];
@@ -1651,39 +1636,31 @@ public sealed class Data
                 await SetIngameName();
             }
 
-            using var request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri("https://api.warframe.market/v1/profile/" + inGameName + "/orders"),
-                Method = HttpMethod.Get
-            };
+            using var request = new HttpRequestMessage();
+            request.RequestUri = new Uri("https://api.warframe.market/v1/profile/" + inGameName + "/orders");
+            request.Method = HttpMethod.Get;
             request.Headers.Add("Authorization", "JWT " + JWT);
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
             request.Headers.Add("auth_type", "header");
-            var response = await client.SendAsync(request);
-            var body = await response.Content.ReadAsStringAsync();
+            var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
             var payload = JsonConvert.DeserializeObject<JObject>(body);
             var sellOrders = (JArray)payload?["payload"]?["sell_orders"];
             string itemID = PrimeItemToItemID(primeName);
 
-            if (sellOrders != null)
-            {
-                foreach (var listing in sellOrders)
-                {
-                    if (itemID == (string)listing?["item"]?["id"])
-                    {
-                        request.Dispose();
-                        return listing;
-                    }
-                }
-
-                return null; //The requested item was not found, but don't throw
-            }
-            else
-            {
+            if (sellOrders == null)
                 throw new Exception("No sell orders found: " + payload);
+            
+            foreach (var listing in sellOrders)
+            {
+                if (itemID == (string)listing?["item"]?["id"])
+                    return listing;
             }
+
+            return null; //The requested item was not found, but don't throw
+
         }
         catch (Exception e)
         {
@@ -1710,19 +1687,17 @@ public sealed class Data
         {
             try
             {
-                using var request = new HttpRequestMessage()
-                {
-                    RequestUri = new Uri("https://api.warframe.market/v1/profile/" + developer + "/review"),
-                    Method = HttpMethod.Post
-                };
+                using var request = new HttpRequestMessage();
+                request.RequestUri = new Uri("https://api.warframe.market/v1/profile/" + developer + "/review");
+                request.Method = HttpMethod.Post;
                 request.Headers.Add("Authorization", "JWT " + JWT);
                 request.Headers.Add("language", "en");
                 request.Headers.Add("accept", "application/json");
                 request.Headers.Add("platform", "pc");
                 request.Headers.Add("auth_type", "header");
                 request.Content = new StringContent(msg, System.Text.Encoding.UTF8, "application/json");
-                var response = await client.SendAsync(request);
-                var body = await response.Content.ReadAsStringAsync();
+                var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+                var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
                 Debug.WriteLine($"Body: {body}, Content: {msg}");
             }
             catch (Exception e)
@@ -1739,21 +1714,20 @@ public sealed class Data
     /// Gets the user's ingame name needed to make listings
     /// </summary>
     /// <returns></returns>
-    public async Task SetIngameName()
+    private async Task SetIngameName()
     {
-        using var request = new HttpRequestMessage()
-        {
-            RequestUri = new Uri("https://api.warframe.market/v1/profile"),
-            Method = HttpMethod.Get
-        };
+        using var request = new HttpRequestMessage();
+        request.RequestUri = new Uri("https://api.warframe.market/v1/profile");
+        request.Method = HttpMethod.Get;
         request.Headers.Add("Authorization", "JWT " + JWT);
         request.Headers.Add("language", "en");
         request.Headers.Add("accept", "application/json");
         request.Headers.Add("platform", "pc");
         request.Headers.Add("auth_type", "header");
-        var response = await client.SendAsync(request);
+        var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+        var content = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
         //setJWT(response.Headers);
-        var profile = JsonConvert.DeserializeObject<JObject>(await response.Content.ReadAsStringAsync());
+        var profile = JsonConvert.DeserializeObject<JObject>(content);
         inGameName = profile["profile"]?.Value<string>("ingame_name");
     }
 }

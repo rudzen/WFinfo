@@ -660,9 +660,12 @@ internal class OCR
         double max;
         WFtheme active = WFtheme.UNKNOWN;
 #if DEBUG
+
+        max = 0;
+        
         for (int i = 0; i < weights.Length; i++)
         {
-            Debug.Write(weights[i].ToString("F2", Main.culture) + " ");
+            Debug.Write(weights[i].ToString("F2", Main.Culture) + " ");
             if (weights[i] > max)
             {
                 max = weights[i];
