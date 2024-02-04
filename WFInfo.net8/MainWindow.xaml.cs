@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Serilog;
@@ -150,11 +149,9 @@ public partial class MainWindow : Window
         }
 
         _settingsViewModel.Save();
-
-        Main.DataBase.JWT = _encryptedDataService.LoadStoredJWT();
     }
 
-    public void OnContentRendered(object sender, EventArgs e)
+    private void OnContentRendered(object sender, EventArgs e)
     {
         if (welcomeDialogue != null)
         {
@@ -186,7 +183,7 @@ public partial class MainWindow : Window
         if (Main.DataBase.rememberMe)
         {
             // if rememberme was checked then save it
-            _encryptedDataService.PersistJWT(Main.DataBase.JWT);
+            _encryptedDataService.PersistJWT();
         }
 
         Application.Current.Shutdown();
@@ -442,7 +439,7 @@ public partial class MainWindow : Window
 
         Logger.Debug("Starting search it");
         Main.StatusUpdate("Starting search it", 0);
-        Main.SearchBox.Start();
+        Main.SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
     }
 
     private void OpenAppDataFolder(object sender, MouseButtonEventArgs e)

@@ -11,7 +11,6 @@ using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using Windows.Foundation.Metadata;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace WFInfo.Settings;
 

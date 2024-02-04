@@ -2,9 +2,9 @@
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text.RegularExpressions;
 using Serilog;
@@ -23,10 +23,10 @@ public sealed class Data
     private static readonly ILogger Logger = Log.Logger.ForContext<Data>();
 
     // Warframe.market item listing           {<id>: "<name>|<url_name>", ...}
-    public JObject MarketItems { get; set; }
+    public JObject? MarketItems { get; set; }
 
     // Contains warframe.market ducatonator listing     {<partName>: {"ducats": <ducat_val>,"plat": <plat_val>}, ...}
-    public JObject MarketData { get; private set; }
+    public JObject? MarketData { get; private set; }
 
     // Contains relicData from Warframe PC Drops        {<Era>: {"A1":{"vaulted": true,<rare1/uncommon[12]/common[123]>: <part>}, ...}, "Meso": ..., "Neo": ..., "Axi": ...}
     public JObject? RelicData { get; private set; }
@@ -79,14 +79,12 @@ public sealed class Data
     private readonly string equipmentDataPath;
     private readonly string relicDataPath;
     private readonly string nameDataPath;
-    public string? JWT { get; set; } // JWT is the security key, store this as email+pw combo
     private readonly WebSocket marketSocket = new WebSocket("wss://warframe.market/socket?platform=pc");
     private const string filterAllJSON = "https://api.warframestat.us/wfinfo/filtered_items";
     private readonly string sheetJsonUrl = "https://api.warframestat.us/wfinfo/prices";
 
     public string inGameName { get; private set; } = string.Empty;
     private readonly HttpClient _client;
-    private string githubVersion;
     public bool rememberMe { get; set; }
     private LogCapture? EElogWatcher;
     private Task autoThread;
@@ -94,16 +92,19 @@ public sealed class Data
     private readonly ApplicationSettings _settings;
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _window;
+    private readonly IEncryptedDataService _encryptedDataService;
 
     public Data(
         ApplicationSettings settings,
         IProcessFinder process,
         IWindowInfoService window,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IEncryptedDataService encryptedDataService)
     {
         _settings = settings;
         _process = process;
         _window = window;
+        _encryptedDataService = encryptedDataService;
 
         Logger.Debug("Initializing Databases");
         marketItemsPath = ApplicationDirectory   + @"\market_items.json";
@@ -123,11 +124,11 @@ public sealed class Data
     {
         if (EElogWatcher is not null)
             return;
-        
+
         try
         {
             EElogWatcher = new LogCapture(_process);
-            EElogWatcher.TextChanged += LogChanged;
+            EElogWatcher.TextChanged = LogChanged;
         }
         catch (Exception ex)
         {
@@ -141,7 +142,6 @@ public sealed class Data
         if (EElogWatcher is null)
             return;
         
-        EElogWatcher.TextChanged -= LogChanged;
         EElogWatcher.Dispose();
         EElogWatcher = null;
     }
@@ -149,12 +149,6 @@ public sealed class Data
     private static void SaveDatabase(string path, object db)
     {
         File.WriteAllText(path, JsonConvert.SerializeObject(db, Formatting.Indented));
-    }
-
-    public bool IsJwtLoggedIn()
-    {
-        //check if the token is of the right length
-        return JWT is { Length: > 300 };
     }
 
     // Load item list from Sheets
@@ -165,20 +159,18 @@ public sealed class Data
         MarketItems = new JObject();
 
         var body = await DownloadItems(url).ConfigureAwait(ConfigureAwaitOptions.None);
-        JObject obj = JsonConvert.DeserializeObject<JObject>(body);
+        var obj = JsonConvert.DeserializeObject<JObject>(body);
 
-        JArray items = JArray.FromObject(obj["payload"]["items"]);
+        var items = JArray.FromObject(obj["payload"]["items"]);
+
         foreach (var item in items)
         {
             var name = item["item_name"].ToString();
             if (!name.Contains("Prime "))
                 continue;
 
-            if (name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
-                name.Contains("Harness")    || name.Contains("Wings"))
-            {
+            if (CanHaveBluePrint(name))
                 name = name.Replace(" Blueprint", string.Empty);
-            }
 
             MarketItems[item["id"].ToString()] = $"{name}|{item["url_name"]}";
         }
@@ -193,8 +185,13 @@ public sealed class Data
             foreach (var item in items)
             {
                 var name = item["url_name"].ToString();
-                if (name.Contains("prime") && MarketItems.ContainsKey(item["id"].ToString()))
-                    MarketItems[item["id"].ToString()] = $"{MarketItems[item["id"].ToString()]}|{item["item_name"]}";
+                
+                if (!name.Contains("prime"))
+                    continue;
+                
+                var itemId = item["id"].ToString();
+                if (MarketItems.ContainsKey(itemId))
+                    MarketItems[itemId] = $"{MarketItems[itemId]}|{item["item_name"]}";
             }
         }
         catch (Exception exception)
@@ -225,16 +222,15 @@ public sealed class Data
     {
         if (!force && File.Exists(marketDataPath) && File.Exists(marketItemsPath))
         {
-            if (MarketData == null)
-                MarketData = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(marketDataPath));
-            if (MarketItems == null)
-                MarketItems = JsonConvert.DeserializeObject<JObject>(File.ReadAllText(marketItemsPath));
+            MarketData ??= JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(marketDataPath));
+            MarketItems ??= JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(marketItemsPath));
 
             if (MarketData.TryGetValue("version", out _) &&
                 (MarketData["version"].ToObject<string>() == Main.BuildVersion))
             {
-                DateTime timestamp = MarketData["timestamp"].ToObject<DateTime>();
-                if (timestamp > DateTime.Now.AddHours(-12))
+                var now = DateTime.Now;
+                var timestamp = MarketData["timestamp"].ToObject<DateTime>();
+                if (timestamp > now.AddHours(-12))
                 {
                     Logger.Debug("Market Databases are up to date");
                     return false;
@@ -249,41 +245,39 @@ public sealed class Data
         catch
         {
             Logger.Debug(
-                "Failed to refresh items from warframe.market, skipping WFM update for now. Some items might have incomplete info.");
+                "Failed to refresh items from warframe.market, skipping WFM update for now. Some items might have incomplete info");
         }
 
         MarketData = new JObject();
         var response = await _client.GetAsync(sheetJsonUrl).ConfigureAwait(ConfigureAwaitOptions.None);
-        var data = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+        var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
         
         var rows = JsonConvert.DeserializeObject<JArray>(data);
 
         foreach (var row in rows)
         {
             var name = row["name"].ToString();
-            if (name.Contains("Prime "))
-            {
-                if ((name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
-                     name.Contains("Harness")    || name.Contains("Wings")))
-                {
-                    name = name.Replace(" Blueprint", "");
-                }
+            
+            if (!name.Contains("Prime "))
+                continue;
+            
+            if (CanHaveBluePrint(name))
+                name = name.Replace(" Blueprint", string.Empty);
 
-                MarketData[name] = new JObject
+            MarketData[name] = new JObject
+            {
+                { "plat", double.Parse(row["custom_avg"].ToString(), Main.Culture) },
+                { "ducats", 0 },
                 {
-                    { "plat", double.Parse(row["custom_avg"].ToString(), Main.Culture) },
-                    { "ducats", 0 },
-                    {
-                        "volume",
-                        int.Parse(row["yesterday_vol"].ToString(), Main.Culture) +
-                        int.Parse(row["today_vol"].ToString(), Main.Culture)
-                    }
-                };
-            }
+                    "volume",
+                    int.Parse(row["yesterday_vol"].ToString(), Main.Culture) +
+                    int.Parse(row["today_vol"].ToString(), Main.Culture)
+                }
+            };
         }
 
         // Add default values for ignored items
-        foreach (KeyValuePair<string, JToken> ignored in allFiltered["ignored_items"].ToObject<JObject>())
+        foreach (var ignored in allFiltered["ignored_items"].ToObject<JObject>())
         {
             MarketData[ignored.Key] = ignored.Value;
         }
@@ -361,23 +355,21 @@ public sealed class Data
             Console.WriteLine(exception);
             throw;
         }
-        
-        // Thread.Sleep(333);
     }
 
-    private bool LoadEqmtData(JObject allFiltered, bool force = false)
+    private async ValueTask<bool> LoadEqmtData(JObject allFiltered, bool force = false)
     {
         if (EquipmentData == null)
             EquipmentData = File.Exists(equipmentDataPath)
-                ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(equipmentDataPath))
+                ? JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(equipmentDataPath))
                 : new JObject();
         if (RelicData == null)
             RelicData = File.Exists(relicDataPath)
-                ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(relicDataPath))
+                ? JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(relicDataPath))
                 : new JObject();
         if (_nameData == null)
             _nameData = File.Exists(nameDataPath)
-                ? JsonConvert.DeserializeObject<JObject>(File.ReadAllText(nameDataPath))
+                ? JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(nameDataPath))
                 : new JObject();
 
         // fill in equipmentData (NO OVERWRITE)
@@ -497,23 +489,26 @@ public sealed class Data
 
         foreach (KeyValuePair<string, JToken> elem in MarketItems)
         {
-            if (elem.Key != "version")
+            if (elem.Key == "version")
+                continue;
+            
+            var split = elem.Value.ToString().Split('|');
+            var itemName = split[0];
+            var itemUrl = split[1];
+            if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
             {
-                string[] split = elem.Value.ToString().Split('|');
-                var itemName = split[0];
-                var itemUrl = split[1];
-                if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
-                {
-                    await LoadMarketItem(itemName, itemUrl);
-                    saveDatabases = true;
-                }
+                await LoadMarketItem(itemName, itemUrl);
+                saveDatabases = true;
             }
         }
 
         if (MarketData["timestamp"] == null)
         {
-            Main.RunOnUIThread(() => { MainWindow.INSTANCE.MarketData.Content = "VERIFY"; });
-            Main.RunOnUIThread(() => { MainWindow.INSTANCE.DropData.Content = "TIME"; });
+            Main.RunOnUIThread(() =>
+            {
+                MainWindow.INSTANCE.MarketData.Content = "VERIFY";
+                MainWindow.INSTANCE.DropData.Content = "TIME";
+            });
 
             return false;
         }
@@ -524,7 +519,7 @@ public sealed class Data
                                                                             .ToString("MMM dd - HH:mm", Main.Culture);
         });
 
-        saveDatabases = LoadEqmtData(allFiltered, saveDatabases);
+        saveDatabases = await LoadEqmtData(allFiltered, saveDatabases);
         Main.RunOnUIThread(() =>
         {
             MainWindow.INSTANCE.DropData.Content = EquipmentData["timestamp"].ToObject<DateTime>()
@@ -1105,9 +1100,11 @@ public sealed class Data
         return lowest;
     }
 
-    private void LogChanged(object sender, string line)
+    private void LogChanged(string line)
     {
-        if (autoThread != null && !autoThread.IsCompleted) return;
+        if (autoThread is { IsCompleted: false })
+            return;
+        
         if (autoThread != null)
         {
             autoThread.Dispose();
@@ -1138,7 +1135,7 @@ public sealed class Data
                 }
 
             Overlay.rewardsDisplaying = false;
-            string csv = "";
+            string csv = string.Empty;
             Logger.Debug("Looping through rewards");
             Logger.Debug("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +
                          _settings.AutoCount);
@@ -1153,7 +1150,6 @@ public sealed class Data
                 }
 
                 Logger.Debug(rewards + ", detected choice: " + Main.ListingHelper.SelectedRewardIndex);
-
 
                 if (_settings.AutoCSV)
                 {
@@ -1209,13 +1205,15 @@ public sealed class Data
             if (_settings.AutoCount)
             {
                 Logger.Debug("Opening AutoCount interface");
-                Main.RunOnUIThread(() => { AutoCount.ShowAutoCount(); });
+                Main.RunOnUIThread(AutoCount.ShowAutoCount);
             }
 
             if (_settings.AutoCSV)
             {
                 Logger.Debug("appending rewardExport.csv");
-                File.AppendAllText(ApplicationDirectory + @"\rewardExport.csv", csv);
+                await File
+                      .AppendAllTextAsync(ApplicationDirectory + @"\rewardExport.csv", csv)
+                      .ConfigureAwait(ConfigureAwaitOptions.None);
             }
 
             if (_settings.AutoList)
@@ -1236,7 +1234,7 @@ public sealed class Data
         });
     }
 
-    public void AutoTriggered()
+    private void AutoTriggered()
     {
         try
         {
@@ -1329,9 +1327,7 @@ public sealed class Data
         Logger.Debug("Connecting to websocket");
 
         if (marketSocket.IsAlive)
-        {
             return false;
-        }
 
         marketSocket.OnMessage += (sender, e) =>
         {
@@ -1345,7 +1341,7 @@ public sealed class Data
 
         marketSocket.OnMessage += (sender, e) =>
         {
-            Debug.WriteLine("warframe.market: " + e.Data);
+            Logger.Debug("warframe.market. data={Data}", e.Data);
             if (!e.Data.Contains("SET_STATUS")) return;
             var message = JsonConvert.DeserializeObject<JObject>(e.Data);
             Main.RunOnUIThread(() => { Main.UpdateMarketStatus(message.GetValue("payload").ToString()); });
@@ -1360,7 +1356,7 @@ public sealed class Data
 
         try
         {
-            marketSocket.SetCookie(new WebSocketSharp.Net.Cookie("JWT", JWT));
+            marketSocket.SetCookie(new WebSocketSharp.Net.Cookie("JWT", _encryptedDataService.JWT));
             marketSocket.ConnectAsync();
         }
         catch (Exception e)
@@ -1372,18 +1368,17 @@ public sealed class Data
         return true;
     }
 
-
     /// <summary>
     /// Sets the JWT to be used for future calls
     /// </summary>
     /// <param name="headers">Response headers from the original Login call</param>
-    public void SetJWT(HttpResponseHeaders headers)
+    private void SetJWT(HttpResponseHeaders headers)
     {
         foreach (var item in headers)
         {
-            if (!item.Key.ToLower(Main.Culture).Contains("authorization")) continue;
+            if (!item.Key.Contains("authorization", StringComparison.CurrentCultureIgnoreCase)) continue;
             var temp = item.Value.First();
-            JWT = temp[4..];
+            _encryptedDataService.JWT = temp[4..];
             return;
         }
     }
@@ -1406,7 +1401,7 @@ public sealed class Data
             var json =
                 $"{{\"order_type\":\"sell\",\"item_id\":\"{itemId}\",\"platinum\":{platinum},\"quantity\":{quantity}}}";
             request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            request.Headers.Add("Authorization", "JWT " + JWT);
+            request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
@@ -1445,7 +1440,7 @@ public sealed class Data
             var json =
                 $"{{\"order_id\":\"{listingId}\", \"platinum\": {platinum}, \"quantity\":{quantity + 1}, \"visible\":true}}";
             request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            request.Headers.Add("Authorization", "JWT " + JWT);
+            request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
@@ -1471,11 +1466,11 @@ public sealed class Data
     /// </summary>
     /// <param name="primeItem">Human friendly name of prime item</param>
     /// <returns>Warframe.market prime item ID</returns>
-    public string PrimeItemToItemID(string primeItem)
+    private string PrimeItemToItemID(string primeItem)
     {
         foreach (var marketItem in MarketItems)
         {
-            if (marketItem.Value.ToString().Split('|').First().Equals(primeItem, StringComparison.OrdinalIgnoreCase))
+            if (marketItem.Value.ToString().Split('|')[0].Equals(primeItem, StringComparison.OrdinalIgnoreCase))
             {
                 return marketItem.Key;
             }
@@ -1497,7 +1492,7 @@ public sealed class Data
     public async Task<bool> SetWebsocketStatus(string status)
     {
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-        if (!IsJwtLoggedIn())
+        if (!_encryptedDataService.IsJwtLoggedIn())
             return false;
 
         var message = "{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"";
@@ -1519,9 +1514,9 @@ public sealed class Data
         {
             SendMessage(message);
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
-            Logger.Debug("SetWebsocketStatus, Was unable to set status due to: " + e);
+            Logger.Error(exception, "SetWebsocketStatus, Was unable to set status");
             throw;
         }
 
@@ -1534,14 +1529,14 @@ public sealed class Data
     /// <param name="data">The JSON string of data being sent over websocket</param>
     private void SendMessage(string data)
     {
-        Debug.WriteLine("Sending: " + data + " to websocket.");
+        Logger.Debug("Sending to websocket. data={Data}", data);
         try
         {
             marketSocket.Send(data);
         }
-        catch (InvalidOperationException e)
+        catch (InvalidOperationException exception)
         {
-            Debug.WriteLine($"Was unable to send message due to: {e}");
+            Logger.Error(exception, "Was unable to send message");
         }
     }
 
@@ -1550,26 +1545,24 @@ public sealed class Data
     /// </summary>
     public void Disconnect()
     {
-        if (marketSocket.ReadyState == WebSocketState.Open)
-        {
-            //only send disconnect message if the socket is connected
-            SendMessage("{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"invisible\"}");
-            JWT = null;
-            rememberMe = false;
-            inGameName = string.Empty;
-            marketSocket.Close(1006);
-        }
+        if (marketSocket.ReadyState != WebSocketState.Open)
+            return;
+        
+        //only send disconnect message if the socket is connected
+        SendMessage("{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"invisible\"}");
+        _encryptedDataService.JWT = null;
+        rememberMe = false;
+        inGameName = string.Empty;
+        marketSocket.Close(1006);
     }
 
-    public string GetUrlName(string primeName)
+    private string GetUrlName(string primeName)
     {
         foreach (var marketItem in MarketItems)
         {
-            string[] vals = marketItem.Value.ToString().Split('|');
-            if (vals.Length > 2 && vals[0].Equals(primeName, StringComparison.OrdinalIgnoreCase))
-            {
-                return vals[1];
-            }
+            var values = marketItem.Value.ToString().Split('|');
+            if (values.Length > 2 && values[0].Equals(primeName, StringComparison.OrdinalIgnoreCase))
+                return values[1];
         }
 
         throw new Exception($"GetUrlName, Prime item \"{primeName}\" does not exist in marketItem");
@@ -1577,11 +1570,11 @@ public sealed class Data
 
     /// <summary>
     /// Tries to get the top listings of a prime item
+    /// https://api.warframe.market/v1/items/ prime_name /orders/top
     /// </summary>
     /// <param name="primeName"></param>
     /// <returns></returns>
-    public async Task<JObject?>
-        GetTopListings(string primeName) //https://api.warframe.market/v1/items/ prime_name /orders/top
+    public async Task<JObject?> GetTopListings(string primeName)
     {
         var urlName = GetUrlName(primeName);
 
@@ -1590,7 +1583,7 @@ public sealed class Data
             using var request = new HttpRequestMessage();
             request.RequestUri = new Uri("https://api.warframe.market/v1/items/" + urlName + "/orders/top");
             request.Method = HttpMethod.Get;
-            request.Headers.Add("Authorization", "JWT " + JWT);
+            request.Headers.Add("Authorization", "JWT " +  _encryptedDataService.JWT);
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
@@ -1604,9 +1597,9 @@ public sealed class Data
 
             return JsonConvert.DeserializeObject<JObject>(body);
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
-            Logger.Debug("GetTopListings: " + e.Message);
+            Logger.Error(exception, "GetTopListings");
             return null;
         }
     }
@@ -1617,7 +1610,7 @@ public sealed class Data
     /// <returns>bool of which answers the question "Is the user JWT valid?"</returns>
     public async Task<bool> IsJWTvalid()
     {
-        if (JWT == null)
+        if (_encryptedDataService.JWT == null)
             return false;
 
         try
@@ -1625,7 +1618,7 @@ public sealed class Data
             using var request = new HttpRequestMessage();
             request.RequestUri = new Uri("https://api.warframe.market/v1/profile");
             request.Method = HttpMethod.Get;
-            request.Headers.Add("Authorization", $"JWT {JWT}");
+            request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
             var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
             SetJWT(response.Headers);
             var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
@@ -1634,9 +1627,9 @@ public sealed class Data
             Debug.WriteLine($"JWT check response: {profile["profile"]}");
             return !(bool)profile["profile"]["anonymous"];
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
-            Logger.Debug($"IsJWTvalid: {e.Message} ");
+            Logger.Error(exception, "IsJWTvalid");
             return false;
         }
     }
@@ -1657,14 +1650,12 @@ public sealed class Data
         try
         {
             if (inGameName.IsNullOrEmpty())
-            {
                 await SetIngameName();
-            }
 
             using var request = new HttpRequestMessage();
-            request.RequestUri = new Uri("https://api.warframe.market/v1/profile/" + inGameName + "/orders");
+            request.RequestUri = new Uri($"https://api.warframe.market/v1/profile/{inGameName}/orders");
             request.Method = HttpMethod.Get;
-            request.Headers.Add("Authorization", "JWT " + JWT);
+            request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
@@ -1715,7 +1706,7 @@ public sealed class Data
                 using var request = new HttpRequestMessage();
                 request.RequestUri = new Uri("https://api.warframe.market/v1/profile/" + developer + "/review");
                 request.Method = HttpMethod.Post;
-                request.Headers.Add("Authorization", "JWT " + JWT);
+                request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
                 request.Headers.Add("language", "en");
                 request.Headers.Add("accept", "application/json");
                 request.Headers.Add("platform", "pc");
@@ -1744,7 +1735,7 @@ public sealed class Data
         using var request = new HttpRequestMessage();
         request.RequestUri = new Uri("https://api.warframe.market/v1/profile");
         request.Method = HttpMethod.Get;
-        request.Headers.Add("Authorization", "JWT " + JWT);
+        request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
         request.Headers.Add("language", "en");
         request.Headers.Add("accept", "application/json");
         request.Headers.Add("platform", "pc");
@@ -1754,5 +1745,12 @@ public sealed class Data
         //setJWT(response.Headers);
         var profile = JsonConvert.DeserializeObject<JObject>(content);
         inGameName = profile["profile"]?.Value<string>("ingame_name");
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool CanHaveBluePrint(string name)
+    {
+        return name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
+               name.Contains("Harness")    || name.Contains("Wings");
     }
 }

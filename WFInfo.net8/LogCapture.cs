@@ -18,7 +18,7 @@ class LogCapture : IDisposable
     readonly CancellationTokenSource tokenSource = new CancellationTokenSource();
     private CancellationToken token;
     private readonly Timer timer;
-    public event LogWatcherEventHandler TextChanged;
+    public Action<string> TextChanged { get; set; }
 
     private readonly IProcessFinder _process;
 
@@ -66,7 +66,7 @@ class LogCapture : IDisposable
                         char[] chars = reader.ReadChars(4092);
                         int index = Array.IndexOf(chars, '\0');
                         string message = new string(chars, 0, index);
-                        TextChanged(this, message.Trim());
+                        TextChanged(message.Trim());
                     }
                 }
 

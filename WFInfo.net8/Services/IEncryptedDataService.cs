@@ -2,6 +2,8 @@
 
 public interface IEncryptedDataService
 {
-    string? LoadStoredJWT();
-    void PersistJWT(string? jwt);
+    string? JWT { get; set; }
+    void LoadStoredJWT();
+    bool IsJwtLoggedIn();
+    void PersistJWT();
 }

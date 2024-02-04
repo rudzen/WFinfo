@@ -18,7 +18,6 @@ using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using WFInfo.Settings;
-using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace WFInfo;
 

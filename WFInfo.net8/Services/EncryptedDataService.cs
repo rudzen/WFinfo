@@ -1,7 +1,6 @@
 using System.IO;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace WFInfo;
@@ -13,12 +12,14 @@ public sealed class EncryptedDataService(IDataProtectionProvider provider) : IEn
 
     private readonly IDataProtector _jwtProtector = provider.CreateProtector("WFInfo.JWT.v1");
 
-    public string? LoadStoredJWT()
+    public string? JWT { get; set; }
+
+    public void LoadStoredJWT()
     {
         try
         {
             var fileText = File.ReadAllText(FileName);
-            return _jwtProtector.Unprotect(fileText);
+            JWT = _jwtProtector.Unprotect(fileText);
         }
         catch (FileNotFoundException e)
         {
@@ -28,19 +29,23 @@ public sealed class EncryptedDataService(IDataProtectionProvider provider) : IEn
         {
             Logger.Error(e, "JWT decryption failed");
         }
-
-        return null;
     }
 
-    public void PersistJWT(string? jwt)
+    public bool IsJwtLoggedIn()
     {
-        if (jwt is null)
+        //check if the token is of the right length
+        return JWT is { Length: > 300 };
+    }
+
+    public void PersistJWT()
+    {
+        if (JWT is null)
         {
             Logger.Warning("JWT is null, not persisting");
             return;
         }
 
-        var encryptedJwt = _jwtProtector.Protect(jwt);
+        var encryptedJwt = _jwtProtector.Protect(JWT);
         File.WriteAllText(FileName, encryptedJwt);
     }
 }

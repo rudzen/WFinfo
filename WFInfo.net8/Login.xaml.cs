@@ -14,13 +14,17 @@ public partial class Login : Window
     private static readonly ILogger Logger = Log.Logger.ForContext<Login>();
 
     private readonly SettingsWindow _settingsWindow;
+    private readonly IEncryptedDataService _encryptedDataService;
 
     #region default methods
 
-    public Login(SettingsWindow settingsWindow)
+    public Login(
+        SettingsWindow settingsWindow,
+        IEncryptedDataService encryptedDataService)
     {
         InitializeComponent();
         _settingsWindow = settingsWindow;
+        _encryptedDataService = encryptedDataService;
     }
 
     /// <summary>
@@ -60,14 +64,14 @@ public partial class Login : Window
             Main.INSTANCE.LoggedIn();
             Email.Text = "Email";
             Password.Password = "";
-            Main.DataBase.rememberMe = RememberMe.IsChecked.Value;
+            Main.DataBase.rememberMe = RememberMe.IsChecked.HasValue && RememberMe.IsChecked.Value;
 
             Hide(); //dispose of window once done
         }
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to login");
-            Main.DataBase.JWT = null;
+            _encryptedDataService.JWT = null;
             _settingsWindow.Save();
             string StatusMessage; //StatusMessage = text to display on StatusUpdate() AND the error box under login 
             byte StatusSeverity;  //StatusSeverity = Severity for StatusUpdate()

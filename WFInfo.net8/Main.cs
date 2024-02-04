@@ -65,6 +65,7 @@ public class Main
     private readonly ApplicationSettings _settings;
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _windowInfo;
+    private readonly IEncryptedDataService _encryptedDataService;
 
     private readonly Overlay[] _overlays;
 
@@ -89,6 +90,7 @@ public class Main
         _settings = sp.GetRequiredService<ApplicationSettings>();
         _process = sp.GetRequiredService<IProcessFinder>();
         _windowInfo = sp.GetRequiredService<IWindowInfoService>();
+        _encryptedDataService = sp.GetRequiredService<IEncryptedDataService>();
 
         DataBase = sp.GetRequiredService<Data>();
         SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
@@ -130,7 +132,7 @@ public class Main
             Logger.Debug("WFInfo has launched successfully");
             FinishedLoading();
 
-            if (DataBase.JWT != null) // if token is loaded in, connect to websocket
+            if (_encryptedDataService.JWT != null) // if token is loaded in, connect to websocket
             {
                 var result = await DataBase.OpenWebSocket();
                 Logger.Debug("Logging into websocket success: {Result}", result);
@@ -310,7 +312,7 @@ public class Main
             //Searchit  
             Logger.Information("Starting search it");
             StatusUpdate("Starting search it", 0);
-            SearchBox.Start();
+            SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {

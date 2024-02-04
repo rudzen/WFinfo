@@ -24,12 +24,12 @@ public partial class SearchIt : Window
     /// <summary>
     /// Launch snapit, prompts user if not logged in
     /// </summary>
-    public void Start()
+    public void Start(Func<bool> isJwtLegal)
     {
         Main.SearchBox.Show();
         MainWindow.INSTANCE.Topmost = true;
         Main.SearchBox.placeholder.Content = "Search for warframe.market Items";
-        if (!Main.DataBase.IsJwtLoggedIn())
+        if (!isJwtLegal())
         {
             Main.SearchBox.placeholder.Content = "Please log in first";
             Main.Login.MoveLogin(Left, Main.SearchBox.Top - 130);
