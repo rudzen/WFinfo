@@ -8,5 +8,5 @@ public interface IHDRDetectorService
     /// <summary>
     /// Whether the user is using HDR in Warframe
     /// </summary>
-    bool IsHDR { get; }
+    bool IsHdr();
 }

@@ -9,6 +9,7 @@ using Serilog;
 using Serilog.Events;
 using WFInfo.Resources;
 using WFInfo.Services.HDRDetection;
+using WFInfo.Services.HDRDetection.Schemes;
 using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
@@ -52,7 +53,9 @@ public partial class App : Application
 
                     services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
                     services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
+                    
                     services.AddSingleton<IHDRDetectorService, SchemeHDRDetector>();
+                    services.AddSingleton<IHDRDetectionScheme, GameSettingsHDRDetectionScheme>();
 
                     services.AddSingleton<Data>();
 

@@ -2,25 +2,14 @@
 
 /// <summary>
 /// Result of a HDR detection scheme
+/// <para>
+/// IsDetected: Whether the scheme detected a possibility of HDR being enabled
+/// </para>
+/// <para>
+/// Whether the scheme guarantees that <see cref="IsDetected"/> is the true value. E.g. if a user has disabled HDR in warframe they can still have Auto HDR on.
+/// </para>
 /// </summary>
-public class HDRDetectionSchemeResult
-{
-    public HDRDetectionSchemeResult(bool isDetected, bool isGuaranteed)
-    {
-        IsDetected = isDetected;
-        IsGuaranteed = isGuaranteed;
-    }
-
-    /// <summary>
-    /// Whether the scheme detected a possibility of HDR being enabled
-    /// </summary>
-    public bool IsDetected { get; private set; }
-
-    /// <summary>
-    /// Whether the scheme guarantees that <see cref="IsDetected"/> is the true value. E.g. if a user has disabled HDR in warframe they can still have Auto HDR on.
-    /// </summary>
-    public bool IsGuaranteed { get; private set; }
-}
+public sealed record HDRDetectionSchemeResult(bool IsDetected, bool IsGuaranteed);
 
 /// <summary>
 /// Determines whether HDR could be enabled from a single source

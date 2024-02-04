@@ -2629,18 +2629,13 @@ internal class OCR
         arr2D.Sort(new Arr2D_Compare());
 
         List<string> ret = [];
-
         // time to group text together
         // get left side of part text area
         //    and width of text area
         //    group all text within
         //    go to the next one
-
         // position the left correctly based on part boxes
-        if (oddCount > evenCount)
-            left -= subwid;
-        else
-            left -= wid;
+        left -= oddCount > evenCount ? subwid : wid;
 
         string currPartTop = string.Empty;
         string currPartBot = string.Empty;
@@ -2713,7 +2708,7 @@ internal class OCR
                     screenshot = _gdiScreenshot;
                     break;
                 case HdrSupportEnum.Auto:
-                    var isHdr = _hdrDetector.IsHDR;
+                    var isHdr = _hdrDetector.IsHdr();
                     Logger.Debug($"Automatically determining HDR status: {isHdr} | Using corresponding service");
                     screenshot = isHdr ? _windowsScreenshot : _gdiScreenshot;
                     break;

@@ -2,22 +2,19 @@
 
 namespace WFInfo.Services.HDRDetection;
 
-public class SchemeHDRDetector : IHDRDetectorService
+public sealed class SchemeHDRDetector(IEnumerable<IHDRDetectionScheme> schemes) : IHDRDetectorService
 {
-    private readonly List<IHDRDetectionScheme> _schemes = [new GameSettingsHDRDetectionScheme()];
+    private readonly List<IHDRDetectionScheme> _schemes = schemes.ToList();
 
-    public bool IsHDR
+    public bool IsHdr()
     {
-        get
+        foreach (var scheme in _schemes)
         {
-            // Only return guaranteed results
-            foreach (var scheme in _schemes)
-            {
-                var result = scheme.Detect();
-                if (result.IsGuaranteed) return result.IsDetected;
-            }
-
-            return false;
+            var result = scheme.Detect();
+            if (result.IsGuaranteed)
+                return result.IsDetected;
         }
+
+        return false;
     }
 }
