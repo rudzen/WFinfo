@@ -1751,7 +1751,7 @@ internal class OCR
         }
 
         Main.dataBase.SaveAllJSONs();
-        Main.RunOnUIThread(() => { EquipmentWindow.INSTANCE.reloadItems(); });
+        Main.RunOnUIThread(() => { EquipmentWindow.INSTANCE.ReloadItems(); });
 
         var end = Stopwatch.GetElapsedTime(start);
         if (end < TimeSpan.FromSeconds(10))

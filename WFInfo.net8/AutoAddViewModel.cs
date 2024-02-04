@@ -124,7 +124,7 @@ public class AutoAddSingleItem : INPC
         if (save)
         {
             Main.dataBase.SaveAllJSONs();
-            EquipmentWindow.INSTANCE.reloadItems();
+            EquipmentWindow.INSTANCE.ReloadItems();
         }
     }
 

@@ -38,9 +38,9 @@ public class INPC : INotifyPropertyChanged
 
 public class SimpleCommand(Action? action) : ICommand
 {
-    public bool CanExecute(object parameter)
+    public bool CanExecute(object? parameter)
     {
-        return (action != null);
+        return action is not null;
     }
 
     public event EventHandler CanExecuteChanged
@@ -50,7 +50,7 @@ public class SimpleCommand(Action? action) : ICommand
         remove { } // doesn't matter
     }
 
-    public void Execute(object parameter)
+    public void Execute(object? parameter)
     {
         action?.Invoke();
     }
@@ -93,8 +93,8 @@ public class TreeNode : INPC
         Vaulted = vaulted;
         Mastered = mastered;
         ShowAll = showAll;
-        ChildrenFiltered = new List<TreeNode>();
-        Children = new List<TreeNode>();
+        ChildrenFiltered = [];
+        Children = [];
         SetSilent();
     }
 
@@ -453,10 +453,8 @@ public class TreeNode : INPC
         foreach (TreeNode child in ChildrenFiltered)
         {
             i = !i;
-            if (i)
-                child.Background_Color = BACK_D_BRUSH;
-            else
-                child.Background_Color = BACK_U_BRUSH;
+            var brush = i ? BACK_D_BRUSH : BACK_U_BRUSH;
+            child.Background_Color = brush;
         }
     }
 
@@ -518,7 +516,7 @@ public class TreeNode : INPC
             return true;
         }
 
-        List<TreeNode> temp = new List<TreeNode>();
+        List<TreeNode> temp = [];
         foreach (TreeNode node in filterList)
             if (node.FilterSearchText(searchText, removeLeaves, additionalFilter, matchedTextCopy))
                 temp.Add(node);
@@ -841,7 +839,7 @@ public class TreeNode : INPC
         set => SetField(ref _mastered, value);
     }
 
-    public TreeNode current;
+    private TreeNode? current;
 
     public void AddChild(TreeNode kid)
     {
@@ -906,7 +904,7 @@ public class TreeNode : INPC
 
     public async void MarkCompleteFunc()
     {
-        await System.Threading.Tasks.Task.Run(() => MarkSetAsComplete());
+        await Task.Run(MarkSetAsComplete);
 
         /*Main.AddLog("test");
         Main.AddLog(current.dataRef);
@@ -983,11 +981,7 @@ public class TreeNode : INPC
 
     private void PrimeUpdateDiff(bool UseCappedOwned)
     {
-        int owned = Owned_Val;
-        if (UseCappedOwned)
-        {
-            owned = Owned_Capped_Val;
-        }
+        var owned = UseCappedOwned ? Owned_Capped_Val : Owned_Val;
 
         Diff_Val = owned / (double)(Count_Val) - 0.01 * Count_Val;
         Col1_Text1 = owned                     + "/" + Count_Val;

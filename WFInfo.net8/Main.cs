@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Windows.Input;
@@ -22,18 +23,25 @@ namespace WFInfo;
 
 public class Main
 {
+    private enum ScreenshotType
+    {
+        NORMAL,
+        SNAPIT,
+        MASTERIT
+    }
+
     private static readonly ILogger Logger = Log.ForContext<Main>();
-    
+
+    private static readonly TimeSpan TimeTillAfk = TimeSpan.FromMinutes(7);
+
     public static Main INSTANCE { get; private set; }
 
     public static string AppPath => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
-    public static string buildVersion { get; set; } = Assembly.GetExecutingAssembly().GetName().Version.ToString();
     public static Data dataBase { get; private set; }
     public static RewardWindow window { get; set; } = new RewardWindow();
     public static Overlay[] overlays { get; set; } = [new Overlay(), new Overlay(), new Overlay(), new Overlay()];
-    public static EquipmentWindow EquipmentWindow { get; set; } = new EquipmentWindow();
-    public static SettingsWindow settingsWindow { get; set; }
+    public static SettingsWindow settingsWindow { get; private set; }
     public static AutoCount autoCount { get; set; } = new AutoCount();
     public static ErrorDialogue popup { get; set; }
     public static FullscreenReminder fullscreenpopup { get; set; }
@@ -43,8 +51,10 @@ public class Main
     public static SearchIt searchBox { get; set; } = new SearchIt();
     public static Login login { get; set; }
     public static ListingHelper listingHelper { get; set; } = new ListingHelper();
+    public static string BuildVersion { get; }
 
-    private static readonly TimeSpan timeTillAfk = TimeSpan.FromMinutes(7);
+    // Glob
+    public static CultureInfo culture { get; } = new("en", false);
 
     private static bool UserAway { get; set; }
     private static string LastMarketStatus { get; set; } = "invisible";
@@ -69,6 +79,13 @@ public class Main
     // hack, should not be here, but stuff is too intertwined for now
     // also, the auto updater needs this to allow for event to be used
     private readonly IServiceProvider _sp;
+
+    static Main()
+    {
+        var version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        var splitIndex = version.LastIndexOf('.');
+        BuildVersion = version[..splitIndex];
+    }
     
     public Main(IServiceProvider sp)
     {
@@ -91,7 +108,6 @@ public class Main
         _windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
 
         StartMessage();
-        buildVersion = buildVersion[..buildVersion.LastIndexOf('.')];
 
         AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
         AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
@@ -155,13 +171,14 @@ public class Main
     {
         if (!await dataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
             return;
+        
         DateTime now = DateTime.UtcNow;
-        Debug.WriteLine($"Checking if the user has been inactive \nNow: {now}, Lastactive: {_latestActive}");
+        Logger.Debug("Checking if the user has been inactive. Now={Now}, lastActive={LastActive}", now, _latestActive);
 
         if (!_process.IsRunning && LastMarketStatus != "invisible")
         {
             //set user offline if Warframe has closed but no new game was found
-            Debug.WriteLine($"Warframe was detected as closed");
+            Logger.Debug("Warframe was detected as closed");
             //reset warframe process variables, and reset LogCapture so new game process gets noticed
             dataBase.DisableLogCapture();
             if (ApplicationSettings.GlobalReadonlySettings.Auto)
@@ -178,7 +195,7 @@ public class Main
         }
         else if (UserAway && _latestActive > now)
         {
-            Debug.WriteLine($"User has returned. Last Status was: {LastMarketStatusB4AFK}");
+            Logger.Debug("User has returned. Last Status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
 
             UserAway = false;
             if (LastMarketStatusB4AFK != "invisible")
@@ -191,9 +208,7 @@ public class Main
                 }).ConfigureAwait(false);
             }
             else
-            {
                 StatusUpdate($"Welcome back user", 0);
-            }
         }
         else if (!UserAway && _latestActive <= now)
         {
@@ -207,21 +222,16 @@ public class Main
                 await Task.Run(async () =>
                 {
                     await dataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                    StatusUpdate($"User has been inactive for {timeTillAfk} minutes", 0);
+                    StatusUpdate($"User has been inactive for {TimeTillAfk} minutes", 0);
                 }).ConfigureAwait(false);
             }
         }
         else
         {
             if (UserAway)
-            {
-                Debug.WriteLine(
-                    $"User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}");
-            }
+                Logger.Debug("User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
             else
-            {
-                Debug.WriteLine($"User is active - no status change needed");
-            }
+                Logger.Debug("User is active - no status change needed");
         }
     }
 
@@ -231,34 +241,17 @@ public class Main
         MainWindow.INSTANCE.Dispatcher.Invoke(act);
     }
 
-    public static void StartMessage()
+    private static void StartMessage()
     {
         Directory.CreateDirectory(AppPath);
         Directory.CreateDirectory(AppPath + @"\debug");
-        using (StreamWriter sw = File.AppendText(AppPath + @"\debug.log"))
-        {
-            sw.WriteLineAsync(
-                "--------------------------------------------------------------------------------------------------------------------------------------------");
-            sw.WriteLineAsync("   STARTING WFINFO " + buildVersion + " at " + DateTime.UtcNow);
-            sw.WriteLineAsync(
-                "--------------------------------------------------------------------------------------------------------------------------------------------");
-        }
+        using StreamWriter sw = File.AppendText(AppPath + @"\debug.log");
+        sw.WriteLineAsync(
+            "--------------------------------------------------------------------------------------------------------------------------------------------");
+        sw.WriteLineAsync("   STARTING WFINFO " + BuildVersion + " at " + DateTime.UtcNow);
+        sw.WriteLineAsync(
+            "--------------------------------------------------------------------------------------------------------------------------------------------");
     }
-
-    // public static void AddLog(string argm)
-    // {
-    //     //write to the debug file, includes version and UTCtime
-    //     Debug.WriteLine(argm);
-    //     Directory.CreateDirectory(AppPath);
-    //     try
-    //     {
-    //         using (StreamWriter sw = File.AppendText(AppPath + @"\debug.log"))
-    //             sw.WriteLineAsync("[" + DateTime.UtcNow + " " + buildVersion + "]   " + argm);
-    //     }
-    //     catch (Exception)
-    //     {
-    //     }
-    // }
 
     /// <summary>
     /// Sets the status on the main window
@@ -270,7 +263,7 @@ public class Main
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.ChangeStatus(message, severity); });
     }
 
-    public void ActivationKeyPressed(object key)
+    private void ActivationKeyPressed(object key)
     {
         Logger.Information("User key press. key={Key},delete={Delete},snapit={SnapitKey}:{SnapPressed},searchit={SearchitKey}:{SearchItPressed},masterit={MasteritKey}:{MasteritPressed},debug={DebugKey}:{DebugPressed}",
             key,
@@ -280,20 +273,16 @@ public class Main
             _settings.MasterItModifierKey, Keyboard.IsKeyDown(_settings.MasterItModifierKey),
             _settings.DebugModifierKey, Keyboard.IsKeyDown(_settings.DebugModifierKey)
             );
-        
-        //Log activation. Can't set activation key to left or right mouse button via UI so not differentiating between MouseButton and Key should be fine
-        // Main.AddLog($"User is activating with pressing key: {key} and is holding down:\n"                              +
-        //             $"Delete:{Keyboard.IsKeyDown(Key.Delete)}\n"                                                       +
-        //             $"Snapit, {_settings.SnapitModifierKey}:{Keyboard.IsKeyDown(_settings.SnapitModifierKey)}\n"       +
-        //             $"Searchit, {_settings.SearchItModifierKey}:{Keyboard.IsKeyDown(_settings.SearchItModifierKey)}\n" +
-        //             $"Masterit, {_settings.MasterItModifierKey}:{Keyboard.IsKeyDown(_settings.MasterItModifierKey)}\n" +
-        //             $"debug, {_settings.DebugModifierKey}:{Keyboard.IsKeyDown(_settings.DebugModifierKey)}");
 
         if (Keyboard.IsKeyDown(Key.Delete))
         {
             //Close all overlays if hotkey + delete is held down
             foreach (Window overlay in App.Current.Windows)
             {
+                // TODO (rudzen) : this is a hack, we should not be checking for the type of the window
+                
+                // if (overlay.GetType() == typeof(Overlay))
+                
                 if (overlay.GetType().ToString() == "WFInfo.Overlay")
                 {
                     overlay.Hide();
@@ -360,7 +349,7 @@ public class Main
 
     public void OnMouseAction(MouseButton key)
     {
-        _latestActive = DateTime.UtcNow.Add(timeTillAfk);
+        _latestActive = DateTime.UtcNow.Add(TimeTillAfk);
 
         if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
         {
@@ -381,18 +370,19 @@ public class Main
 
             ActivationKeyPressed(key);
         }
-        else if (key == MouseButton.Left  && _process.Warframe != null && !_process.Warframe.HasExited &&
-                 !_process.GameIsStreamed && Overlay.rewardsDisplaying)
+        else if (key == MouseButton.Left
+                 && _process is { Warframe.HasExited: false, GameIsStreamed: false }
+                 && Overlay.rewardsDisplaying)
         {
-            if (_settings.Display != Display.Overlay && !_settings.AutoList && !_settings.AutoCSV &&
-                !_settings.AutoCount)
+            if (_settings.Display != Display.Overlay
+                && _settings is { AutoList: false, AutoCSV: false, AutoCount: false })
             {
-                Overlay.rewardsDisplaying =
-                    false; //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
+                //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
+                Overlay.rewardsDisplaying = false; 
                 return;
             }
 
-            Task.Run((() =>
+            Task.Run(() =>
             {
                 _lastClick = System.Windows.Forms.Cursor.Position;
                 int index = OCR.GetSelectedReward(_lastClick);
@@ -400,13 +390,13 @@ public class Main
                 if (index < 0)
                     return;
                 listingHelper.SelectedRewardIndex = (short)index;
-            }));
+            });
         }
     }
 
     public void OnKeyAction(Key key)
     {
-        _latestActive = DateTime.UtcNow.Add(timeTillAfk);
+        _latestActive = DateTime.UtcNow.Add(TimeTillAfk);
 
         // close the snapit overlay when *any* key is pressed down
         if (snapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
@@ -453,13 +443,6 @@ public class Main
     public static void SpawnGFNWarning()
     {
         gfnWarning = new GFNWarning();
-    }
-
-    public enum ScreenshotType
-    {
-        NORMAL,
-        SNAPIT,
-        MASTERIT
     }
 
     private void LoadScreenshot(ScreenshotType type)
@@ -540,7 +523,7 @@ public class Main
         _timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, startTimeSpan, periodTimeSpan);
     }
 
-    public static void FinishedLoading()
+    private static void FinishedLoading()
     {
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.FinishedLoading(); });
     }
@@ -552,13 +535,11 @@ public class Main
         {
             // AFK system only cares about a status that the user set
             LastMarketStatus = msg;
-            Debug.WriteLine($"User is not away. last known market status will be: {LastMarketStatus}");
+            Logger.Debug("User is not away. last known market status will be: {LastMarketStatus}", LastMarketStatus);
         }
 
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.UpdateMarketStatus(msg); });
     }
-
-    public static string BuildVersion => buildVersion;
 
     public static int VersionToInteger(string vers)
     {
@@ -575,23 +556,8 @@ public class Main
         return ret;
     }
 
-    // Glob
-    public static System.Globalization.CultureInfo culture = new System.Globalization.CultureInfo("en", false);
-
     public static void SignOut()
     {
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.SignOut(); });
-    }
-}
-
-public class Status
-{
-    public string Message { get; set; }
-    public int Severity { get; set; }
-
-    public Status(string msg, int ser)
-    {
-        Message = msg;
-        Severity = ser;
     }
 }

@@ -34,19 +34,25 @@ public partial class MainWindow : Window
     public static WelcomeDialogue welcomeDialogue { get; set; }
     public static LowLevelListener listener { get; set; }
     private static bool updatesupression;
-    private RelicsWindow _relicsWindow = new RelicsWindow();
-
+    
     private readonly IServiceProvider _sp;
     private readonly SettingsViewModel _settingsViewModel;
     private readonly PlusOne _plusOne;
+    
+    private readonly RelicsWindow _relicsWindow;
+    private readonly EquipmentWindow _equipmentWindow;
 
     public MainWindow(IServiceProvider sp)
     {
         _sp = sp;
         INSTANCE = this;
         Main = new Main(sp);
+        
         _settingsViewModel = sp.GetRequiredService<SettingsViewModel>();
         _plusOne = sp.GetRequiredService<PlusOne>();
+
+        _relicsWindow = sp.GetRequiredService<RelicsWindow>();
+        _equipmentWindow = sp.GetRequiredService<EquipmentWindow>();
         
         listener = new LowLevelListener(); //publisher
         try
@@ -197,8 +203,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        _relicsWindow?.Close();
-        _relicsWindow = new RelicsWindow();
         _relicsWindow.Show();
         _relicsWindow.Focus();
     }
@@ -211,19 +215,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        Main.EquipmentWindow.Show();
+        _equipmentWindow.Show();
     }
 
     private void Settings_click(object sender, RoutedEventArgs e)
     {
-        if (Main.settingsWindow == null)
-        {
-            ChangeStatus("Settings window not yet loaded in", 2);
-            return;
-        }
-
-        // Main.settingsWindow?.Close();
-        // Main.settingsWindow = _sp.GetRequiredService<SettingsWindow>();
         Main.settingsWindow.populate();
         Main.settingsWindow.Left = Left;
         Main.settingsWindow.Top = Top + Height;

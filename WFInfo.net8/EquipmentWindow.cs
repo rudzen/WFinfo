@@ -14,13 +14,15 @@ public partial class EquipmentWindow : Window
     private static readonly ILogger Logger = Log.Logger.ForContext<EquipmentWindow>();
 
     private List<string> types = ["Warframes", "Primary", "Secondary", "Melee", "Archwing", "Companion"];
-    private Dictionary<string, TreeNode> primeTypes;
+    private Dictionary<string, TreeNode>? primeTypes;
     private bool searchActive;
     private bool showAllEqmt;
     private int searchTimerDurationMS = 500;
-    public static System.Windows.Forms.Timer searchTimer = new();
-    public static string[] searchText;
-    public static EquipmentWindow INSTANCE;
+
+    private static System.Windows.Forms.Timer searchTimer { get; set; } = new();
+
+    private static string[]? searchText;
+    public static EquipmentWindow INSTANCE { get; set; }
 
     public EquipmentWindow()
     {
@@ -33,28 +35,28 @@ public partial class EquipmentWindow : Window
         Hide();
     }
 
-    public void reloadItems()
+    public void ReloadItems()
     {
-        if (primeTypes != null)
+        if (primeTypes is null)
+            return;
+        
+        foreach (TreeNode category in primeTypes.Values)
         {
-            foreach (TreeNode category in primeTypes.Values)
+            foreach (TreeNode prime in category.Children)
             {
-                foreach (TreeNode prime in category.Children)
+                foreach (TreeNode part in prime.Children)
                 {
-                    foreach (TreeNode part in prime.Children)
-                    {
-                        part.ReloadPartOwned(prime);
-                    }
-
-                    prime.GetSetInfo();
+                    part.ReloadPartOwned(prime);
                 }
-            }
 
-            EqmtTree.Items.Refresh();
+                prime.GetSetInfo();
+            }
         }
+
+        EqmtTree.Items.Refresh();
     }
 
-    public void populate()
+    private void Populate()
     {
         primeTypes = new Dictionary<string, TreeNode>();
         foreach (KeyValuePair<string, JToken> prime in Main.dataBase.equipmentData)
@@ -69,16 +71,17 @@ public partial class EquipmentWindow : Window
                 else if (primeType.Contains("Arch")) //Future proofing for Arch-Guns and Arch-Melee
                     primeType = "Archwing";
 
-                if (!primeTypes.ContainsKey(primeType))
+                if (!primeTypes.TryGetValue(primeType, out TreeNode? value))
                 {
                     TreeNode newType = new TreeNode(primeType, string.Empty, false, 0);
                     if (!types.Contains(primeType))
                         types.Add(primeType);
                     newType.SortNum = types.IndexOf(primeType);
-                    primeTypes[primeType] = newType;
+                    value = newType;
+                    primeTypes[primeType] = value;
                 }
 
-                TreeNode type = primeTypes[primeType];
+                TreeNode type = value;
                 TreeNode primeNode = new TreeNode(primeName, prime.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "",
                     mastered, 1);
                 primeNode.MakeClickable(prime.Key);
@@ -86,10 +89,10 @@ public partial class EquipmentWindow : Window
                 {
                     string partName = primePart.Key;
                     if (primePart.Key.IndexOf("Prime") + 6 < primePart.Key.Length)
-                        partName = partName.Substring(primePart.Key.IndexOf("Prime") + 6);
+                        partName = partName[(primePart.Key.IndexOf("Prime") + 6)..];
 
                     if (partName.Contains("Kubrow"))
-                        partName = partName.Substring(partName.IndexOf(" Blueprint") + 1);
+                        partName = partName[(partName.IndexOf(" Blueprint") + 1)..];
                     TreeNode partNode = new TreeNode(partName,
                         primePart.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "", false, 0);
                     partNode.MakeClickable(primePart.Key);
@@ -155,67 +158,66 @@ public partial class EquipmentWindow : Window
 
     public void SortBoxChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (IsLoaded)
+        if (!IsLoaded)
+            return;
+        
+        EqmtTree.Items.SortDescriptions.Clear();
+        
+        foreach (var (_, value) in primeTypes)
         {
-            EqmtTree.Items.SortDescriptions.Clear();
-            foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
-            {
-                primeType.Value.Sort(SortBox.SelectedIndex, false);
-                primeType.Value.RecolorChildren();
-            }
-
-            if (showAllEqmt)
-            {
-                EqmtTree.Items.IsLiveSorting = true;
-                switch (SortBox.SelectedIndex)
-                {
-                    case 1:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Plat_Val",
-                            System.ComponentModel.ListSortDirection.Descending));
-                        break;
-                    case 2:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Diff_Val",
-                            System.ComponentModel.ListSortDirection.Ascending));
-                        break;
-                    case 3:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Val",
-                            System.ComponentModel.ListSortDirection.Descending));
-                        break;
-                    case 4:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Plat_Val",
-                            System.ComponentModel.ListSortDirection.Descending));
-                        break;
-                    case 5:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Ducat_Val",
-                            System.ComponentModel.ListSortDirection.Descending));
-                        break;
-                    default:
-                        EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("EqmtName_Sort",
-                            System.ComponentModel.ListSortDirection.Ascending));
-                        break;
-                }
-
-                bool i = false;
-                foreach (TreeNode prime in EqmtTree.Items)
-                {
-                    i = !i;
-                    if (i)
-                        prime.Background_Color = TreeNode.BACK_D_BRUSH;
-                    else
-                        prime.Background_Color = TreeNode.BACK_U_BRUSH;
-                }
-            }
-
-            EqmtTree.Items.Refresh();
+            value.Sort(SortBox.SelectedIndex, false);
+            value.RecolorChildren();
         }
+
+        if (showAllEqmt)
+        {
+            EqmtTree.Items.IsLiveSorting = true;
+            switch (SortBox.SelectedIndex)
+            {
+                case 1:
+                    EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Plat_Val",
+                        System.ComponentModel.ListSortDirection.Descending));
+                    break;
+                case 2:
+                    EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Diff_Val",
+                        System.ComponentModel.ListSortDirection.Ascending));
+                    break;
+                case 3:
+                    EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Val",
+                        System.ComponentModel.ListSortDirection.Descending));
+                    break;
+                case 4:
+                    EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Plat_Val",
+                        System.ComponentModel.ListSortDirection.Descending));
+                    break;
+                case 5:
+                    EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("Owned_Ducat_Val",
+                        System.ComponentModel.ListSortDirection.Descending));
+                    break;
+                default:
+                    EqmtTree.Items.SortDescriptions.Add(new System.ComponentModel.SortDescription("EqmtName_Sort",
+                        System.ComponentModel.ListSortDirection.Ascending));
+                    break;
+            }
+
+            bool i = false;
+            foreach (TreeNode prime in EqmtTree.Items)
+            {
+                i = !i;
+                var brush = i ? TreeNode.BACK_D_BRUSH : TreeNode.BACK_U_BRUSH;
+                prime.Background_Color = brush;
+            }
+        }
+
+        EqmtTree.Items.Refresh();
     }
 
     private void VaultedClick(object sender, RoutedEventArgs e)
     {
         if ((bool)vaulted.IsChecked)
         {
-            foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
-                primeType.Value.FilterOutVaulted(true);
+            foreach (var (_, value) in primeTypes)
+                value.FilterOutVaulted(true);
 
             RefreshVisibleRelics();
         }
@@ -275,13 +277,13 @@ public partial class EquipmentWindow : Window
     {
         showAllEqmt = !showAllEqmt;
         foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
-        foreach (TreeNode kid in primeType.Value.Children)
-            kid.topLevel = showAllEqmt;
+        {
+            foreach (TreeNode kid in primeType.Value.Children)
+                kid.topLevel = showAllEqmt;
+        }
 
-        if (showAllEqmt)
-            eqmtComboButton.Content = "All Equipment";
-        else
-            eqmtComboButton.Content = "Equipment Types";
+        var content = showAllEqmt ? "All Equipment" : "Equipment Types";
+        eqmtComboButton.Content = content;
 
         EqmtTree.Items.Clear();
         RefreshVisibleRelics();
@@ -289,9 +291,13 @@ public partial class EquipmentWindow : Window
 
     private void SingleClickExpand(object sender, RoutedEventArgs e)
     {
+        if (e.Handled)
+            return;
+        
         TreeViewItem tvi = e.OriginalSource as TreeViewItem;
 
-        if (tvi == null || e.Handled) return;
+        if (tvi == null)
+            return;
 
         tvi.IsExpanded = !tvi.IsExpanded;
         tvi.IsSelected = false;
@@ -300,16 +306,20 @@ public partial class EquipmentWindow : Window
 
     private void ExpandAll(object sender, RoutedEventArgs e)
     {
-        foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
-            primeType.Value.ChangeExpandedTo(true);
+        ExpandAll(true);
     }
 
     private void CollapseAll(object sender, RoutedEventArgs e)
     {
-        foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
-            primeType.Value.ChangeExpandedTo(false);
+        ExpandAll(false);
     }
 
+    private void ExpandAll(bool expand)
+    {
+        foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
+            primeType.Value.ChangeExpandedTo(expand);
+    }
+    
     private void RefreshVisibleRelics()
     {
         int index = 0;
@@ -385,6 +395,6 @@ public partial class EquipmentWindow : Window
 
     private void WindowLoaded(object sender, RoutedEventArgs e)
     {
-        populate();
+        Populate();
     }
 }

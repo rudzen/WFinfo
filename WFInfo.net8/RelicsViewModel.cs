@@ -11,7 +11,6 @@ public class RelicsViewModel : INPC
 
     public RelicsViewModel()
     {
-        _relicTreeItems = new List<TreeNode>();
         RelicsItemsView = new ListCollectionView(_relicTreeItems);
         ExpandAllCommand = new SimpleCommand(() => ExpandOrCollapseAll(true));
         CollapseAllCommand = new SimpleCommand(() => ExpandOrCollapseAll(false));
@@ -21,12 +20,12 @@ public class RelicsViewModel : INPC
     private string _filterText = "";
     private int searchTimerDurationMS = 500;
     private bool _showAllRelics;
-    private readonly List<TreeNode> _relicTreeItems;
+    private readonly List<TreeNode> _relicTreeItems = new();
     private int _sortBoxSelectedIndex;
     private bool _hideVaulted = true;
-    private readonly List<TreeNode> _rawRelicNodes = new List<TreeNode>();
+    private readonly List<TreeNode> _rawRelicNodes = new();
 
-    public static System.Windows.Forms.Timer searchTimer = new();
+    private static System.Windows.Forms.Timer searchTimer = new();
 
     private void StartSearchReapplyTimer()
     {

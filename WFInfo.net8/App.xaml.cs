@@ -32,14 +32,18 @@ public partial class App : Application
                 .ConfigureServices((context, services) =>
                 {
                     services.AddKeyedSingleton<IScreenshotService, GdiScreenshotService>(ScreenshotTypes.Gdi);
-                    services.AddKeyedSingleton<IScreenshotService, ImageScreenshotService>(ScreenshotTypes.ImageScreenshot);
-                    
+                    services.AddKeyedSingleton<IScreenshotService, ImageScreenshotService>(ScreenshotTypes
+                        .ImageScreenshot);
+
                     // Only add windows capture on supported platforms (W10+ 2004 / Build 20348 and above)
                     const string windowsCaptureNameSpace = "Windows.Graphics.Capture.GraphicsCaptureSession";
                     if (ApiInformation.IsTypePresent(windowsCaptureNameSpace) &&
-                        ApiInformation.IsPropertyPresent(windowsCaptureNameSpace, nameof(GraphicsCaptureSession.IsBorderRequired)))
+                        ApiInformation.IsPropertyPresent(windowsCaptureNameSpace,
+                            nameof(GraphicsCaptureSession.IsBorderRequired)))
                     {
-                        services.AddKeyedSingleton<IScreenshotService, WindowsCaptureScreenshotService>(ScreenshotTypes.WindowCapture);
+                        services.AddKeyedSingleton<IScreenshotService, WindowsCaptureScreenshotService>(
+                            ScreenshotTypes.WindowCapture
+                        );
                     }
 
                     services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
@@ -52,13 +56,15 @@ public partial class App : Application
                             .AddSingleton<ITesseractService, TesseractService>();
 
                     services.AddSingleton<ApplicationSettings>();
-                    
+
                     services.AddSingleton<MainWindow>();
                     services.AddSingleton<Login>();
                     services.AddSingleton<SettingsWindow>();
                     services.AddSingleton<ThemeAdjuster>();
                     services.AddSingleton<PlusOne>();
-                    
+                    services.AddSingleton<RelicsWindow>();
+                    services.AddSingleton<EquipmentWindow>();
+
                     services.AddSingleton<SettingsViewModel>();
                 })
                 .ConfigureLogging(logging => { logging.AddConsole(); })
@@ -69,10 +75,9 @@ public partial class App : Application
     {
         await _host.StartAsync();
 
-        CustomEntrypoint.Run(AppDomain.CurrentDomain);
-        
+        await CustomEntrypoint.Run(AppDomain.CurrentDomain);
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-        
+
         // well because so far, the original author(s) decided to intertwine things
         WFInfo.MainWindow.INSTANCE = mainWindow;
         mainWindow.Show();
@@ -86,7 +91,7 @@ public partial class App : Application
             WFInfo.MainWindow.listener.Dispose();
             WFInfo.MainWindow.INSTANCE.Exit(null, null);
         }
-        
+
         using (_host)
         {
             await _host.StopAsync(TimeSpan.FromSeconds(5));

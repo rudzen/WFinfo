@@ -7,20 +7,24 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using Serilog;
 using Serilog.Events;
 using Tesseract;
+using ILogger = Serilog.ILogger;
 
 namespace WFInfo;
 
 public class CustomEntrypoint
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<CustomEntrypoint>();
+    
     private const string liblept = "leptonica-1.82.0";
     private const string libtesseract = "tesseract50";
     private const string tesseract_version_folder = "tesseract5";
 
-    private static string[] list_of_dlls =
+    private static readonly string[] ListOfDlls =
     [
         @"\x86\" + libtesseract + ".dll",
         @"\x86\" + liblept      + ".dll",
@@ -29,7 +33,7 @@ public class CustomEntrypoint
         @"\Tesseract.dll"
     ];
 
-    private static string[] list_of_checksums =
+    private static readonly string[] ListOfChecksums =
     [
         "a87ba6ac613b8ecb5ed033e57b871e6f", //  x86/tesseract50
         "e62f9ef3dd31df439fa2a37793b035db", //  x86/leptonica-1.82.0
@@ -50,31 +54,30 @@ public class CustomEntrypoint
 
     private static readonly InitialDialogue dialogue = new InitialDialogue();
     public static CancellationTokenSource stopDownloadTask;
-    public static string build_version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+    private static string build_version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-    public static void cleanLegacyTesseractIfNeeded()
+    private static void cleanLegacyTesseractIfNeeded()
     {
-        string[] legacy_dll_names =
+        string[] legacyDllNames =
         [
             @"\x86\libtesseract400.dll",
             @"\x86\liblept1760.dll",
             @"\x64\libtesseract400.dll",
             @"\x64\liblept1760.dll"
         ];
-        using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-        foreach (string legacy_ddl_name in legacy_dll_names)
+        foreach (string legacyDdlName in legacyDllNames)
         {
-            var path_to_check = app_data_tesseract_catalog + legacy_ddl_name;
-            if (File.Exists(path_to_check))
+            var pathToCheck = app_data_tesseract_catalog + legacyDdlName;
+            if (File.Exists(pathToCheck))
             {
-                sw.WriteLineAsync("Cleaning legacy leftover - " + legacy_ddl_name);
-                File.Delete(path_to_check);
+                Logger.Debug("Cleaning legacy leftover. file={File}", legacyDdlName);
+                File.Delete(pathToCheck);
             }
         }
     }
 
     // [STAThread]
-    public static void Run(AppDomain currentDomain)
+    public static async Task Run(AppDomain currentDomain)
     {
         currentDomain.UnhandledException += MyHandler;
 
@@ -104,11 +107,10 @@ public class CustomEntrypoint
         Directory.CreateDirectory(app_data_tesseract_catalog);
         Directory.CreateDirectory(app_data_tesseract_catalog + @"\x86");
         Directory.CreateDirectory(app_data_tesseract_catalog + @"\x64");
-
         Directory.CreateDirectory(appdata_tessdata_folder);
 
         cleanLegacyTesseractIfNeeded();
-        //CollectDebugInfo().GetAwaiter().GetResult();
+        await CollectDebugInfo();
         tesseract_hotlink_platform_specific_prefix = tesseract_hotlink_prefix;
 
         // Refresh traineddata structure
@@ -123,14 +125,13 @@ public class CustomEntrypoint
 
             File.Move(appdata_tessdata_folder + @"\engbest.traineddata", appdata_tessdata_folder + @"\en.traineddata");
         }
-        //
 
         int filesNeeded = 0;
-        for (int i = 0; i < list_of_dlls.Length; i++)
+        for (int i = 0; i < ListOfDlls.Length; i++)
         {
-            string dll = list_of_dlls[i];
+            string dll = ListOfDlls[i];
             string path = app_data_tesseract_catalog + dll;
-            string md5 = list_of_checksums[i];
+            string md5 = ListOfChecksums[i];
             if (!File.Exists(path) || GetMD5hash(path) != md5)
                 filesNeeded++;
         }
@@ -171,7 +172,6 @@ public class CustomEntrypoint
             currentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve_Tesseract;
             currentDomain.AssemblyResolve += OnResolveAssembly;
             TesseractEnviornment.CustomSearchPath = app_data_tesseract_catalog;
-            //App.Main();
         }
     }
 
@@ -210,7 +210,6 @@ public class CustomEntrypoint
 
     private static async Task CollectDebugInfo()
     {
-        // Redownload if DLL is not present or got corrupted
         await using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
         await sw.WriteLineAsync(
             "--------------------------------------------------------------------------------------------------------------------------------------------");
@@ -235,24 +234,9 @@ public class CustomEntrypoint
         await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] 64bit application: {Environment.Is64BitProcess}");
         
         //Log .net Version
-        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry32)
-                                               .OpenSubKey("SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full\\"))
-        {
-            try
-            {
-                int releaseKey = Convert.ToInt32(ndpKey.GetValue("Release"));
-                if (true)
-                {
-                    await sw.WriteLineAsync("[" + DateTime.UtcNow +
-                                            $"] Detected .net version: {CheckFor45DotVersion(releaseKey)}");
-                }
-            }
-            catch (Exception e)
-            {
-                await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch .net version due to: {e}");
-            }
-        }
-
+        await sw.WriteLineAsync("[" + DateTime.UtcNow +
+                                $"] Detected .net version: {Environment.Version.ToString()}");
+        
         //Log C++ x64 runtimes 14.29
         using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
                                                .OpenSubKey("Installer\\Dependencies"))
@@ -298,9 +282,8 @@ public class CustomEntrypoint
 
     public static string GetMD5hash(string filePath)
     {
-        using var md5 = MD5.Create();
         using var stream = File.OpenRead(filePath);
-        byte[] hash = md5.ComputeHash(stream);
+        byte[] hash = MD5.HashData(stream);
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
@@ -308,9 +291,8 @@ public class CustomEntrypoint
     {
         Debug.WriteLine(url);
         WebClient webClient = createNewWebClient();
-        using var md5 = MD5.Create();
         byte[] stream = webClient.DownloadData(url);
-        byte[] hash = md5.ComputeHash(stream);
+        byte[] hash = MD5.HashData(stream);
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
@@ -326,13 +308,13 @@ public class CustomEntrypoint
         webClient.DownloadProgressChanged += DownloadProgressCallback;
         token.Register(webClient.CancelAsync);
 
-        for (int i = 0; i < list_of_dlls.Length; i++)
+        for (int i = 0; i < ListOfDlls.Length; i++)
         {
             if (token.IsCancellationRequested)
                 break;
-            string dll = list_of_dlls[i];
+            string dll = ListOfDlls[i];
             string path = app_data_tesseract_catalog + dll;
-            string md5 = list_of_checksums[i];
+            string md5 = ListOfChecksums[i];
             if (!File.Exists(path) || GetMD5hash(path) != md5)
             {
                 if (File.Exists(path))
@@ -405,71 +387,6 @@ public class CustomEntrypoint
     }
 
     // From: https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
-
-    // Checking the version using >= will enable forward compatibility,  
-    // however you should always compile your code on newer versions of 
-    // the framework to ensure your app works the same. 
-    private static string CheckFor45DotVersion(int releaseKey)
-    {
-        if (releaseKey >= 528040)
-        {
-            return "4.8 or later";
-        }
-
-        if (releaseKey >= 461808)
-        {
-            return "4.7.2 or later";
-        }
-
-        if (releaseKey >= 461308)
-        {
-            return "4.7.1 or later";
-        }
-
-        if (releaseKey >= 460798)
-        {
-            return "4.7 or later";
-        }
-
-        if (releaseKey >= 394802)
-        {
-            return "4.6.2 or later";
-        }
-
-        if (releaseKey >= 394254)
-        {
-            return "4.6.1 or later";
-        }
-
-        if (releaseKey >= 393295)
-        {
-            return "4.6 or later";
-        }
-
-        if (releaseKey >= 393273)
-        {
-            return "4.6 RC or later";
-        }
-
-        if ((releaseKey >= 379893))
-        {
-            return "4.5.2 or later";
-        }
-
-        if ((releaseKey >= 378675))
-        {
-            return "4.5.1 or later";
-        }
-
-        if ((releaseKey >= 378389))
-        {
-            return "4.5 or later";
-        }
-
-        // This line should never execute. A non-null release key should mean 
-        // that 4.5 or later is installed. 
-        return "No 4.5 or later version detected";
-    }
 
     private static Assembly OnResolveAssembly(object sender, ResolveEventArgs args)
     {

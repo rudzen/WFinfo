@@ -7,6 +7,7 @@ namespace WFInfo;
 
 /// <summary>
 /// Interaction logic for AutoCount.xaml
+/// TODO (rudzen): move this to relic window
 /// </summary>
 public partial class AutoCount : Window
 {
@@ -23,8 +24,8 @@ public partial class AutoCount : Window
         INSTANCE = this;
         viewModel = new AutoAddViewModel();
 
-        RemoveAll = new SimpleCommand(() => RemoveFromParentAll());
-        IncrementAll = new SimpleCommand(() => AddCountAll());
+        RemoveAll = new SimpleCommand(RemoveFromParentAll);
+        IncrementAll = new SimpleCommand(AddCountAll);
 
         /*
         for (int i = 0; i < 30; i++) //test fill block
@@ -70,7 +71,7 @@ public partial class AutoCount : Window
         }
 
         Main.dataBase.SaveAllJSONs();
-        EquipmentWindow.INSTANCE.reloadItems();
+        EquipmentWindow.INSTANCE.ReloadItems();
     }
 
     private void RemoveFromParentAll()

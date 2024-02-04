@@ -70,7 +70,7 @@ public partial class VerifyCount : Window
         }
 
         Main.dataBase.SaveAllJSONs();
-        EquipmentWindow.INSTANCE.reloadItems();
+        EquipmentWindow.INSTANCE.ReloadItems();
         if (saveFailed)
         {
             //shouldn't need Main.RunOnUIThread since this is already on the UI Thread
@@ -105,7 +105,7 @@ public partial class VerifyCount : Window
 
         BackupButton.Visibility = Visibility.Hidden;
         Main.dataBase.SaveAllJSONs();
-        EquipmentWindow.INSTANCE.reloadItems();
+        EquipmentWindow.INSTANCE.ReloadItems();
     }
 
     private void CancelClick(object sender, RoutedEventArgs e)
