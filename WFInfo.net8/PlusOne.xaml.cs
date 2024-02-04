@@ -49,7 +49,7 @@ public partial class PlusOne : Window
         var message = TextBox.Text == "Optional comment field" ? "" : TextBox.Text;
         try
         {
-            var t = Task.Run(async () => { await Main.dataBase.PostReview(message); });
+            var t = Task.Run(async () => { await Main.DataBase.PostReview(message); });
             t.Wait();
         }
         catch (System.Exception)

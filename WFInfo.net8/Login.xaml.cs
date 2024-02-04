@@ -30,7 +30,7 @@ public partial class Login : Window
     /// <param name="e"></param>
     private void HideExternal(object sender, MouseButtonEventArgs e)
     {
-        Main.searchBox.Hide(); //hide search it if the user minimizes the window even though not yet logged in
+        Main.SearchBox.Hide(); //hide search it if the user minimizes the window even though not yet logged in
         Hide();
     }
 
@@ -56,18 +56,18 @@ public partial class Login : Window
     {
         try
         {
-            await Main.dataBase.GetUserLogin(Email.Text, Password.Password);
+            await Main.DataBase.GetUserLogin(Email.Text, Password.Password);
             Main.INSTANCE.LoggedIn();
             Email.Text = "Email";
             Password.Password = "";
-            Main.dataBase.rememberMe = RememberMe.IsChecked.Value;
+            Main.DataBase.rememberMe = RememberMe.IsChecked.Value;
 
             Hide(); //dispose of window once done
         }
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to login");
-            Main.dataBase.JWT = null;
+            Main.DataBase.JWT = null;
             _settingsWindow.Save();
             string StatusMessage; //StatusMessage = text to display on StatusUpdate() AND the error box under login 
             byte StatusSeverity;  //StatusSeverity = Severity for StatusUpdate()
@@ -127,11 +127,11 @@ public partial class Login : Window
             return;
         }
 
-        if (Main.searchBox.IsActive)
+        if (Main.SearchBox.IsActive)
         {
-            Main.searchBox.placeholder.Content = "Logged in";
-            Main.searchBox.IsInUse = true;
-            Main.searchBox.searchField.Focusable = true;
+            Main.SearchBox.placeholder.Content = "Logged in";
+            Main.SearchBox.IsInUse = true;
+            Main.SearchBox.searchField.Focusable = true;
         }
     }
 

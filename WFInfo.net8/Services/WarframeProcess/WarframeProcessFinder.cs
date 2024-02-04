@@ -40,12 +40,12 @@ public sealed class WarframeProcessFinder : IProcessFinder
             if (_warframe.HasExited)
             {
                 //reset warframe process variables, and reset LogCapture so new game process gets noticed
-                Main.dataBase.DisableLogCapture();
+                Main.DataBase.DisableLogCapture();
                 _warframe.Dispose();
                 _warframe = null;
 
                 if (_settings.Auto)
-                    Main.dataBase.EnableLogCapture();
+                    Main.DataBase.EnableLogCapture();
             }
             else return; // Current process is still good
         }
@@ -56,9 +56,9 @@ public sealed class WarframeProcessFinder : IProcessFinder
             {
                 _warframe = process;
 
-                if (Main.dataBase.GetSocketAliveStatus())
+                if (Main.DataBase.GetSocketAliveStatus())
                     Debug.WriteLine("Socket was open in verify warframe");
-                Task.Run(async () => { await Main.dataBase.SetWebsocketStatus("in game"); });
+                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("in game"); });
                 Logger.Debug("Found Warframe Process: ID - " + process.Id + ", MainTitle - " + process.MainWindowTitle +
                             ", Process Name - "             + process.ProcessName);
 

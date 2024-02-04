@@ -35,29 +35,28 @@ public class Main
 
     public static string AppPath => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
-    public static Data dataBase { get; private set; }
-    public static RewardWindow window { get; set; } = new RewardWindow();
-    public static SettingsWindow settingsWindow { get; private set; }
-    public static AutoCount autoCount { get; set; } = new AutoCount();
-    public static ErrorDialogue popup { get; set; }
-    public static FullscreenReminder fullscreenpopup { get; set; }
-    public static GFNWarning gfnWarning { get; set; }
-    public static UpdateDialogue update { get; set; }
-    public static SnapItOverlay snapItOverlayWindow { get; private set; }
-    public static SearchIt searchBox { get; set; } = new SearchIt();
-    public static Login login { get; set; }
-    public static ListingHelper listingHelper { get; set; } = new ListingHelper();
+    public static Data DataBase { get; private set; }
+    public static RewardWindow Window { get; set; } = new RewardWindow();
+    public static SettingsWindow SettingsWindow { get; private set; }
+    public static AutoCount AutoCount { get; set; } = new AutoCount();
+    public static ErrorDialogue ErrorDialogue { get; set; }
+    public static FullscreenReminder FullscreenReminder { get; set; }
+    public static GFNWarning GfnWarning { get; set; }
+    public static UpdateDialogue Update { get; set; }
+    public static SnapItOverlay SnapItOverlayWindow { get; private set; }
+    public static SearchIt SearchBox { get; set; } = new SearchIt();
+    public static Login Login { get; set; }
+    public static ListingHelper ListingHelper { get; set; } = new ListingHelper();
     public static string BuildVersion { get; }
 
     // Glob
-    public static CultureInfo culture { get; } = new("en", false);
+    public static CultureInfo Culture { get; } = new("en", false);
 
     private static bool UserAway { get; set; }
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
     private DateTime _latestActive;
-    private System.Drawing.Point _lastClick;
     
     // ReSharper disable once NotAccessedField.Local
     private System.Threading.Timer _timer;
@@ -84,15 +83,15 @@ public class Main
     {
         _sp = sp;
         INSTANCE = this;
-        login = sp.GetRequiredService<Login>();
-        settingsWindow = sp.GetRequiredService<SettingsWindow>();
+        Login = sp.GetRequiredService<Login>();
+        SettingsWindow = sp.GetRequiredService<SettingsWindow>();
 
         _settings = sp.GetRequiredService<ApplicationSettings>();
         _process = sp.GetRequiredService<IProcessFinder>();
         _windowInfo = sp.GetRequiredService<IWindowInfoService>();
 
-        dataBase = sp.GetRequiredService<Data>();
-        snapItOverlayWindow = new SnapItOverlay(_windowInfo);
+        DataBase = sp.GetRequiredService<Data>();
+        SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
 
         _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
@@ -106,7 +105,7 @@ public class Main
 
     private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
     {
-        update = new UpdateDialogue(args, _sp);
+        Update = new UpdateDialogue(args, _sp);
     }
 
     private async Task ThreadedDataLoad()
@@ -118,22 +117,22 @@ public class Main
             OCR.Init(_sp, _overlays);
 
             StatusUpdate("Updating Databases...", 0);
-            dataBase.Update();
+            DataBase.Update();
 
             if (_settings.Auto)
-                dataBase.EnableLogCapture();
-            if (dataBase.IsJWTvalid().Result)
-            {
+                DataBase.EnableLogCapture();
+            
+            var validJwt = await DataBase.IsJWTvalid();
+            if (validJwt)
                 LoggedIn();
-            }
 
             StatusUpdate("WFInfo Initialization Complete", 0);
             Logger.Debug("WFInfo has launched successfully");
             FinishedLoading();
 
-            if (dataBase.JWT != null) // if token is loaded in, connect to websocket
+            if (DataBase.JWT != null) // if token is loaded in, connect to websocket
             {
-                var result = await dataBase.OpenWebSocket();
+                var result = await DataBase.OpenWebSocket();
                 Logger.Debug("Logging into websocket success: {Result}", result);
             }
         }
@@ -150,7 +149,7 @@ public class Main
 
     private async void TimeoutCheck()
     {
-        if (!await dataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
+        if (!await DataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
             return;
 
         DateTime now = DateTime.UtcNow;
@@ -161,16 +160,16 @@ public class Main
             //set user offline if Warframe has closed but no new game was found
             Logger.Debug("Warframe was detected as closed");
             //reset warframe process variables, and reset LogCapture so new game process gets noticed
-            dataBase.DisableLogCapture();
+            DataBase.DisableLogCapture();
             if (_settings.Auto)
-                dataBase.EnableLogCapture();
+                DataBase.EnableLogCapture();
 
             await Task.Run(async () =>
             {
-                if (!await dataBase.IsJWTvalid().ConfigureAwait(true))
+                if (!await DataBase.IsJWTvalid().ConfigureAwait(true))
                     return;
                 //IDE0058 - computed value is never used.  Ever. Consider changing the return signature of SetWebsocketStatus to void instead
-                await dataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
+                await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
                 StatusUpdate("WFM status set offline, Warframe was closed", 0);
             }).ConfigureAwait(false);
         }
@@ -183,8 +182,8 @@ public class Main
             {
                 await Task.Run(async () =>
                 {
-                    await dataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(false);
-                    var user = dataBase.inGameName.IsNullOrEmpty() ? "user" : dataBase.inGameName;
+                    await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(false);
+                    var user = DataBase.inGameName.IsNullOrEmpty() ? "user" : DataBase.inGameName;
                     StatusUpdate($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0);
                 }).ConfigureAwait(false);
             }
@@ -202,7 +201,7 @@ public class Main
             {
                 await Task.Run(async () =>
                 {
-                    await dataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
+                    await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
                     StatusUpdate($"User has been inactive for {TimeTillAfk} minutes", 0);
                 }).ConfigureAwait(false);
             }
@@ -311,7 +310,7 @@ public class Main
             //Searchit  
             Logger.Information("Starting search it");
             StatusUpdate("Starting search it", 0);
-            searchBox.Start();
+            SearchBox.Start();
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {
@@ -337,17 +336,17 @@ public class Main
         if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
         {
             //check if user pressed activation key
-            if (searchBox.IsInUse)
+            if (SearchBox.IsInUse)
             {
                 //if key is pressed and searchbox is active then rederect keystokes to it.
                 if (Keyboard.IsKeyDown(Key.Escape))
                 {
                     // close it if esc is used.
-                    searchBox.Finish();
+                    SearchBox.Finish();
                     return;
                 }
 
-                searchBox.searchField.Focus();
+                SearchBox.searchField.Focus();
                 return;
             }
 
@@ -367,12 +366,12 @@ public class Main
 
             Task.Run(() =>
             {
-                _lastClick = System.Windows.Forms.Cursor.Position;
-                int index = OCR.GetSelectedReward(_lastClick);
+                var lastClick = System.Windows.Forms.Cursor.Position;
+                int index = OCR.GetSelectedReward(lastClick);
                 Logger.Debug("Reward chosen. index={Index}", index);
                 if (index < 0)
                     return;
-                listingHelper.SelectedRewardIndex = (short)index;
+                ListingHelper.SelectedRewardIndex = (short)index;
             });
         }
     }
@@ -382,24 +381,24 @@ public class Main
         _latestActive = DateTime.UtcNow.Add(TimeTillAfk);
 
         // close the snapit overlay when *any* key is pressed down
-        if (snapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
+        if (SnapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
         {
-            snapItOverlayWindow.CloseOverlay();
+            SnapItOverlayWindow.CloseOverlay();
             StatusUpdate("Closed snapit", 0);
             return;
         }
 
-        if (searchBox.IsInUse)
+        if (SearchBox.IsInUse)
         {
             //if key is pressed and searchbox is active then rederect keystokes to it.
             if (key == Key.Escape)
             {
                 // close it if esc is used.
-                searchBox.Finish();
+                SearchBox.Finish();
                 return;
             }
 
-            searchBox.searchField.Focus();
+            SearchBox.searchField.Focus();
             return;
         }
 
@@ -415,17 +414,17 @@ public class Main
     // timestamp is the time to look for, and gap is the threshold of seconds different
     public static void SpawnErrorPopup(DateTime timeStamp, int gap = 30)
     {
-        popup = new ErrorDialogue(timeStamp, gap);
+        ErrorDialogue = new ErrorDialogue(timeStamp, gap);
     }
 
     public static void SpawnFullscreenReminder()
     {
-        fullscreenpopup = new FullscreenReminder();
+        FullscreenReminder = new FullscreenReminder();
     }
 
     public static void SpawnGFNWarning()
     {
-        gfnWarning = new GFNWarning();
+        GfnWarning = new GFNWarning();
     }
 
     private void LoadScreenshot(ScreenshotType type)
@@ -448,30 +447,36 @@ public class Main
                         // TODO: This
                         foreach (string file in openFileDialog.FileNames)
                         {
-                            if (type == ScreenshotType.NORMAL)
+                            switch (type)
                             {
-                                Logger.Debug("Testing file. name={File}", file);
+                                case ScreenshotType.NORMAL:
+                                {
+                                    Logger.Debug("Testing file. name={File}", file);
 
-                                //Get the path of specified file
-                                Bitmap image = new Bitmap(file);
-                                _windowInfo.UseImage(image);
-                                OCR.ProcessRewardScreen(image);
-                            }
-                            else if (type == ScreenshotType.SNAPIT)
-                            {
-                                Logger.Debug("Testing snapit on file. name={File}", file);
+                                    //Get the path of specified file
+                                    Bitmap image = new Bitmap(file);
+                                    _windowInfo.UseImage(image);
+                                    OCR.ProcessRewardScreen(image);
+                                    break;
+                                }
+                                case ScreenshotType.SNAPIT:
+                                {
+                                    Logger.Debug("Testing snapit on file. name={File}", file);
 
-                                Bitmap image = new Bitmap(file);
-                                _windowInfo.UseImage(image);
-                                OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
-                            }
-                            else if (type == ScreenshotType.MASTERIT)
-                            {
-                                Logger.Debug("Testing masterit on file. name={File}", file);
+                                    Bitmap image = new Bitmap(file);
+                                    _windowInfo.UseImage(image);
+                                    OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
+                                    break;
+                                }
+                                case ScreenshotType.MASTERIT:
+                                {
+                                    Logger.Debug("Testing masterit on file. name={File}", file);
 
-                                Bitmap image = new Bitmap(file);
-                                _windowInfo.UseImage(image);
-                                OCR.ProcessProfileScreen(image);
+                                    Bitmap image = new Bitmap(file);
+                                    _windowInfo.UseImage(image);
+                                    OCR.ProcessProfileScreen(image);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -533,7 +538,7 @@ public class Main
             {
                 if (versParts[i].Length == 0)
                     return -1;
-                ret += Convert.ToInt32(int.Parse(versParts[i], Main.culture) * Math.Pow(100, 2 - i));
+                ret += Convert.ToInt32(int.Parse(versParts[i], Main.Culture) * Math.Pow(100, 2 - i));
             }
 
         return ret;

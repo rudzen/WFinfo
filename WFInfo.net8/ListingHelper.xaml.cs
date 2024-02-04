@@ -99,9 +99,9 @@ public partial class ListingHelper : Window
             {
                 Next.Content = "...";
                 var rewardCollection =
-                    Task.Run(() => Main.listingHelper.GetRewardCollection(PrimeRewards[0])).Result;
+                    Task.Run(() => Main.ListingHelper.GetRewardCollection(PrimeRewards[0])).Result;
                 if (rewardCollection.PrimeNames.Count != 0)
-                    Main.listingHelper.ScreensList.Add(
+                    Main.ListingHelper.ScreensList.Add(
                         new KeyValuePair<string, RewardCollection>("", rewardCollection));
                 PrimeRewards.RemoveAt(0);
                 Next.Content = "Next";
@@ -191,7 +191,7 @@ public partial class ListingHelper : Window
         try
         {
             var primeItem = (string)ComboBox.Items[ComboBox.SelectedIndex];
-            var platinum = int.Parse(PlatinumTextBox.Text, Main.culture);
+            var platinum = int.Parse(PlatinumTextBox.Text, Main.Culture);
             var success = Task.Run(async () => await PlaceListing(primeItem, platinum)).Result;
             if (success)
             {
@@ -241,7 +241,7 @@ public partial class ListingHelper : Window
         Debug.WriteLine(
             $"There are {ScreensList[PageIndex].Value.PrimeNames.Count} of plat values, Setting index to: {index}");
 
-        PlatinumTextBox.Text = ScreensList[PageIndex].Value.PlatinumValues[index].ToString(Main.culture);
+        PlatinumTextBox.Text = ScreensList[PageIndex].Value.PlatinumValues[index].ToString(Main.Culture);
 
         ListingGrid.Visibility = Visibility.Visible;
         Height = 255;
@@ -352,8 +352,8 @@ public partial class ListingHelper : Window
             {
                 Main.RunOnUIThread(() =>
                 {
-                    Main.searchBox.placeholder.Content = $"Could not find {primeItem}";
-                    Main.searchBox.searchField.Text = string.Empty;
+                    Main.SearchBox.placeholder.Content = $"Could not find {primeItem}";
+                    Main.SearchBox.searchField.Text = string.Empty;
                 });
             }
         }
@@ -363,11 +363,11 @@ public partial class ListingHelper : Window
 
     private static bool IsItemBanned(string item)
     {
-        return item.ToLower(Main.culture).Contains("kuva")   ||
-               item.ToLower(Main.culture).Contains("exilus") ||
-               item.ToLower(Main.culture).Contains("riven")  ||
-               item.ToLower(Main.culture).Contains("ayatan") ||
-               item.ToLower(Main.culture).Contains("forma");
+        return item.ToLower(Main.Culture).Contains("kuva")   ||
+               item.ToLower(Main.Culture).Contains("exilus") ||
+               item.ToLower(Main.Culture).Contains("riven")  ||
+               item.ToLower(Main.Culture).Contains("ayatan") ||
+               item.ToLower(Main.Culture).Contains("forma");
     }
 
     /// <summary>
@@ -389,7 +389,7 @@ public partial class ListingHelper : Window
         }
 
         Debug.WriteLine($"Getting listing for {primeName}");
-        var results = Task.Run(async () => await Main.dataBase.GetTopListings(primeName)).Result;
+        var results = Task.Run(async () => await Main.DataBase.GetTopListings(primeName)).Result;
         var listings = new List<MarketListing>();
         var sellOrders = new JArray(results["payload"]["sell_orders"].Children());
         foreach (var item in sellOrders)
@@ -411,12 +411,12 @@ public partial class ListingHelper : Window
     /// <returns>if it succeeded</returns>
     private async Task<bool> PlaceListing(string primeItem, int platinum)
     {
-        var listing = await Main.dataBase.GetCurrentListing(primeItem);
-        if (listing == null) return await Main.dataBase.ListItem(primeItem, platinum, 1);
+        var listing = await Main.DataBase.GetCurrentListing(primeItem);
+        if (listing == null) return await Main.DataBase.ListItem(primeItem, platinum, 1);
         //listing already exists, thus update it
         var listingId = (string)listing["id"];
         var quantity = (int)listing["quantity"];
-        return await Main.dataBase.UpdateListing(listingId, platinum, quantity);
+        return await Main.DataBase.UpdateListing(listingId, platinum, quantity);
     }
 
     private void PlatinumTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)

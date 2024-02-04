@@ -151,7 +151,7 @@ public partial class MainWindow : Window
 
         _settingsViewModel.Save();
 
-        Main.dataBase.JWT = _encryptedDataService.LoadStoredJWT();
+        Main.DataBase.JWT = _encryptedDataService.LoadStoredJWT();
     }
 
     public void OnContentRendered(object sender, EventArgs e)
@@ -183,10 +183,10 @@ public partial class MainWindow : Window
     public void Exit(object sender, RoutedEventArgs e)
     {
         NotifyIcon.Dispose();
-        if (Main.dataBase.rememberMe)
+        if (Main.DataBase.rememberMe)
         {
             // if rememberme was checked then save it
-            _encryptedDataService.PersistJWT(Main.dataBase.JWT);
+            _encryptedDataService.PersistJWT(Main.DataBase.JWT);
         }
 
         Application.Current.Shutdown();
@@ -210,7 +210,7 @@ public partial class MainWindow : Window
 
     private void RelicsClick(object sender, RoutedEventArgs e)
     {
-        if (Main.dataBase.RelicData == null)
+        if (Main.DataBase.RelicData == null)
         {
             ChangeStatus("Relic data not yet loaded in", 2);
             return;
@@ -222,7 +222,7 @@ public partial class MainWindow : Window
 
     private void EquipmentClick(object sender, RoutedEventArgs e)
     {
-        if (Main.dataBase.EquipmentData == null)
+        if (Main.DataBase.EquipmentData == null)
         {
             ChangeStatus("Equipment data not yet loaded in", 2);
             return;
@@ -233,10 +233,10 @@ public partial class MainWindow : Window
 
     private void Settings_click(object sender, RoutedEventArgs e)
     {
-        Main.settingsWindow.Populate();
-        Main.settingsWindow.Left = Left;
-        Main.settingsWindow.Top = Top + Height;
-        Main.settingsWindow.Show();
+        Main.SettingsWindow.Populate();
+        Main.SettingsWindow.Left = Left;
+        Main.SettingsWindow.Top = Top + Height;
+        Main.SettingsWindow.Show();
     }
 
     private void ReloadMarketClick(object sender, RoutedEventArgs e)
@@ -245,7 +245,7 @@ public partial class MainWindow : Window
         ReloadMarket.IsEnabled = false;
         MarketData.Content = "Loading...";
         Main.StatusUpdate("Forcing Market Update", 0);
-        Task.Factory.StartNew(Main.dataBase.ForceMarketUpdate);
+        Main.DataBase.ForceMarketUpdate();
     }
 
     private void ReloadDropClick(object sender, RoutedEventArgs e)
@@ -254,7 +254,7 @@ public partial class MainWindow : Window
         ReloadMarket.IsEnabled = false;
         DropData.Content = "Loading...";
         Main.StatusUpdate("Forcing Prime Update", 0);
-        Task.Factory.StartNew(Main.dataBase.ForceEquipmentUpdate);
+        Task.Factory.StartNew(Main.DataBase.ForceEquipmentUpdate);
     }
 
     // Allows the draging of the window
@@ -304,7 +304,7 @@ public partial class MainWindow : Window
     /// <param name="e"></param>
     private void SpawnLogin(object sender, RoutedEventArgs e)
     {
-        Main.login.MoveLogin(Left + Width, Top);
+        Main.Login.MoveLogin(Left + Width, Top);
     }
 
     public void SignOut()
@@ -354,13 +354,13 @@ public partial class MainWindow : Window
         switch (ComboBox.SelectedIndex)
         {
             case 0: //Online in game
-                Task.Run(async () => { await Main.dataBase.SetWebsocketStatus("in game"); });
+                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("in game"); });
                 break;
             case 1: //Online
-                Task.Run(async () => { await Main.dataBase.SetWebsocketStatus("online"); });
+                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("online"); });
                 break;
             case 2: //Invisible
-                Task.Run(async () => { await Main.dataBase.SetWebsocketStatus("offline"); });
+                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("offline"); });
                 break;
             case 3: //Sign out
                 LoggOut(null, null);
@@ -380,7 +380,7 @@ public partial class MainWindow : Window
         ComboBox.Visibility = Visibility.Hidden;
         PlusOneButton.Visibility = Visibility.Hidden;
         CreateListing.Visibility = Visibility.Hidden;
-        Task.Factory.StartNew(() => { Main.dataBase.Disconnect(); });
+        Task.Factory.StartNew(() => { Main.DataBase.Disconnect(); });
     }
 
     internal void FinishedLoading()
@@ -396,7 +396,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (Main.listingHelper.PrimeRewards == null || Main.listingHelper.PrimeRewards.Count == 0)
+        if (Main.ListingHelper.PrimeRewards == null || Main.ListingHelper.PrimeRewards.Count == 0)
         {
             ChangeStatus("No recorded rewards found", 2);
             return;
@@ -404,25 +404,25 @@ public partial class MainWindow : Window
 
         var t = Task.Run(() =>
         {
-            foreach (var rewardscreen in Main.listingHelper.PrimeRewards)
+            foreach (var rewardscreen in Main.ListingHelper.PrimeRewards)
             {
-                var rewardCollection = Task.Run(() => Main.listingHelper.GetRewardCollection(rewardscreen)).Result;
+                var rewardCollection = Task.Run(() => Main.ListingHelper.GetRewardCollection(rewardscreen)).Result;
                 if (rewardCollection.PrimeNames.Count == 0)
                     continue;
-                Main.listingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
+                Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
             }
         });
         t.Wait();
-        if (Main.listingHelper.ScreensList.Count == 0)
+        if (Main.ListingHelper.ScreensList.Count == 0)
         {
             ChangeStatus("No recorded rewards found", 2);
             return;
         }
 
-        Main.listingHelper.SetScreen(0);
-        Main.listingHelper.PrimeRewards.Clear();
+        Main.ListingHelper.SetScreen(0);
+        Main.ListingHelper.PrimeRewards.Clear();
         WindowState = WindowState.Normal;
-        Main.listingHelper.Show();
+        Main.ListingHelper.Show();
     }
 
     private void PlusOne(object sender, MouseButtonEventArgs e)
@@ -442,7 +442,7 @@ public partial class MainWindow : Window
 
         Logger.Debug("Starting search it");
         Main.StatusUpdate("Starting search it", 0);
-        Main.searchBox.Start();
+        Main.SearchBox.Start();
     }
 
     private void OpenAppDataFolder(object sender, MouseButtonEventArgs e)

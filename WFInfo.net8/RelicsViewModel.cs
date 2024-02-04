@@ -245,16 +245,16 @@ public class RelicsViewModel : INPC
             double sumRad = 0;
 
             head.SortNum = eraNum++;
-            foreach (JProperty prop in Main.dataBase.RelicData[head.Name])
+            foreach (JProperty prop in Main.DataBase.RelicData[head.Name])
             {
-                JObject primeItems = (JObject)Main.dataBase.RelicData[head.Name][prop.Name];
+                JObject primeItems = (JObject)Main.DataBase.RelicData[head.Name][prop.Name];
                 string vaulted = primeItems["vaulted"].ToObject<bool>() ? "vaulted" : "";
                 TreeNode relic = new TreeNode(prop.Name, vaulted, false, 0);
                 relic.Era = head.Name;
                 foreach (KeyValuePair<string, JToken> kvp in primeItems)
                 {
                     if (kvp.Key != "vaulted" &&
-                        Main.dataBase.MarketData.TryGetValue(kvp.Value.ToString(), out JToken marketValues))
+                        Main.DataBase.MarketData.TryGetValue(kvp.Value.ToString(), out JToken marketValues))
                     {
                         TreeNode part = new TreeNode(kvp.Value.ToString(), "", false, 0);
                         part.SetPartText(marketValues["plat"].ToObject<double>(),

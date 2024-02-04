@@ -70,7 +70,7 @@ public partial class AutoCount : Window
             viewModel.ItemList.FirstOrDefault().AddCount(false);
         }
 
-        Main.dataBase.SaveAllJSONs();
+        Main.DataBase.SaveAllJSONs();
         EquipmentWindow.INSTANCE.ReloadItems();
     }
 

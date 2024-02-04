@@ -26,21 +26,21 @@ public partial class SearchIt : Window
     /// </summary>
     public void Start()
     {
-        Main.searchBox.Show();
+        Main.SearchBox.Show();
         MainWindow.INSTANCE.Topmost = true;
-        Main.searchBox.placeholder.Content = "Search for warframe.market Items";
-        if (!Main.dataBase.IsJwtLoggedIn())
+        Main.SearchBox.placeholder.Content = "Search for warframe.market Items";
+        if (!Main.DataBase.IsJwtLoggedIn())
         {
-            Main.searchBox.placeholder.Content = "Please log in first";
-            Main.login.MoveLogin(Left, Main.searchBox.Top - 130);
+            Main.SearchBox.placeholder.Content = "Please log in first";
+            Main.Login.MoveLogin(Left, Main.SearchBox.Top - 130);
             return;
         }
 
         MainWindow.INSTANCE.Topmost = false;
         IsInUse = true;
-        Main.searchBox.Show();
+        Main.SearchBox.Show();
         searchField.Focusable = true;
-        Main.searchBox.Topmost = true;
+        Main.SearchBox.Topmost = true;
         Win32.BringToFront(Process.GetCurrentProcess());
     }
 
@@ -53,17 +53,17 @@ public partial class SearchIt : Window
     {
         try
         {
-            var closest = Main.dataBase.GetPartNameHuman(searchField.Text, out _);
+            var closest = Main.DataBase.GetPartNameHuman(searchField.Text, out _);
             var primeRewards = new List<string> { closest };
-            var rewardCollection = Task.Run(() => Main.listingHelper.GetRewardCollection(primeRewards)).Result;
-            Main.listingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
-            if (!Main.listingHelper.IsVisible)
+            var rewardCollection = Task.Run(() => Main.ListingHelper.GetRewardCollection(primeRewards)).Result;
+            Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
+            if (!Main.ListingHelper.IsVisible)
             {
-                Main.listingHelper.SetScreen(Main.listingHelper.ScreensList.Count - 1);
+                Main.ListingHelper.SetScreen(Main.ListingHelper.ScreensList.Count - 1);
             }
 
-            Main.listingHelper.Show();
-            Main.listingHelper.BringIntoView();
+            Main.ListingHelper.Show();
+            Main.ListingHelper.BringIntoView();
         }
         catch (Exception exception)
         {

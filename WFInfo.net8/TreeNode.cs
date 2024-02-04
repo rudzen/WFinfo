@@ -304,8 +304,8 @@ public class TreeNode : INPC
 
     public bool GetSetInfo()
     {
-        string primeSetName = Main.dataBase.GetSetName(Name);
-        if (!Main.dataBase.MarketData.TryGetValue(primeSetName, out JToken primeSetJToken))
+        string primeSetName = Main.DataBase.GetSetName(Name);
+        if (!Main.DataBase.MarketData.TryGetValue(primeSetName, out JToken primeSetJToken))
         {
             return false; // This is not a set
         }
@@ -315,13 +315,13 @@ public class TreeNode : INPC
         string primeSetPlat = primeSet["plat"].ToObject<string>();
 
         Grid_Shown = "Visible";
-        Plat_Val = double.Parse(primeSetPlat, Main.culture);
+        Plat_Val = double.Parse(primeSetPlat, Main.Culture);
         Owned_Capped_Val = 0;
         Owned_Plat_Val = 0;
         Owned_Ducat_Val = 0;
         Owned_Val = 0;
         Count_Val = 0;
-        Mastered = Main.dataBase.EquipmentData[this.dataRef]["mastered"].ToObject<bool>();
+        Mastered = Main.DataBase.EquipmentData[this.dataRef]["mastered"].ToObject<bool>();
         foreach (TreeNode kid in Children)
         {
             Owned_Capped_Val += kid.Owned_Capped_Val;
@@ -917,7 +917,7 @@ public class TreeNode : INPC
     public void ReloadPartOwned(TreeNode Parent)
     {
         //DOES NOT UPDATE PARENT
-        JObject job = Main.dataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        JObject job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         Owned_Val = job["owned"].ToObject<int>();
         Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
         Owned_Plat_Val = Owned_Val  * Plat_Val;
@@ -927,12 +927,12 @@ public class TreeNode : INPC
 
     private void DecrementPartThreaded(TreeNode Parent)
     {
-        JObject job = Main.dataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        JObject job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         int owned = Owned_Val;
         if (owned > 0)
         {
             job["owned"] = owned - 1;
-            Main.dataBase.SaveAllJSONs();
+            Main.DataBase.SaveAllJSONs();
             Owned_Val--;
             Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
             Owned_Plat_Val = Owned_Val  * Plat_Val;
@@ -952,11 +952,11 @@ public class TreeNode : INPC
 
     private void IncrementPartThreaded(TreeNode Parent)
     {
-        JObject job = Main.dataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        JObject job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         int count = Count_Val;
         int owned = Owned_Val;
         job["owned"] = owned + 1;
-        Main.dataBase.SaveAllJSONs();
+        Main.DataBase.SaveAllJSONs();
         Owned_Val++;
         Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
         Owned_Plat_Val = Owned_Val  * Plat_Val;
@@ -974,9 +974,9 @@ public class TreeNode : INPC
 
     private void MarkSetAsComplete()
     {
-        Main.dataBase.EquipmentData[this.dataRef]["mastered"] = !Mastered;
+        Main.DataBase.EquipmentData[this.dataRef]["mastered"] = !Mastered;
         Mastered = !Mastered;
-        Main.dataBase.SaveAllJSONs();
+        Main.DataBase.SaveAllJSONs();
     }
 
     private void PrimeUpdateDiff(bool UseCappedOwned)

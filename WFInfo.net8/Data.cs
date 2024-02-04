@@ -94,7 +94,7 @@ public sealed class Data
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _window;
 
-    public WebClient createWfmClient()
+    private WebClient CreateWfmClient()
     {
         WebClient webClient = CustomEntrypoint.CreateNewWebClient();
         webClient.Headers.Add("platform", "pc");
@@ -118,12 +118,8 @@ public sealed class Data
         Directory.CreateDirectory(ApplicationDirectory);
 
         // Create websocket for WFM
-        WebProxy proxy = null;
-        var proxy_string = Environment.GetEnvironmentVariable("http_proxy");
-        if (proxy_string != null)
-        {
-            proxy = new WebProxy(new Uri(proxy_string));
-        }
+        var proxyString = Environment.GetEnvironmentVariable("http_proxy");
+        var proxy = proxyString is not null ? new WebProxy(new Uri(proxyString)) : null;
 
         HttpClientHandler handler = new HttpClientHandler
         {
@@ -189,10 +185,10 @@ public sealed class Data
     }
 
     // Load item list from Sheets
-    public void ReloadItems()
+    public async Task ReloadItems()
     {
         MarketItems = new JObject();
-        WebClient webClient = createWfmClient();
+        WebClient webClient = CreateWfmClient();
         JObject obj =
             JsonConvert.DeserializeObject<JObject>(
                 webClient.DownloadString("https://api.warframe.market/v1/items"));
@@ -215,22 +211,14 @@ public sealed class Data
 
         try
         {
-            using var request = new HttpRequestMessage()
-            {
-                RequestUri = new Uri("https://api.warframe.market/v1/items"),
-                Method = HttpMethod.Get
-            };
+            using var request = new HttpRequestMessage();
+            request.RequestUri = new Uri("https://api.warframe.market/v1/items");
+            request.Method = HttpMethod.Get;
             request.Headers.Add("language", _settings.Locale);
             request.Headers.Add("accept", "application/json");
             request.Headers.Add("platform", "pc");
-            var task = Task.Run(() => client.SendAsync(request));
-            task.Wait();
-            var response = task.Result;
-
-            var respTask = Task.Run(() => response.Content.ReadAsStringAsync());
-            respTask.Wait();
-            var body = respTask.Result;
-            var payload = JsonConvert.DeserializeObject<JObject>(body);
+            var response = await client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
             Debug.WriteLine(body);
 
             obj = JsonConvert.DeserializeObject<JObject>(body);
@@ -247,13 +235,12 @@ public sealed class Data
             Logger.Debug("GetTopListings: " + e.Message);
         }
 
-
         MarketItems["version"] = Main.BuildVersion;
         Logger.Debug("Item database has been downloaded");
     }
 
     // Load market data from Sheets
-    private bool LoadMarket(JObject allFiltered, bool force = false)
+    private async ValueTask<bool> LoadMarket(JObject allFiltered, bool force = false)
     {
         if (!force && File.Exists(marketDataPath) && File.Exists(marketItemsPath))
         {
@@ -301,12 +288,12 @@ public sealed class Data
 
                 MarketData[name] = new JObject
                 {
-                    { "plat", double.Parse(row["custom_avg"].ToString(), Main.culture) },
+                    { "plat", double.Parse(row["custom_avg"].ToString(), Main.Culture) },
                     { "ducats", 0 },
                     {
                         "volume",
-                        int.Parse(row["yesterday_vol"].ToString(), Main.culture) +
-                        int.Parse(row["today_vol"].ToString(), Main.culture)
+                        int.Parse(row["yesterday_vol"].ToString(), Main.Culture) +
+                        int.Parse(row["today_vol"].ToString(), Main.Culture)
                     }
                 };
             }
@@ -331,7 +318,7 @@ public sealed class Data
         Logger.Debug("Load missing market item: " + item_name);
 
         Thread.Sleep(333);
-        WebClient webClient = createWfmClient();
+        WebClient webClient = CreateWfmClient();
         var data = webClient.DownloadString("https://api.warframe.market/v1/items/" + url + "/statistics");
         JObject? stats = JsonConvert.DeserializeObject<JObject>(data);
         JToken latestStats = stats["payload"]["statistics_closed"]["90days"].LastOrDefault();
@@ -349,7 +336,7 @@ public sealed class Data
         }
 
         Thread.Sleep(333);
-        webClient = createWfmClient();
+        webClient = CreateWfmClient();
         data = webClient.DownloadString("https://api.warframe.market/v1/items/" + url);
         JObject? ducats = JsonConvert.DeserializeObject<JObject>(data);
 
@@ -442,7 +429,7 @@ public sealed class Data
                     if (MarketData.TryGetValue(partName, out _))
                     {
                         _nameData[gameName] = partName;
-                        MarketData[partName]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.culture);
+                        MarketData[partName]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.Culture);
                     }
                 }
             }
@@ -483,15 +470,16 @@ public sealed class Data
             if (prime.Key != "timestamp")
                 foreach (KeyValuePair<string, JToken> part in EquipmentData[prime.Key]["parts"].ToObject<JObject>())
                     if (MarketData.TryGetValue(part.Key, out _))
-                        MarketData[part.Key]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.culture);
+                        MarketData[part.Key]["ducats"] = Convert.ToInt32(part.Value["ducats"].ToString(), Main.Culture);
     }
 
-    public bool Update()
+    public async ValueTask<bool> Update()
     {
         Logger.Debug("Checking for Updates to Databases");
         WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-        JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
-        bool saveDatabases = LoadMarket(allFiltered);
+        var data = await webClient.DownloadStringTaskAsync(filterAllJSON).ConfigureAwait(ConfigureAwaitOptions.None);
+        JObject allFiltered = JsonConvert.DeserializeObject<JObject>(data);
+        bool saveDatabases = await LoadMarket(allFiltered);
 
         foreach (KeyValuePair<string, JToken> elem in MarketItems)
         {
@@ -519,14 +507,14 @@ public sealed class Data
         Main.RunOnUIThread(() =>
         {
             MainWindow.INSTANCE.MarketData.Content = MarketData["timestamp"].ToObject<DateTime>()
-                                                                            .ToString("MMM dd - HH:mm", Main.culture);
+                                                                            .ToString("MMM dd - HH:mm", Main.Culture);
         });
 
         saveDatabases = LoadEqmtData(allFiltered, saveDatabases);
         Main.RunOnUIThread(() =>
         {
             MainWindow.INSTANCE.DropData.Content = EquipmentData["timestamp"].ToObject<DateTime>()
-                                                                             .ToString("MMM dd - HH:mm", Main.culture);
+                                                                             .ToString("MMM dd - HH:mm", Main.Culture);
         });
 
         if (saveDatabases)
@@ -535,14 +523,17 @@ public sealed class Data
         return saveDatabases;
     }
 
-    public void ForceMarketUpdate()
+    public async Task ForceMarketUpdate()
     {
         try
         {
             Logger.Debug("Forcing market update");
-            WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-            JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
-            LoadMarket(allFiltered, true);
+            using WebClient webClient = CustomEntrypoint.CreateNewWebClient();
+            var data = await webClient.DownloadStringTaskAsync(filterAllJSON).ConfigureAwait(ConfigureAwaitOptions.None);
+            JObject allFiltered = JsonConvert.DeserializeObject<JObject>(data);
+            var loaded = await LoadMarket(allFiltered, true).ConfigureAwait(false);
+            
+            Logger.Debug("Forcing market update complete. success={Loaded}", loaded);
 
             foreach (KeyValuePair<string, JToken> elem in MarketItems)
             {
@@ -565,7 +556,7 @@ public sealed class Data
             Main.RunOnUIThread(() =>
             {
                 MainWindow.INSTANCE.MarketData.Content = MarketData["timestamp"].ToObject<DateTime>()
-                    .ToString("MMM dd - HH:mm", Main.culture);
+                    .ToString("MMM dd - HH:mm", Main.Culture);
                 Main.StatusUpdate("Market Update Complete", 0);
                 MainWindow.INSTANCE.ReloadDrop.IsEnabled = true;
                 MainWindow.INSTANCE.ReloadMarket.IsEnabled = true;
@@ -601,7 +592,7 @@ public sealed class Data
             Main.RunOnUIThread(() =>
             {
                 MainWindow.INSTANCE.DropData.Content = EquipmentData["timestamp"].ToObject<DateTime>()
-                    .ToString("MMM dd - HH:mm", Main.culture);
+                    .ToString("MMM dd - HH:mm", Main.Culture);
                 Main.StatusUpdate("Prime Update Complete", 0);
 
                 MainWindow.INSTANCE.ReloadDrop.IsEnabled = true;
@@ -715,8 +706,8 @@ public sealed class Data
         // Levenshtein Distance determines how many character changes it takes to form a known result
         // For example: Nuvo Prime is closer to Nova Prime (2) then Ash Prime (4)
         // For more info see: https://en.wikipedia.org/wiki/Levenshtein_distance
-        s = s.ToLower(Main.culture);
-        t = t.ToLower(Main.culture);
+        s = s.ToLower(Main.Culture);
+        t = t.ToLower(Main.Culture);
         int n = s.Length;
         int m = t.Length;
         int[,] d = new int[n + 1, m + 1];
@@ -880,8 +871,8 @@ public sealed class Data
         bool maxY;
         int temp;
         bool maxX;
-        string s = str1.ToLower(Main.culture);
-        string t = str2.ToLower(Main.culture);
+        string s = str1.ToLower(Main.Culture);
+        string t = str2.ToLower(Main.Culture);
         int n = s.Length;
         int m = t.Length;
         if (!(n == 0 || m == 0))
@@ -990,7 +981,7 @@ public sealed class Data
         low = 9999;
         foreach (KeyValuePair<string, JToken> prop in _nameData)
         {
-            if (prop.Value.ToString().ToLower(Main.culture).Contains(name.ToLower(Main.culture)))
+            if (prop.Value.ToString().ToLower(Main.Culture).Contains(name.ToLower(Main.Culture)))
             {
                 int val = LevenshteinDistance(prop.Value.ToString(), name);
                 if (val < low)
@@ -1022,7 +1013,7 @@ public sealed class Data
 
     public string GetSetName(string name)
     {
-        string result = name.ToLower(Main.culture);
+        string result = name.ToLower(Main.Culture);
 
         if (result.Contains("kavasa"))
         {
@@ -1054,7 +1045,7 @@ public sealed class Data
         result = result.Replace("hilt", "");
         result = result.Replace("link", "");
         result = result.TrimEnd();
-        result = Main.culture.TextInfo.ToTitleCase(result);
+        result = Main.Culture.TextInfo.ToTitleCase(result);
         result += " Set";
         return result;
     }
@@ -1114,7 +1105,7 @@ public sealed class Data
         if (!(line.Contains("MatchingService::EndSession") || line.Contains("Relic timer closed")) ||
             !(_settings.AutoList                           || _settings.AutoCSV || _settings.AutoCount)) return;
 
-        if (Main.listingHelper.PrimeRewards == null || Main.listingHelper.PrimeRewards.Count == 0)
+        if (Main.ListingHelper.PrimeRewards == null || Main.ListingHelper.PrimeRewards.Count == 0)
         {
             return;
         }
@@ -1132,7 +1123,7 @@ public sealed class Data
             Logger.Debug("Looping through rewards");
             Logger.Debug("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +
                          _settings.AutoCount);
-            foreach (var rewardscreen in Main.listingHelper.PrimeRewards)
+            foreach (var rewardscreen in Main.ListingHelper.PrimeRewards)
             {
                 string rewards = "";
                 for (int i = 0; i < rewardscreen.Count; i++)
@@ -1142,7 +1133,7 @@ public sealed class Data
                         rewards += " || ";
                 }
 
-                Logger.Debug(rewards + ", detected choice: " + Main.listingHelper.SelectedRewardIndex);
+                Logger.Debug(rewards + ", detected choice: " + Main.ListingHelper.SelectedRewardIndex);
 
 
                 if (_settings.AutoCSV)
@@ -1151,13 +1142,13 @@ public sealed class Data
                         csv +=
                             "Timestamp,ChosenIndex,Reward_0_Name,Reward_0_Plat,Reward_0_Ducats,Reward_1_Name,Reward_1_Plat,Reward_1_Ducats,Reward_2_Name,Reward_2_Plat,Reward_2_Ducats,Reward_3_Name,Reward_3_Plat,Reward_3_Ducats" +
                             Environment.NewLine;
-                    csv += DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture) + "," +
-                           Main.listingHelper.SelectedRewardIndex;
+                    csv += DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture) + "," +
+                           Main.ListingHelper.SelectedRewardIndex;
                     for (int i = 0; i < 4; i++)
                     {
                         if (i < rewardscreen.Count)
                         {
-                            JObject job = Main.dataBase.MarketData.GetValue(rewardscreen[i]).ToObject<JObject>();
+                            JObject job = Main.DataBase.MarketData.GetValue(rewardscreen[i]).ToObject<JObject>();
                             string plat = job["plat"].ToObject<string>();
                             string ducats = job["ducats"].ToObject<string>();
                             csv += "," + rewardscreen[i] + "," + plat + "," + ducats;
@@ -1175,23 +1166,23 @@ public sealed class Data
                 {
                     Main.RunOnUIThread(() =>
                     {
-                        Main.autoCount.viewModel.AddItem(new AutoAddSingleItem(rewardscreen,
-                            Main.listingHelper.SelectedRewardIndex, Main.autoCount.viewModel));
+                        Main.AutoCount.viewModel.AddItem(new AutoAddSingleItem(rewardscreen,
+                            Main.ListingHelper.SelectedRewardIndex, Main.AutoCount.viewModel));
                     });
                 }
 
                 if (_settings.AutoList)
                 {
-                    var rewardCollection = Task.Run(() => Main.listingHelper.GetRewardCollection(rewardscreen)).Result;
+                    var rewardCollection = Task.Run(() => Main.ListingHelper.GetRewardCollection(rewardscreen)).Result;
                     if (rewardCollection.PrimeNames.Count == 0)
                         continue;
 
-                    Main.listingHelper.ScreensList.Add(
+                    Main.ListingHelper.ScreensList.Add(
                         new KeyValuePair<string, RewardCollection>("", rewardCollection));
                 }
                 else
                 {
-                    Main.listingHelper.SelectedRewardIndex =
+                    Main.ListingHelper.SelectedRewardIndex =
                         0; //otherwise done by GetRewardCollection, but that calls WFM API
                 }
             }
@@ -1213,16 +1204,16 @@ public sealed class Data
                 Logger.Debug("Opening AutoList interface");
                 Main.RunOnUIThread(() =>
                 {
-                    if (Main.listingHelper.ScreensList.Count == 1)
-                        Main.listingHelper.SetScreen(0);
-                    Main.listingHelper.Show();
-                    Main.listingHelper.Topmost = true;
-                    Main.listingHelper.Topmost = false;
+                    if (Main.ListingHelper.ScreensList.Count == 1)
+                        Main.ListingHelper.SetScreen(0);
+                    Main.ListingHelper.Show();
+                    Main.ListingHelper.Topmost = true;
+                    Main.ListingHelper.Topmost = false;
                 });
             }
 
             Logger.Debug("Clearing listingHelper.PrimeRewards");
-            Main.RunOnUIThread(() => { Main.listingHelper.PrimeRewards.Clear(); });
+            Main.RunOnUIThread(() => { Main.ListingHelper.PrimeRewards.Clear(); });
         });
     }
 
@@ -1374,7 +1365,7 @@ public sealed class Data
     {
         foreach (var item in headers)
         {
-            if (!item.Key.ToLower(Main.culture).Contains("authorization")) continue;
+            if (!item.Key.ToLower(Main.Culture).Contains("authorization")) continue;
             var temp = item.Value.First();
             JWT = temp.Substring(4);
             return;

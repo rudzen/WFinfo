@@ -101,9 +101,9 @@ public class AutoAddSingleItem : INPC
 
             try
             {
-                int count = Main.dataBase.EquipmentData[primeName]["parts"][partName]["owned"].ToObject<int>();
+                int count = Main.DataBase.EquipmentData[primeName]["parts"][partName]["owned"].ToObject<int>();
 
-                Main.dataBase.EquipmentData[primeName]["parts"][partName]["owned"] = count + 1;
+                Main.DataBase.EquipmentData[primeName]["parts"][partName]["owned"] = count + 1;
             }
             catch (Exception ex)
             {
@@ -123,7 +123,7 @@ public class AutoAddSingleItem : INPC
         RemoveFromParent();
         if (save)
         {
-            Main.dataBase.SaveAllJSONs();
+            Main.DataBase.SaveAllJSONs();
             EquipmentWindow.INSTANCE.ReloadItems();
         }
     }

@@ -191,7 +191,7 @@ internal class OCR
             "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
 
         DateTime time = DateTime.UtcNow;
-        timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
+        timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         var watch = new Stopwatch();
         watch.Start();
         long start = watch.ElapsedMilliseconds;
@@ -206,7 +206,7 @@ internal class OCR
         catch (Exception e)
         {
             processingActive = false;
-            Debug.WriteLine(e);
+            Logger.Error(e, "Error while extracting part boxes");
             return;
         }
 
@@ -272,12 +272,12 @@ internal class OCR
 
                 #region found a part
 
-                string correctName = Main.dataBase.GetPartName(part, out firstProximity[i], false, out _);
-                string primeSetName = Main.dataBase.GetSetName(correctName);
-                JObject job = (JObject)Main.dataBase.MarketData.GetValue(correctName);
-                JObject primeSet = (JObject)Main.dataBase.MarketData.GetValue(primeSetName);
+                string correctName = Main.DataBase.GetPartName(part, out firstProximity[i], false, out _);
+                string primeSetName = Main.DataBase.GetSetName(correctName);
+                JObject job = (JObject)Main.DataBase.MarketData.GetValue(correctName);
+                JObject primeSet = (JObject)Main.DataBase.MarketData.GetValue(primeSetName);
                 string ducats = job["ducats"].ToObject<string>();
-                if (int.Parse(ducats, Main.culture) == 0)
+                if (int.Parse(ducats, Main.Culture) == 0)
                 {
                     hideRewardInfo = true;
                 }
@@ -291,13 +291,13 @@ internal class OCR
                     primeSetPlat = (string)primeSet["plat"];
                 }
 
-                double platinum = double.Parse(plat, styles, Main.culture);
+                double platinum = double.Parse(plat, styles, Main.Culture);
                 string volume = job["volume"].ToObject<string>();
-                bool vaulted = Main.dataBase.IsPartVaulted(correctName);
-                bool mastered = Main.dataBase.IsPartMastered(correctName);
-                string partsOwned = Main.dataBase.PartsOwned(correctName);
-                string partsCount = Main.dataBase.PartsCount(correctName);
-                int duc = int.Parse(ducats, Main.culture);
+                bool vaulted = Main.DataBase.IsPartVaulted(correctName);
+                bool mastered = Main.DataBase.IsPartMastered(correctName);
+                string partsOwned = Main.DataBase.PartsOwned(correctName);
+                string partsCount = Main.DataBase.PartsCount(correctName);
+                int duc = int.Parse(ducats, Main.Culture);
 
                 #endregion
 
@@ -320,13 +320,9 @@ internal class OCR
                     bestDucatItem = i;
                 }
 
-                if (duc > 0)
-                {
-                    if (!mastered && int.Parse(partsOwned, Main.culture) < int.Parse(partsCount, Main.culture))
-                    {
-                        unownedItems.Add(i);
-                    }
-                }
+                if (duc > 0
+                    && !mastered && int.Parse(partsOwned, Main.Culture) < int.Parse(partsCount, Main.Culture))
+                    unownedItems.Add(i);
 
                 #endregion
 
@@ -359,7 +355,7 @@ internal class OCR
                     }
                     else if (!_settings.IsLightSelected)
                     {
-                        Main.window.loadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered,
+                        Main.Window.loadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered,
                             $"{partsOwned} / {partsCount}", partNumber, true, hideRewardInfo);
                     }
                     //else
@@ -377,10 +373,10 @@ internal class OCR
             var end = watch.ElapsedMilliseconds;
             Main.StatusUpdate("Completed processing (" + (end - start) + "ms)", 0);
 
-            if (Main.listingHelper.PrimeRewards.Count                                   == 0 ||
-                Main.listingHelper.PrimeRewards[^1].Except(primeRewards).ToList().Count != 0)
+            if (Main.ListingHelper.PrimeRewards.Count                                   == 0 ||
+                Main.ListingHelper.PrimeRewards[^1].Except(primeRewards).ToList().Count != 0)
             {
-                Main.listingHelper.PrimeRewards.Add(primeRewards);
+                Main.ListingHelper.PrimeRewards.Add(primeRewards);
             }
 
             if (_settings.HighlightRewards)
@@ -472,7 +468,7 @@ internal class OCR
 
     internal static int GetSelectedReward(Point lastClick)
     {
-        Debug.WriteLine(lastClick.ToString());
+        Logger.Debug("Last click: {LastClick}", lastClick);
         var primeRewardIndex = 0;
         lastClick.Offset(-_window.Window.X, -_window.Window.Y);
         var width = _window.Window.Width   * (int)_window.DpiScaling;
@@ -498,30 +494,22 @@ internal class OCR
         var middelHeight = top + bottom / 4;
         var length = mostWidth / 8;
 
-        var RewardPoints4 = new List<Point>()
-        {
-            new Point(mostLeft + length, middelHeight),
-            new Point(mostLeft + 3 * length, middelHeight),
-            new Point(mostLeft + 5 * length, middelHeight),
-            new Point(mostLeft + 7 * length, middelHeight)
-        };
-
-        var RewardPoints3 = new List<Point>()
-        {
-            new Point(mostLeft + 2 * length, middelHeight),
-            new Point(mostLeft + 4 * length, middelHeight),
-            new Point(mostLeft + 6 * length, middelHeight)
-        };
-
         var lowestDistance = int.MaxValue;
-        var lowestDistancePoint = new Point();
         if (numberOfRewardsDisplayed == 1) //rare, but can happen if others don't get enough traces
         {
             primeRewardIndex = 0;
         }
         else if (numberOfRewardsDisplayed != 3)
         {
-            foreach (var pnt in RewardPoints4)
+            Span<Point> rewardPoints4 = stackalloc Point[]
+            {
+                new(mostLeft + length, middelHeight),
+                new(mostLeft + 3 * length, middelHeight),
+                new(mostLeft + 5 * length, middelHeight),
+                new(mostLeft + 7 * length, middelHeight)
+            };
+
+            foreach (var pnt in rewardPoints4)
             {
                 var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
                                            (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
@@ -531,21 +519,29 @@ internal class OCR
                     continue;
 
                 lowestDistance = distanceToLastClick;
-                lowestDistancePoint = pnt;
-                primeRewardIndex = RewardPoints4.IndexOf(pnt);
+                primeRewardIndex = rewardPoints4.IndexOf(pnt);
             }
 
             if (numberOfRewardsDisplayed == 2)
             {
-                if (primeRewardIndex == 1)
-                    primeRewardIndex = 0;
-                if (primeRewardIndex >= 2)
-                    primeRewardIndex = 1;
+                primeRewardIndex = primeRewardIndex switch
+                {
+                    1    => 0,
+                    >= 2 => 1,
+                    _    => primeRewardIndex
+                };
             }
         }
         else
         {
-            foreach (var pnt in RewardPoints3)
+            Span<Point> rewardPoints3 = stackalloc Point[]
+            {
+                new(mostLeft + 2 * length, middelHeight),
+                new(mostLeft + 4 * length, middelHeight),
+                new(mostLeft + 6 * length, middelHeight)
+            };
+
+            foreach (var pnt in rewardPoints3)
             {
                 var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
                                            (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
@@ -553,8 +549,7 @@ internal class OCR
 
                 if (distanceToLastClick >= lowestDistance) continue;
                 lowestDistance = distanceToLastClick;
-                lowestDistancePoint = pnt;
-                primeRewardIndex = RewardPoints3.IndexOf(pnt);
+                primeRewardIndex = rewardPoints3.IndexOf(pnt);
             }
         }
 
@@ -662,7 +657,7 @@ internal class OCR
             }
         }
 
-        double max = 0;
+        double max;
         WFtheme active = WFtheme.UNKNOWN;
 #if DEBUG
         for (int i = 0; i < weights.Length; i++)
@@ -718,7 +713,7 @@ internal class OCR
         }
 #endif
 
-        Logger.Debug("CLOSEST THEME(" + max.ToString("F2", Main.culture) + "): " + active.ToString());
+        Logger.Debug("CLOSEST THEME(" + max.ToString("F2", Main.Culture) + "): " + active.ToString());
         closestThresh = max;
         if (_settings.ThemeSelection != WFtheme.AUTO)
         {
@@ -788,7 +783,7 @@ internal class OCR
         long start = watch.ElapsedMilliseconds;
 
         //timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
-        string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
+        string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         WFtheme theme = GetThemeWeighted(out _, fullShot);
         snapItImage.Save(Main.AppPath + @"\Debug\SnapItImage " + timestamp + ".png");
         Bitmap snapItImageFiltered = ScaleUpAndFilter(snapItImage, theme, out int[] rowHits, out int[] colHits);
@@ -796,14 +791,20 @@ internal class OCR
         List<InventoryItem> foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
         long end = watch.ElapsedMilliseconds;
         Main.StatusUpdate("Completed snapit Processing(" + (end - start) + "ms)", 0);
-        string csv = string.Empty;
+
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
-        if (!File.Exists(applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture) +
+
+        // TODO (rudzen) : use a real csv parser instead of this hack
+        
+        string csv = string.Empty;
+        if (!File.Exists(applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) +
                          ".csv") && _settings.SnapitExport)
             csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
-                   DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture)      + Environment.NewLine;
+                   DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)      + Environment.NewLine;
+        
         int resultCount = foundParts.Count;
+        
         for (int i = 0; i < foundParts.Count; i++)
         {
             var part = foundParts[i];
@@ -816,8 +817,8 @@ internal class OCR
             }
 
             Debug.WriteLine($"Part  {foundParts.IndexOf(part)} out of {foundParts.Count}");
-            string name = Main.dataBase.GetPartName(part.Name, out int levenDist, false, out bool multipleLowest);
-            string primeSetName = Main.dataBase.GetSetName(name);
+            string name = Main.DataBase.GetPartName(part.Name, out int levenDist, false, out bool multipleLowest);
+            string primeSetName = Main.DataBase.GetSetName(name);
             if (levenDist > Math.Min(part.Name.Length, name.Length) / 3 || multipleLowest)
             {
                 //show warning triangle if the result is of questionable accuracy. The limit is basically arbitrary
@@ -827,8 +828,8 @@ internal class OCR
             bool doWarn = part.Warning;
             part.Name = name;
             foundParts[i] = part;
-            JObject job = Main.dataBase.MarketData.GetValue(name).ToObject<JObject>();
-            JObject primeSet = (JObject)Main.dataBase.MarketData.GetValue(primeSetName);
+            JObject job = Main.DataBase.MarketData.GetValue(name).ToObject<JObject>();
+            JObject primeSet = (JObject)Main.DataBase.MarketData.GetValue(primeSetName);
             string plat = job["plat"].ToObject<string>();
             string primeSetPlat = null;
             if (primeSet != null)
@@ -838,15 +839,15 @@ internal class OCR
 
             string ducats = job["ducats"].ToObject<string>();
             string volume = job["volume"].ToObject<string>();
-            bool vaulted = Main.dataBase.IsPartVaulted(name);
-            bool mastered = Main.dataBase.IsPartMastered(name);
-            string partsOwned = Main.dataBase.PartsOwned(name);
+            bool vaulted = Main.DataBase.IsPartVaulted(name);
+            bool mastered = Main.DataBase.IsPartMastered(name);
+            string partsOwned = Main.DataBase.PartsOwned(name);
             string partsDetected = part.Count.ToString();
 
             if (_settings.SnapitExport)
             {
                 var owned = string.IsNullOrEmpty(partsOwned) ? "0" : partsOwned;
-                csv += name  + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(Main.culture) + "," +
+                csv += name  + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(Main.Culture) + "," +
                        owned + "," + partsDetected + ", \"\"" + Environment.NewLine;
             }
 
@@ -879,8 +880,8 @@ internal class OCR
         if (_settings.DoSnapItCount && resultCount > 0)
             Main.RunOnUIThread(() => { VerifyCount.ShowVerifyCount(foundParts); });
 
-        if (Main.snapItOverlayWindow.tempImage != null)
-            Main.snapItOverlayWindow.tempImage.Dispose();
+        if (Main.SnapItOverlayWindow.tempImage != null)
+            Main.SnapItOverlayWindow.tempImage.Dispose();
         end = watch.ElapsedMilliseconds;
         if (resultCount == 0)
         {
@@ -897,7 +898,7 @@ internal class OCR
         if (_settings.SnapitExport)
         {
             File.AppendAllText(
-                applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.culture) + ".csv",
+                applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) + ".csv",
                 csv);
         }
     }
@@ -1077,7 +1078,7 @@ internal class OCR
     {
         Bitmap filteredImageClean = new Bitmap(filteredImage);
         DateTime time = DateTime.UtcNow;
-        string timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
+        string timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         List<Tuple<List<InventoryItem>, Rectangle>>
             foundItems = []; //List containing Tuples of overlapping InventoryItems and their combined bounds
         int numberTooLarge = 0;
@@ -1751,7 +1752,7 @@ internal class OCR
     {
         long start = Stopwatch.GetTimestamp();
 
-        string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
+        string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         fullShot.Save(Main.AppPath + @"\Debug\ProfileImage " + timestamp + ".png");
         List<InventoryItem> foundParts = FindOwnedItems(fullShot, timestamp, in start);
         for (int i = 0; i < foundParts.Count; i++)
@@ -1760,10 +1761,10 @@ internal class OCR
             if (!PartNameValid(part.Name + " Blueprint"))
                 continue;
             string name =
-                Main.dataBase.GetPartName(part.Name + " Blueprint", out int proximity, true,
+                Main.DataBase.GetPartName(part.Name + " Blueprint", out int proximity, true,
                     out _); //add blueprint to name to check against prime drop table
             string checkName =
-                Main.dataBase.GetPartName(part.Name + " prime Blueprint", out int primeProximity, true,
+                Main.DataBase.GetPartName(part.Name + " prime Blueprint", out int primeProximity, true,
                     out _); //also add prime to check if that gives better match. If so, this is a non-prime
             Logger.Debug("Checking \""  + part.Name.Trim() + "\", ("   + proximity + ")\"" + name + "\", +prime (" +
                          primeProximity + ")\""            + checkName + "\"");
@@ -1775,9 +1776,9 @@ internal class OCR
                 string[] nameParts = name.Split(["Prime"], 2, StringSplitOptions.None);
                 string primeName = nameParts[0] + "Prime";
 
-                if (Main.dataBase.EquipmentData[primeName].ToObject<JObject>().TryGetValue("mastered", out _))
+                if (Main.DataBase.EquipmentData[primeName].ToObject<JObject>().TryGetValue("mastered", out _))
                 {
-                    Main.dataBase.EquipmentData[primeName]["mastered"] = true;
+                    Main.DataBase.EquipmentData[primeName]["mastered"] = true;
 
                     Logger.Debug("Marked \"" + primeName + "\" as mastered");
                 }
@@ -1788,7 +1789,7 @@ internal class OCR
             }
         }
 
-        Main.dataBase.SaveAllJSONs();
+        Main.DataBase.SaveAllJSONs();
         Main.RunOnUIThread(() => { EquipmentWindow.INSTANCE.ReloadItems(); });
 
         var end = Stopwatch.GetElapsedTime(start);
@@ -2418,10 +2419,10 @@ internal class OCR
         for (int i = 0; i < 5; i++)
         {
             Logger.Debug("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
-                         percWeights[topFive[i]].ToString("F2", Main.culture) + " -- " +
-                         topWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
-                         midWeights[topFive[i]].ToString("F2", Main.culture) + ", " +
-                         botWeights[topFive[i]].ToString("F2", Main.culture));
+                         percWeights[topFive[i]].ToString("F2", Main.Culture) + " -- " +
+                         topWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
+                         midWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
+                         botWeights[topFive[i]].ToString("F2", Main.Culture));
         }
 
         using (Graphics g = Graphics.FromImage(fullScreen))
@@ -2539,8 +2540,8 @@ internal class OCR
         }
 
         double total = totalEven           + totalOdd;
-        Logger.Debug("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.culture) + "%");
-        Logger.Debug("ODD DISTRIBUTION: "  + (totalOdd  / total * 100).ToString("F2", Main.culture) + "%");
+        Logger.Debug("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.Culture) + "%");
+        Logger.Debug("ODD DISTRIBUTION: "  + (totalOdd  / total * 100).ToString("F2", Main.Culture) + "%");
 
         int boxWidth = partBox.Width / 4;
         int boxHeight = filtered.Height;
@@ -2759,22 +2760,22 @@ internal class OCR
 
         var image = screenshot.CaptureScreenshot().Result[0];
         var fileName =
-            $@"{Main.AppPath}\Debug\FullScreenShot {DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture)}.png";
+            $@"{Main.AppPath}\Debug\FullScreenShot {DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture)}.png";
         image.Save(fileName);
         return image;
     }
 
     internal static void SnapScreenshot()
     {
-        Main.snapItOverlayWindow.Populate(CaptureScreenshot());
-        Main.snapItOverlayWindow.Left = _window.Window.Left     / _window.DpiScaling;
-        Main.snapItOverlayWindow.Top = _window.Window.Top       / _window.DpiScaling;
-        Main.snapItOverlayWindow.Width = _window.Window.Width   / _window.DpiScaling;
-        Main.snapItOverlayWindow.Height = _window.Window.Height / _window.DpiScaling;
-        Main.snapItOverlayWindow.Topmost = true;
-        Main.snapItOverlayWindow.Focusable = true;
-        Main.snapItOverlayWindow.Show();
-        Main.snapItOverlayWindow.Focus();
+        Main.SnapItOverlayWindow.Populate(CaptureScreenshot());
+        Main.SnapItOverlayWindow.Left = _window.Window.Left     / _window.DpiScaling;
+        Main.SnapItOverlayWindow.Top = _window.Window.Top       / _window.DpiScaling;
+        Main.SnapItOverlayWindow.Width = _window.Window.Width   / _window.DpiScaling;
+        Main.SnapItOverlayWindow.Height = _window.Window.Height / _window.DpiScaling;
+        Main.SnapItOverlayWindow.Topmost = true;
+        Main.SnapItOverlayWindow.Focusable = true;
+        Main.SnapItOverlayWindow.Show();
+        Main.SnapItOverlayWindow.Focus();
     }
 
     public static async Task updateEngineAsync()

@@ -120,7 +120,7 @@ public partial class SettingsWindow : Window
                 MessageBox.Show(message, "Automation Mode Opt-In", MessageBoxButton.YesNo);
             if (messageBoxResult == MessageBoxResult.Yes)
             {
-                Main.dataBase.EnableLogCapture();
+                Main.DataBase.EnableLogCapture();
                 Autolist.IsEnabled = true;
                 Autocsv.IsEnabled = true;
                 Autoadd.IsEnabled = true;
@@ -129,7 +129,7 @@ public partial class SettingsWindow : Window
             {
                 SettingsViewModel.Auto = false;
                 autoCheckbox.IsChecked = false;
-                Main.dataBase.DisableLogCapture();
+                Main.DataBase.DisableLogCapture();
                 Autolist.IsEnabled = false;
                 Autocsv.IsEnabled = false;
                 Autoadd.IsEnabled = false;
@@ -141,7 +141,7 @@ public partial class SettingsWindow : Window
             Autolist.IsEnabled = false;
             Autocsv.IsEnabled = false;
             Autoadd.IsEnabled = false;
-            Main.dataBase.DisableLogCapture();
+            Main.DataBase.DisableLogCapture();
         }
 
         Save();
@@ -199,7 +199,7 @@ public partial class SettingsWindow : Window
         Save();
 
         _ = OCR.updateEngineAsync();
-        _ = Task.Run(async () => { Main.dataBase.ReloadItems(); });
+        _ = Task.Run(async () => { Main.DataBase.ReloadItems(); });
     }
 
     private void LightRadioChecked(object sender, RoutedEventArgs e)

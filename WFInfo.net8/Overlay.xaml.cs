@@ -196,8 +196,8 @@ public partial class Overlay : Window
                 ownedText.Text += " (" + detected + " FOUND)";
         }
 
-        double.TryParse(plat, NumberStyles.Any, Main.culture, out var platinum);
-        int.TryParse(ducats, NumberStyles.Any, Main.culture, out var duc);
+        double.TryParse(plat, NumberStyles.Any, Main.Culture, out var platinum);
+        int.TryParse(ducats, NumberStyles.Any, Main.Culture, out var duc);
         var efficiency = $"{Math.Round(duc / platinum, 1)}";
         var color = Color.FromArgb(100, 174, 199, 206);
 

@@ -135,7 +135,7 @@ public class TesseractService : ITesseractService
         string traineddata_hotlink = traineddata_hotlink_prefix  + _locale + ".traineddata";
         string app_data_traineddata_path = AppdataTessdataFolder + @"\"   + _locale + ".traineddata";
 
-        WebClient webClient = CustomEntrypoint.CreateNewWebClient();
+        using WebClient webClient = CustomEntrypoint.CreateNewWebClient();
 
         if (!File.Exists(app_data_traineddata_path) || CustomEntrypoint.GetMD5hash(app_data_traineddata_path) !=
             traineddata_checksums.GetValue(_locale).ToObject<string>())
