@@ -33,7 +33,7 @@ public partial class UpdateDialogue : Window
         NewVersionText.Text = "WFInfo version "   + version           + " has been released!";
         OldVersionText.Text = "You have version " + Main.BuildVersion + " installed.";
 
-        using var webClient = CustomEntrypoint.createNewWebClient();
+        using var webClient = CustomEntrypoint.CreateNewWebClient();
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         var data = webClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases");
         JArray releases = JsonConvert.DeserializeObject<JArray>(data);

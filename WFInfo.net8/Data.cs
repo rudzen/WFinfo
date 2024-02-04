@@ -96,7 +96,7 @@ public sealed class Data
 
     public WebClient createWfmClient()
     {
-        WebClient webClient = CustomEntrypoint.createNewWebClient();
+        WebClient webClient = CustomEntrypoint.CreateNewWebClient();
         webClient.Headers.Add("platform", "pc");
         webClient.Headers.Add("language", "en");
         return webClient;
@@ -175,7 +175,7 @@ public sealed class Data
 
     public int GetGithubVersion()
     {
-        WebClient githubWebClient = CustomEntrypoint.createNewWebClient();
+        WebClient githubWebClient = CustomEntrypoint.CreateNewWebClient();
         JObject github =
             JsonConvert.DeserializeObject<JObject>(
                 githubWebClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases/latest"));
@@ -285,7 +285,7 @@ public sealed class Data
         }
 
         marketData = new JObject();
-        WebClient webClient = CustomEntrypoint.createNewWebClient();
+        WebClient webClient = CustomEntrypoint.CreateNewWebClient();
         JArray rows = JsonConvert.DeserializeObject<JArray>(webClient.DownloadString(sheetJsonUrl));
 
         foreach (var row in rows)
@@ -489,7 +489,7 @@ public sealed class Data
     public bool Update()
     {
         Logger.Debug("Checking for Updates to Databases");
-        WebClient webClient = CustomEntrypoint.createNewWebClient();
+        WebClient webClient = CustomEntrypoint.CreateNewWebClient();
         JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
         bool saveDatabases = LoadMarket(allFiltered);
 
@@ -540,7 +540,7 @@ public sealed class Data
         try
         {
             Logger.Debug("Forcing market update");
-            WebClient webClient = CustomEntrypoint.createNewWebClient();
+            WebClient webClient = CustomEntrypoint.CreateNewWebClient();
             JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
             LoadMarket(allFiltered, true);
 
@@ -594,7 +594,7 @@ public sealed class Data
         try
         {
             Logger.Debug("Forcing equipment update");
-            WebClient webClient = CustomEntrypoint.createNewWebClient();
+            WebClient webClient = CustomEntrypoint.CreateNewWebClient();
             JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
             LoadEqmtData(allFiltered, true);
             SaveAllJSONs();

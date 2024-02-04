@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Security.Cryptography;
 using System.Windows.Forms;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using Serilog;
@@ -19,7 +20,7 @@ namespace WFInfo;
 public class CustomEntrypoint
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<CustomEntrypoint>();
-    
+
     private const string liblept = "leptonica-1.82.0";
     private const string libtesseract = "tesseract50";
     private const string tesseract_version_folder = "tesseract5";
@@ -48,15 +49,16 @@ public class CustomEntrypoint
     private static readonly string libs_hotlink_prefix = "https://raw.githubusercontent.com/WFCD/WFinfo/libs";
     private static readonly string tesseract_hotlink_prefix = libs_hotlink_prefix + @"/" + libtesseract + @"/";
     private static string tesseract_hotlink_platform_specific_prefix;
-    private static readonly string app_data_tesseract_catalog = appPath + @"\" + tesseract_version_folder;
+    private static readonly string app_data_tesseract_catalog = Path.Combine(appPath, tesseract_version_folder);
 
-    public static readonly string appdata_tessdata_folder = appPath + @"\tessdata";
+    public static readonly string appdata_tessdata_folder = Path.Combine(appPath, "tessdata");
 
-    private static readonly InitialDialogue dialogue = new InitialDialogue();
+    private static InitialDialogue? dialogue;
+    
     public static CancellationTokenSource stopDownloadTask;
     private static string build_version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-    private static void cleanLegacyTesseractIfNeeded()
+    private static void CleanLegacyTesseractIfNeeded()
     {
         string[] legacyDllNames =
         [
@@ -65,7 +67,7 @@ public class CustomEntrypoint
             @"\x64\libtesseract400.dll",
             @"\x64\liblept1760.dll"
         ];
-        foreach (string legacyDdlName in legacyDllNames)
+        foreach (var legacyDdlName in legacyDllNames)
         {
             var pathToCheck = app_data_tesseract_catalog + legacyDdlName;
             if (File.Exists(pathToCheck))
@@ -77,40 +79,22 @@ public class CustomEntrypoint
     }
 
     // [STAThread]
-    public static async Task Run(AppDomain currentDomain)
+    public static async Task Run(AppDomain currentDomain, IServiceProvider sp)
     {
         currentDomain.UnhandledException += MyHandler;
 
-        var configuration = ConfigurationBuilder().Build();
-        var logger = CreateLogger(configuration);
-        
-        Directory.CreateDirectory(appPath);
+        // var configuration = ConfigurationBuilder().Build();
+        // var logger = CreateLogger(configuration);
 
-        string thisprocessname = Process.GetCurrentProcess().ProcessName;
-        
-        logger.Information("Starting WFInfo V{Version}", build_version);
-        
-        string version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-        if (Process.GetProcesses().Count(p => p.ProcessName == thisprocessname) > 1)
-        {
-            using (StreamWriter sw = File.AppendText(appPath + @"\debug.log"))
-            {
-                sw.WriteLineAsync("[" + DateTime.UtcNow + "]   Duplicate process found - start canceled. Version: " +
-                                  version);
-            }
+        Logger.Information("Starting WFInfo V{Version}", build_version);
 
-            MessageBox.Show("Another instance of WFInfo is already running, close it and try again",
-                "WFInfo V" + version);
+        if (DetectInstance())
             return;
-        }
 
-        Directory.CreateDirectory(app_data_tesseract_catalog);
-        Directory.CreateDirectory(app_data_tesseract_catalog + @"\x86");
-        Directory.CreateDirectory(app_data_tesseract_catalog + @"\x64");
-        Directory.CreateDirectory(appdata_tessdata_folder);
-
-        cleanLegacyTesseractIfNeeded();
-        await CollectDebugInfo();
+        CreateRequiredDirectories();
+        CleanLegacyTesseractIfNeeded();
+        CollectDebugInfo();
+        
         tesseract_hotlink_platform_specific_prefix = tesseract_hotlink_prefix;
 
         // Refresh traineddata structure
@@ -119,53 +103,12 @@ public class CustomEntrypoint
         {
             // To avoid conflicts for folks who like to experiment...
             if (File.Exists(appdata_tessdata_folder + @"\en.traineddata"))
-            {
                 File.Delete(appdata_tessdata_folder + @"\en.traineddata");
-            }
 
             File.Move(appdata_tessdata_folder + @"\engbest.traineddata", appdata_tessdata_folder + @"\en.traineddata");
         }
-
-        int filesNeeded = 0;
-        for (int i = 0; i < ListOfDlls.Length; i++)
-        {
-            string dll = ListOfDlls[i];
-            string path = app_data_tesseract_catalog + dll;
-            string md5 = ListOfChecksums[i];
-            if (!File.Exists(path) || GetMD5hash(path) != md5)
-                filesNeeded++;
-        }
-
-        if (filesNeeded > 0)
-        {
-            dialogue.SetFilesNeed(filesNeeded);
-            stopDownloadTask = new CancellationTokenSource();
-            Task.Run(() =>
-            {
-                try
-                {
-                    RefreshTesseractDlls(stopDownloadTask.Token);
-                }
-                catch (Exception ex)
-                {
-                    if (stopDownloadTask.IsCancellationRequested)
-                    {
-                        dialogue.Dispatcher.Invoke(() => { dialogue.Close(); });
-                    }
-                    else
-                    {
-                        using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-                        sw.WriteLineAsync(
-                            "--------------------------------------------------------------------------------------------");
-                        sw.WriteLineAsync(
-                            "--------------------------------------------------------------------------------------------");
-                        sw.WriteLineAsync("[" + DateTime.UtcNow + "]   ERROR DURING INITIAL LOAD");
-                        sw.WriteLineAsync("[" + DateTime.UtcNow + "]   " + ex.ToString());
-                    }
-                }
-            }, stopDownloadTask.Token);
-            dialogue.ShowDialog();
-        }
+        
+        EnsureRequiredFilesExists(sp);
 
         if (stopDownloadTask is not { IsCancellationRequested: true })
         {
@@ -175,107 +118,147 @@ public class CustomEntrypoint
         }
     }
 
-    static void MyHandler(object sender, UnhandledExceptionEventArgs args)
+    private static void EnsureRequiredFilesExists(IServiceProvider sp)
     {
-        Exception e = (Exception)args.ExceptionObject;
-        AddLog("MyHandler caught: "    + e.Message);
-        AddLog("Runtime terminating: " + args.IsTerminating);
-        AddLog(e.StackTrace);
-        AddLog(e.InnerException.Message);
-        AddLog(e.InnerException.StackTrace);
+        var filesNeeded = 0;
+        for (var i = 0; i < ListOfDlls.Length; i++)
+        {
+            var dll = ListOfDlls[i];
+            var path = app_data_tesseract_catalog + dll;
+            var md5 = ListOfChecksums[i];
+            if (!File.Exists(path) || GetMD5hash(path) != md5)
+                filesNeeded++;
+        }
+
+        if (filesNeeded <= 0)
+            return;
+
+        stopDownloadTask = new CancellationTokenSource();
+        dialogue = sp.GetRequiredService<InitialDialogue>();
+        dialogue.SetFilesNeed(filesNeeded);
+        Task.Run(() =>
+        {
+            try
+            {
+                RefreshTesseractDlls(stopDownloadTask.Token);
+            }
+            catch (Exception ex)
+            {
+                if (stopDownloadTask.IsCancellationRequested)
+                {
+                    dialogue.Dispatcher.Invoke(() => { dialogue.Close(); });
+                }
+                else
+                {
+                    Logger.Error(ex, "Error during initial load");
+                }
+            }
+        }, stopDownloadTask.Token);
+        dialogue.ShowDialog();
     }
 
-    public static void AddLog(string argm)
+    private static void CreateRequiredDirectories()
     {
-        //write to the debug file, includes version and UTCtime
-        Debug.WriteLine(argm);
         Directory.CreateDirectory(appPath);
-        using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-        sw.WriteLineAsync($"[{DateTime.UtcNow} - Still in custom entrypoint]   {argm}");
+        Directory.CreateDirectory(app_data_tesseract_catalog);
+        Directory.CreateDirectory(Path.Combine(app_data_tesseract_catalog, "x86"));
+        Directory.CreateDirectory(Path.Combine(app_data_tesseract_catalog, "x64"));
+        Directory.CreateDirectory(appdata_tessdata_folder);
     }
 
-    public static WebClient createNewWebClient()
+    private static bool DetectInstance()
+    {
+        var processName = Process.GetCurrentProcess().ProcessName;
+
+        if (Process.GetProcesses().Count(p => p.ProcessName == processName) <= 1)
+            return false;
+
+        Logger.Debug("Duplicate process found - start canceled. version={Version}", build_version);
+
+        var caption = $"WFInfo V{build_version}";
+        MessageBox.Show("Another instance of WFInfo is already running, close it and try again", caption);
+
+        return true;
+    }
+
+    private static void MyHandler(object sender, UnhandledExceptionEventArgs args)
+    {
+        var e = (Exception)args.ExceptionObject;
+        Logger.Error(e, "Unhandled exception. isTerminating={IsTerminating}", args.IsTerminating);
+    }
+
+    [Obsolete("Obsolete")]
+    public static WebClient CreateNewWebClient()
     {
         WebProxy proxy = null;
-        string proxy_string = Environment.GetEnvironmentVariable("http_proxy");
+        var proxy_string = Environment.GetEnvironmentVariable("http_proxy");
         if (proxy_string != null)
         {
             proxy = new WebProxy(new Uri(proxy_string));
         }
 
-        WebClient webClient = new WebClient() { Proxy = proxy };
-        webClient.Headers.Add("User-Agent", "WFInfo/" + build_version);
+        var webClient = new WebClient { Proxy = proxy };
+        webClient.Headers.Add("User-Agent", $"WFInfo/{build_version}");
         return webClient;
     }
 
-    private static async Task CollectDebugInfo()
+    private static void CollectDebugInfo()
     {
-        await using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-        await sw.WriteLineAsync(
-            "--------------------------------------------------------------------------------------------------------------------------------------------");
-
+        Logger.Debug("--------------------------------------------------------------------------------------------------------------------------------------------");
+        
         try
         {
-            ManagementObjectSearcher mos = new ManagementObjectSearcher("root\\CIMV2", "SELECT * FROM Win32_Processor");
-            foreach (ManagementObject mo in mos.Get().OfType<ManagementObject>())
-            {
-                sw.WriteLineAsync("[" + DateTime.UtcNow + "] CPU model is " + mo["Name"]);
-            }
+            var mos = new ManagementObjectSearcher("root\\CIMV2", "SELECT * FROM Win32_Processor");
+            foreach (var mo in mos.Get().OfType<ManagementObject>())
+                Logger.Debug("CPU model is {Name}", mo["Name"]);
         }
         catch (Exception e)
         {
-            await sw.WriteLineAsync("[" + DateTime.UtcNow + "] Unable to fetch CPU model due to:" + e);
+            Logger.Error(e, "Unable to fetch CPU model");
         }
 
         //Log OS version
-        await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Detected Windows version: {Environment.OSVersion}");
+        Logger.Debug("Detected Windows version: {OS}", Environment.OSVersion);
 
         //Log 64 bit application
-        await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] 64bit application: {Environment.Is64BitProcess}");
-        
+        Logger.Debug("64bit application: {Is64BitProcess}", Environment.Is64BitProcess);
+
         //Log .net Version
-        await sw.WriteLineAsync("[" + DateTime.UtcNow +
-                                $"] Detected .net version: {Environment.Version.ToString()}");
-        
+        Logger.Debug("Detected .net version: {Version}", Environment.Version);
+
         //Log C++ x64 runtimes 14.29
-        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
-                                               .OpenSubKey("Installer\\Dependencies"))
+        using (var ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
+                                       .OpenSubKey("Installer\\Dependencies"))
         {
             try
             {
                 foreach (var item in ndpKey.GetSubKeyNames()) // VC,redist.x64,amd64,14.30,bundle
                 {
                     if (item.Contains("VC,redist.x64,amd64"))
-                    {
-                        await sw.WriteLineAsync(
-                            "[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
-                    }
+                        Logger.Debug("Detected x64 runtime: {DisplayName}", ndpKey.OpenSubKey(item).GetValue("DisplayName"));
                 }
             }
             catch (Exception e)
             {
-                await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch x64 runtime due to: {e}");
+                Logger.Error(e, "Unable to fetch x64 runtime");
             }
         }
 
         //Log C++ x86 runtimes 14.29
-        using (RegistryKey ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
-                                               .OpenSubKey("Installer\\Dependencies"))
+        using (var ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
+                                       .OpenSubKey("Installer\\Dependencies"))
         {
             try
             {
                 foreach (var item in ndpKey.GetSubKeyNames()) // VC,redist.x86,x86,14.30,bundle
                 {
                     if (item.Contains("VC,redist.x86,x86"))
-                    {
-                        await sw.WriteLineAsync(
-                            "[" + DateTime.UtcNow + $"] {ndpKey.OpenSubKey(item).GetValue("DisplayName")}");
-                    }
+                        Logger.Debug("Detected x86 runtime: {DisplayName}", ndpKey.OpenSubKey(item).GetValue("DisplayName"));
                 }
             }
             catch (Exception e)
             {
-                await sw.WriteLineAsync("[" + DateTime.UtcNow + $"] Unable to fetch x86 runtime due to: {e}");
+                Logger.Error(e, "Unable to fetch x86 runtime");
             }
         }
     }
@@ -283,38 +266,29 @@ public class CustomEntrypoint
     public static string GetMD5hash(string filePath)
     {
         using var stream = File.OpenRead(filePath);
-        byte[] hash = MD5.HashData(stream);
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-    }
-
-    public static string GetMD5hashByURL(string url)
-    {
-        Debug.WriteLine(url);
-        WebClient webClient = createNewWebClient();
-        byte[] stream = webClient.DownloadData(url);
-        byte[] hash = MD5.HashData(stream);
+        var hash = MD5.HashData(stream);
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
     private static void DownloadProgressCallback(object sender, DownloadProgressChangedEventArgs e)
     {
         // Displays the operation identifier, and the transfer progress.
-        dialogue.Dispatcher.Invoke(() => { dialogue.UpdatePercentage(e.ProgressPercentage); });
+        dialogue?.Dispatcher.Invoke(() => { dialogue.UpdatePercentage(e.ProgressPercentage); });
     }
 
-    private static async void RefreshTesseractDlls(CancellationToken token)
+    private static async Task RefreshTesseractDlls(CancellationToken token)
     {
-        WebClient webClient = createNewWebClient();
+        using var webClient = CreateNewWebClient();
         webClient.DownloadProgressChanged += DownloadProgressCallback;
         token.Register(webClient.CancelAsync);
 
-        for (int i = 0; i < ListOfDlls.Length; i++)
+        for (var i = 0; i < ListOfDlls.Length; i++)
         {
             if (token.IsCancellationRequested)
                 break;
-            string dll = ListOfDlls[i];
-            string path = app_data_tesseract_catalog + dll;
-            string md5 = ListOfChecksums[i];
+            var dll = ListOfDlls[i];
+            var path = app_data_tesseract_catalog + dll;
+            var md5 = ListOfChecksums[i];
             if (!File.Exists(path) || GetMD5hash(path) != md5)
             {
                 if (File.Exists(path))
@@ -322,20 +296,22 @@ public class CustomEntrypoint
 
                 if (token.IsCancellationRequested)
                     break;
-                bool success = false;
+                var success = false;
                 try
                 {
-                    if (Directory.Exists("lib") && File.Exists("lib" + dll))
+                    if (Directory.Exists("lib"))
                     {
-                        File.Copy("lib" + dll, app_data_tesseract_catalog + dll);
-                        success = true;
+                        var file = $"lib{dll}";
+                        if (File.Exists(file))
+                        {
+                            File.Copy(file, app_data_tesseract_catalog + dll);
+                            success = true;
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    await using StreamWriter sw = File.AppendText(appPath + @"\debug.log");
-                    await sw.WriteLineAsync("[" + DateTime.UtcNow + "]   " + dll + " couldn't be moved");
-                    await sw.WriteLineAsync("[" + DateTime.UtcNow + "]   " + ex.ToString());
+                    Logger.Error(ex, "Error moving dll. file={Dll}", dll);
                 }
 
                 if (token.IsCancellationRequested)
@@ -357,26 +333,28 @@ public class CustomEntrypoint
                                 app_data_tesseract_catalog                                 + dll);
                         }
                     }
-                    catch (Exception) when (stopDownloadTask.Token.IsCancellationRequested)
+                    catch (Exception e) when (stopDownloadTask.Token.IsCancellationRequested)
                     {
+                        Logger.Error(e, "Download canceled. file={Dll}", dll);
                     }
                 }
 
-                dialogue.Dispatcher.Invoke(() => { dialogue.FileComplete(); });
+                dialogue?.Dispatcher.Invoke(() => { dialogue.FileComplete(); });
             }
         }
 
-        webClient.Dispose();
-
-        dialogue.Dispatcher.Invoke(() => { dialogue.Close(); });
+        dialogue?.Dispatcher.Invoke(() => { dialogue.Close(); });
     }
 
     private static Assembly CurrentDomain_AssemblyResolve_Tesseract(object sender, ResolveEventArgs args)
     {
-        string probingPath = Path.Combine(appPath, tesseract_version_folder);
-        string assyName = new AssemblyName(args.Name).Name;
+        var probingPath = Path.Combine(appPath, tesseract_version_folder);
+        var assyName = new AssemblyName(args.Name).Name;
 
-        string newPath = Path.Combine(probingPath, assyName);
+        if (assyName is null)
+            return null;
+
+        var newPath = Path.Combine(probingPath, assyName);
         if (!newPath.EndsWith(".dll"))
             newPath += ".dll";
 
@@ -390,49 +368,20 @@ public class CustomEntrypoint
 
     private static Assembly OnResolveAssembly(object sender, ResolveEventArgs args)
     {
-        Assembly executingAssembly = Assembly.GetExecutingAssembly();
-        AssemblyName assemblyName = new AssemblyName(args.Name);
+        var executingAssembly = Assembly.GetExecutingAssembly();
+        var assemblyName = new AssemblyName(args.Name);
 
-        string path = assemblyName.Name + ".dll";
+        var path = assemblyName.Name + ".dll";
         if (assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture) == false)
             path = $@"{assemblyName.CultureInfo}\{path}";
 
-        using Stream stream = executingAssembly.GetManifestResourceStream(path);
+        using var stream = executingAssembly.GetManifestResourceStream(path);
         if (stream == null)
             return null;
 
-        byte[] assemblyRawBytes = new byte[stream.Length];
+        var assemblyRawBytes = new byte[stream.Length];
         stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
         return Assembly.Load(assemblyRawBytes);
-    }
-
-    private static ILogger CreateLogger(IConfiguration configuration)
-    {
-        const string defaultTemplate =
-            "[{Timestamp:HH:mm:ss} T:{ThreadId} {Level:u3}] {Message:lj} {SourceContext}{NewLine}{Exception}";
-        LogEventLevel level;
-
-        #if DEBUG
-        level = LogEventLevel.Debug;
-        #else
-        level = LogEventLevel.Information;
-        #endif
-        
-        // Apply the config to the logger
-        Log.Logger = new LoggerConfiguration()
-                     .ReadFrom.Configuration(configuration)
-                     .Enrich.WithThreadId()
-                     .Enrich.FromLogContext()
-#if DEBUG
-                     .WriteTo.File(
-                         restrictedToMinimumLevel: LogEventLevel.Verbose,
-                         outputTemplate: defaultTemplate,
-                         path:Path.Combine(appPath, "wf_info_debug.log.txt"))
-                     .WriteTo.Debug(outputTemplate: defaultTemplate)
-#endif
-                     .CreateLogger();
-        AppDomain.CurrentDomain.ProcessExit += static (_, _) => Log.CloseAndFlush();
-        return Log.Logger;
     }
 
     private static IConfigurationBuilder ConfigurationBuilder()

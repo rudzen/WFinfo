@@ -6,10 +6,10 @@ namespace WFInfo;
 /// <summary>
 /// Interaction logic for errorDialogue.xaml
 /// </summary>
-public partial class InitialDialogue : Window
+public partial class InitialDialogue
 {
-    private int filesTotal = 0;
-    private int filesDone = 1;
+    private int _filesTotal;
+    private int _filesDone = 1;
 
     public InitialDialogue()
     {
@@ -30,19 +30,19 @@ public partial class InitialDialogue : Window
 
     internal void SetFilesNeed(int filesNeeded)
     {
-        filesTotal = filesNeeded;
-        Progress.Text = "0% (" + filesDone + "/" + filesTotal + ")";
+        _filesTotal = filesNeeded;
+        Progress.Text = $"0% ({_filesDone}/{_filesTotal})";
         Progress.Visibility = Visibility.Visible;
     }
 
     internal void UpdatePercentage(double perc)
     {
-        Progress.Text = perc.ToString("F0") + "% (" + filesDone + "/" + filesTotal + ")";
+        Progress.Text = $"{perc:F0}% ({_filesDone}/{_filesTotal})";
     }
 
     internal void FileComplete()
     {
-        filesDone++;
-        Progress.Text = "0% (" + filesDone + "/" + filesTotal + ")";
+        _filesDone++;
+        Progress.Text = $"0% ({_filesDone}/{_filesTotal})";
     }
 }
