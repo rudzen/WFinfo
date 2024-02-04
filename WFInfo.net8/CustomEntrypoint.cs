@@ -3,16 +3,15 @@ using System.Globalization;
 using System.IO;
 using System.Management;
 using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Windows.Forms;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using Serilog;
-using Serilog.Events;
 using Tesseract;
+using WFInfo.Extensions;
 using ILogger = Serilog.ILogger;
 
 namespace WFInfo;
@@ -53,37 +52,16 @@ public sealed class CustomEntrypoint
 
     public static readonly string appdata_tessdata_folder = Path.Combine(appPath, "tessdata");
 
-    private static InitialDialogue? dialogue;
+    private static InitialDialogue? _dialogue;
 
-    public static CancellationTokenSource stopDownloadTask;
-    private static string build_version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+    public static CancellationTokenSource stopDownloadTask { get; set; }
+    private static readonly string BuildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-    private static void CleanLegacyTesseractIfNeeded()
-    {
-        string[] legacyDllNames =
-        [
-            @"\x86\libtesseract400.dll",
-            @"\x86\liblept1760.dll",
-            @"\x64\libtesseract400.dll",
-            @"\x64\liblept1760.dll"
-        ];
-        foreach (var legacyDdlName in legacyDllNames)
-        {
-            var pathToCheck = app_data_tesseract_catalog + legacyDdlName;
-            if (!File.Exists(pathToCheck))
-                continue;
-
-            Logger.Debug("Cleaning legacy leftover. file={File}", legacyDdlName);
-            File.Delete(pathToCheck);
-        }
-    }
-
-    // [STAThread]
     public static async Task Run(AppDomain currentDomain, IServiceProvider sp)
     {
         currentDomain.UnhandledException += MyHandler;
 
-        Logger.Information("Starting WFInfo V{Version}", build_version);
+        Logger.Information("Starting WFInfo V{Version}", BuildVersion);
 
         if (DetectInstance())
             return;
@@ -115,6 +93,26 @@ public sealed class CustomEntrypoint
         }
     }
 
+    private static void CleanLegacyTesseractIfNeeded()
+    {
+        string[] legacyDllNames =
+        [
+            @"\x86\libtesseract400.dll",
+            @"\x86\liblept1760.dll",
+            @"\x64\libtesseract400.dll",
+            @"\x64\liblept1760.dll"
+        ];
+        foreach (var legacyDdlName in legacyDllNames)
+        {
+            var pathToCheck = app_data_tesseract_catalog + legacyDdlName;
+            if (!File.Exists(pathToCheck))
+                continue;
+
+            Logger.Debug("Cleaning legacy leftover. file={File}", legacyDdlName);
+            File.Delete(pathToCheck);
+        }
+    }
+
     private static async Task EnsureRequiredFilesExists(IServiceProvider sp)
     {
         var filesNeeded = 0;
@@ -131,22 +129,23 @@ public sealed class CustomEntrypoint
             return;
 
         stopDownloadTask = new CancellationTokenSource();
-        dialogue = sp.GetRequiredService<InitialDialogue>();
-        dialogue.SetFilesNeed(filesNeeded);
+        _dialogue = sp.GetRequiredService<InitialDialogue>();
+        _dialogue.SetFilesNeed(filesNeeded);
 
         try
         {
-            await RefreshTesseractDlls(stopDownloadTask.Token);
+            HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("WFInfo");
+            await RefreshTesseractDlls(httpClient, stopDownloadTask.Token);
         }
         catch (Exception ex)
         {
             if (stopDownloadTask.IsCancellationRequested)
-                dialogue.Dispatcher.Invoke(() => { dialogue.Close(); });
+                _dialogue.Dispatcher.Invoke(() => { _dialogue.Close(); });
             else
                 Logger.Error(ex, "Error during initial load");
         }
 
-        dialogue.ShowDialog();
+        _dialogue.ShowDialog();
     }
 
     private static void CreateRequiredDirectories()
@@ -165,9 +164,9 @@ public sealed class CustomEntrypoint
         if (Process.GetProcesses().Count(p => p.ProcessName == processName) <= 1)
             return false;
 
-        Logger.Debug("Duplicate process found - start canceled. version={Version}", build_version);
+        Logger.Debug("Duplicate process found - start canceled. version={Version}", BuildVersion);
 
-        var caption = $"WFInfo V{build_version}";
+        var caption = $"WFInfo V{BuildVersion}";
         MessageBox.Show("Another instance of WFInfo is already running, close it and try again", caption);
 
         return true;
@@ -177,19 +176,6 @@ public sealed class CustomEntrypoint
     {
         var e = (Exception)args.ExceptionObject;
         Logger.Error(e, "Unhandled exception. isTerminating={IsTerminating}", args.IsTerminating);
-    }
-
-    [Obsolete("Obsolete")]
-    public static WebClient CreateNewWebClient()
-    {
-        WebProxy proxy = null;
-        var proxyString = Environment.GetEnvironmentVariable("http_proxy");
-        if (proxyString != null)
-            proxy = new WebProxy(new Uri(proxyString));
-
-        var webClient = new WebClient { Proxy = proxy };
-        webClient.Headers.Add("User-Agent", $"WFInfo/{build_version}");
-        return webClient;
     }
 
     private static void CollectDebugInfo()
@@ -269,14 +255,14 @@ public sealed class CustomEntrypoint
     private static void DownloadProgressCallback(object sender, DownloadProgressChangedEventArgs e)
     {
         // Displays the operation identifier, and the transfer progress.
-        dialogue?.Dispatcher.Invoke(() => { dialogue.UpdatePercentage(e.ProgressPercentage); });
+        _dialogue?.Dispatcher.Invoke(() => { _dialogue.UpdatePercentage(e.ProgressPercentage); });
     }
 
-    private static async Task RefreshTesseractDlls(CancellationToken token)
+    private static async Task RefreshTesseractDlls(HttpClient httpClient, CancellationToken token)
     {
-        using var webClient = CreateNewWebClient();
-        webClient.DownloadProgressChanged += DownloadProgressCallback;
-        token.Register(webClient.CancelAsync);
+        // using var webClient = CreateNewWebClient();
+        // webClient.DownloadProgressChanged += DownloadProgressCallback;
+        // token.Register(webClient.CancelAsync);
 
         for (var i = 0; i < ListOfDlls.Length; i++)
         {
@@ -319,14 +305,15 @@ public sealed class CustomEntrypoint
                     {
                         if (dll != @"\Tesseract.dll")
                         {
-                            await webClient.DownloadFileTaskAsync(
-                                tesseract_hotlink_platform_specific_prefix + dll.Replace("\\", "/"),
-                                app_data_tesseract_catalog                 + dll);
+                            var url = tesseract_hotlink_platform_specific_prefix + dll.Replace("\\", "/");
+                            var file = app_data_tesseract_catalog                + dll;
+                            await httpClient.DownloadFile(url, file);
                         }
                         else
                         {
-                            await webClient.DownloadFileTaskAsync(tesseract_hotlink_prefix + dll.Replace("\\", "/"),
-                                app_data_tesseract_catalog                                 + dll);
+                            var url = tesseract_hotlink_prefix    + dll.Replace("\\", "/");
+                            var file = app_data_tesseract_catalog + dll;
+                            await httpClient.DownloadFile(url, file);
                         }
                     }
                     catch (Exception e) when (stopDownloadTask.Token.IsCancellationRequested)
@@ -335,11 +322,11 @@ public sealed class CustomEntrypoint
                     }
                 }
 
-                dialogue?.Dispatcher.Invoke(() => { dialogue.FileComplete(); });
+                _dialogue?.Dispatcher.Invoke(() => { _dialogue.FileComplete(); });
             }
         }
 
-        dialogue?.Dispatcher.Invoke(() => { dialogue.Close(); });
+        _dialogue?.Dispatcher.Invoke(() => { _dialogue.Close(); });
     }
 
     private static Assembly CurrentDomain_AssemblyResolve_Tesseract(object sender, ResolveEventArgs args)

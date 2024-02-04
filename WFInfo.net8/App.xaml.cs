@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Windows;
 using Windows.Foundation.Metadata;
 using Windows.Graphics.Capture;
@@ -39,26 +40,7 @@ public partial class App : Application
                 })
                 .ConfigureServices((context, services) =>
                 {
-                    var proxyString2 = context.Configuration.GetValue<string>("http_proxy");
-                    var proxyString = Environment.GetEnvironmentVariable("http_proxy");
-
-                    if (proxyString is not null)
-                    {
-                        services.AddHttpClient("proxied")
-                                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-                                {
-                                    Proxy = new WebProxy(new Uri(proxyString)),
-                                    UseCookies = false
-                                });
-                    }
-                    else
-                    {
-                        services.AddHttpClient("proxied")
-                                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-                                {
-                                    UseCookies = false
-                                });
-                    }
+                    services = CreateWebClients(context, services);
 
                     // client.Timeout = TimeSpan.FromSeconds(30);
                     services.AddKeyedSingleton<IScreenshotService, GdiScreenshotService>(ScreenshotTypes.Gdi);
@@ -76,6 +58,7 @@ public partial class App : Application
                         );
                     }
 
+                    services.AddSingleton<IHasherService, HasherService>();
                     services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
                     services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
                     services.AddSingleton<IEncryptedDataService, EncryptedDataService>();
@@ -125,6 +108,8 @@ public partial class App : Application
 
     private async void Application_Startup(object sender, StartupEventArgs e)
     {
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
         await _host.StartAsync();
 
         await CustomEntrypoint.Run(AppDomain.CurrentDomain, _host.Services);
@@ -177,5 +162,40 @@ public partial class App : Application
                      .CreateLogger();
         AppDomain.CurrentDomain.ProcessExit += static (_, _) => Log.CloseAndFlush();
         return Log.Logger;
+    }
+
+    private static IServiceCollection CreateWebClients(HostBuilderContext context, IServiceCollection services)
+    {
+        var proxyString2 = context.Configuration.GetValue<string>("http_proxy");
+        var proxyString = Environment.GetEnvironmentVariable("http_proxy");
+        var clientHandler = new HttpClientHandler
+        {
+            Proxy = proxyString is not null ? new WebProxy(new Uri(proxyString)) : null,
+            UseCookies = false
+        };
+
+        services.AddHttpClient(nameof(Data), (provider, client) =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                    client.DefaultRequestHeaders.Add("User-Agent", "WFInfo");
+                    ApplyEncoding(client.DefaultRequestHeaders);
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => clientHandler);
+
+        services.AddHttpClient(nameof(TesseractService), (provider, client) =>
+                {
+                    client.Timeout = TimeSpan.FromSeconds(30);
+                    client.DefaultRequestHeaders.Add("User-Agent", "WFInfo");
+                    ApplyEncoding(client.DefaultRequestHeaders);
+                })
+                .ConfigurePrimaryHttpMessageHandler(() => clientHandler);
+
+        return services;
+
+        static void ApplyEncoding(HttpRequestHeaders httpRequestHeaders)
+        {
+            httpRequestHeaders.AcceptEncoding.Clear();
+            httpRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("br"));
+        }
     }
 }

@@ -2781,9 +2781,9 @@ internal class OCR
         Main.SnapItOverlayWindow.Focus();
     }
 
-    public static async Task updateEngineAsync()
+    public static Task updateEngineAsync()
     {
-        _tesseractService.ReloadEngines();
+        return _tesseractService.ReloadEngines();
     }
 }
 

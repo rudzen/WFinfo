@@ -2,13 +2,14 @@
 using Newtonsoft.Json.Linq;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
+using System.IO.Compression;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Authentication;
 using System.Text.RegularExpressions;
 using Serilog;
 using WebSocketSharp;
+using WFInfo.Extensions;
 using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WarframeProcess;
@@ -80,7 +81,7 @@ public sealed class Data
     private readonly string nameDataPath;
     public string? JWT { get; set; } // JWT is the security key, store this as email+pw combo
     private readonly WebSocket marketSocket = new WebSocket("wss://warframe.market/socket?platform=pc");
-    private readonly string filterAllJSON = "https://api.warframestat.us/wfinfo/filtered_items";
+    private const string filterAllJSON = "https://api.warframestat.us/wfinfo/filtered_items";
     private readonly string sheetJsonUrl = "https://api.warframestat.us/wfinfo/prices";
 
     public string inGameName { get; private set; } = string.Empty;
@@ -93,14 +94,6 @@ public sealed class Data
     private readonly ApplicationSettings _settings;
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _window;
-
-    private WebClient CreateWfmClient()
-    {
-        WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-        webClient.Headers.Add("platform", "pc");
-        webClient.Headers.Add("language", "en");
-        return webClient;
-    }
 
     public Data(
         ApplicationSettings settings,
@@ -121,7 +114,7 @@ public sealed class Data
 
         Directory.CreateDirectory(ApplicationDirectory);
 
-        _client = httpClientFactory.CreateClient("proxied");
+        _client = httpClientFactory.CreateClient(nameof(Data));
 
         marketSocket.SslConfiguration.EnabledSslProtocols = SslProtocols.None;
     }
@@ -153,7 +146,7 @@ public sealed class Data
         EElogWatcher = null;
     }
 
-    private void SaveDatabase(string path, object db)
+    private static void SaveDatabase(string path, object db)
     {
         File.WriteAllText(path, JsonConvert.SerializeObject(db, Formatting.Indented));
     }
@@ -164,74 +157,67 @@ public sealed class Data
         return JWT is { Length: > 300 };
     }
 
-    public int GetGithubVersion()
-    {
-        WebClient githubWebClient = CustomEntrypoint.CreateNewWebClient();
-        JObject github =
-            JsonConvert.DeserializeObject<JObject>(
-                githubWebClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases/latest"));
-        if (github.ContainsKey("tag_name"))
-        {
-            githubVersion = github["tag_name"]?.ToObject<string>();
-            return Main.VersionToInteger(githubVersion);
-        }
-
-        return Main.VersionToInteger(Main.BuildVersion);
-    }
-
     // Load item list from Sheets
     public async Task ReloadItems()
     {
+        const string url = "https://api.warframe.market/v1/items";
+
         MarketItems = new JObject();
-        WebClient webClient = CreateWfmClient();
-        JObject obj =
-            JsonConvert.DeserializeObject<JObject>(
-                webClient.DownloadString("https://api.warframe.market/v1/items"));
+
+        var body = await DownloadItems(url).ConfigureAwait(ConfigureAwaitOptions.None);
+        JObject obj = JsonConvert.DeserializeObject<JObject>(body);
 
         JArray items = JArray.FromObject(obj["payload"]["items"]);
         foreach (var item in items)
         {
-            string name = item["item_name"].ToString();
-            if (name.Contains("Prime "))
-            {
-                if ((name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
-                     name.Contains("Harness")    || name.Contains("Wings")))
-                {
-                    name = name.Replace(" Blueprint", "");
-                }
+            var name = item["item_name"].ToString();
+            if (!name.Contains("Prime "))
+                continue;
 
-                MarketItems[item["id"].ToString()] = name + "|" + item["url_name"];
+            if (name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
+                name.Contains("Harness")    || name.Contains("Wings"))
+            {
+                name = name.Replace(" Blueprint", string.Empty);
             }
+
+            MarketItems[item["id"].ToString()] = $"{name}|{item["url_name"]}";
         }
 
         try
         {
-            using var request = new HttpRequestMessage();
-            request.RequestUri = new Uri("https://api.warframe.market/v1/items");
-            request.Method = HttpMethod.Get;
-            request.Headers.Add("language", _settings.Locale);
-            request.Headers.Add("accept", "application/json");
-            request.Headers.Add("platform", "pc");
-            var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
-            Debug.WriteLine(body);
+            body = await DownloadItems(url).ConfigureAwait(ConfigureAwaitOptions.None);
+            Logger.Debug("Items: {Items}", body);
 
             obj = JsonConvert.DeserializeObject<JObject>(body);
             items = JArray.FromObject(obj["payload"]["items"]);
             foreach (var item in items)
             {
-                string name = item["url_name"].ToString();
+                var name = item["url_name"].ToString();
                 if (name.Contains("prime") && MarketItems.ContainsKey(item["id"].ToString()))
-                    MarketItems[item["id"].ToString()] = MarketItems[item["id"].ToString()] + "|" + item["item_name"];
+                    MarketItems[item["id"].ToString()] = $"{MarketItems[item["id"].ToString()]}|{item["item_name"]}";
             }
         }
-        catch (Exception e)
+        catch (Exception exception)
         {
-            Logger.Debug("GetTopListings: " + e.Message);
+            Logger.Debug(exception, "Failed to get items from warframe.market");
         }
 
         MarketItems["version"] = Main.BuildVersion;
         Logger.Debug("Item database has been downloaded");
+    }
+
+    private async Task<string> DownloadItems(string url)
+    {
+        using var request = new HttpRequestMessage();
+        request.RequestUri = new Uri(url);
+        request.Method = HttpMethod.Get;
+        request.Headers.Add("language", _settings.Locale);
+        request.Headers.Add("accept", "application/json");
+        request.Headers.Add("platform", "pc");
+        var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+        response = response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+        return body;
     }
 
     // Load market data from Sheets
@@ -258,7 +244,7 @@ public sealed class Data
 
         try
         {
-            ReloadItems();
+            await ReloadItems();
         }
         catch
         {
@@ -267,12 +253,14 @@ public sealed class Data
         }
 
         MarketData = new JObject();
-        WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-        JArray rows = JsonConvert.DeserializeObject<JArray>(webClient.DownloadString(sheetJsonUrl));
+        var response = await _client.GetAsync(sheetJsonUrl).ConfigureAwait(ConfigureAwaitOptions.None);
+        var data = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+        
+        var rows = JsonConvert.DeserializeObject<JArray>(data);
 
         foreach (var row in rows)
         {
-            string name = row["name"].ToString();
+            var name = row["name"].ToString();
             if (name.Contains("Prime "))
             {
                 if ((name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
@@ -308,52 +296,73 @@ public sealed class Data
         return true;
     }
 
-    private void LoadMarketItem(string item_name, string url)
+    private async Task LoadMarketItem(string itemName, string url)
     {
-        Logger.Debug("Load missing market item: " + item_name);
+        Logger.Debug("Load missing market item: {ItemName}", itemName);
 
-        Thread.Sleep(333);
-        WebClient webClient = CreateWfmClient();
-        var data = webClient.DownloadString("https://api.warframe.market/v1/items/" + url + "/statistics");
-        JObject? stats = JsonConvert.DeserializeObject<JObject>(data);
-        JToken latestStats = stats["payload"]["statistics_closed"]["90days"].LastOrDefault();
-        if (latestStats == null)
+        var statsUrl = $"https://api.warframe.market/v1/items/{url}/statistics";
+        var itemsUrl = $"https://api.warframe.market/v1/items/{url}";
+
+        try
         {
-            stats = new JObject
+            using var statsRequest = new HttpRequestMessage();
+            statsRequest.RequestUri = new Uri(statsUrl);
+            statsRequest.Method = HttpMethod.Get;
+            statsRequest.Headers.Add("accept", "application/json");
+            statsRequest.Headers.Add("platform", "pc");
+            statsRequest.Headers.Add("language", "en");
+
+            var response = await _client.SendAsync(statsRequest).ConfigureAwait(ConfigureAwaitOptions.None);
+            response.EnsureSuccessStatusCode();
+            var statsData = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+
+            var stats = JsonConvert.DeserializeObject<JObject>(statsData);
+            var latestStats = stats["payload"]["statistics_closed"]["90days"].LastOrDefault();
+            if (latestStats == null)
             {
-                { "avg_price", 999 },
-                { "volume", 0 }
+                stats = new JObject
+                {
+                    { "avg_price", 999 },
+                    { "volume", 0 }
+                };
+            }
+            else
+                stats = latestStats.ToObject<JObject>();
+
+            using var itemsRequest = new HttpRequestMessage();
+            itemsRequest.RequestUri = new Uri(itemsUrl);
+            itemsRequest.Method = HttpMethod.Get;
+            itemsRequest.Headers.Add("accept", "application/json");
+            itemsRequest.Headers.Add("platform", "pc");
+            itemsRequest.Headers.Add("language", "en");
+
+            response = await _client.SendAsync(itemsRequest).ConfigureAwait(ConfigureAwaitOptions.None);
+            response.EnsureSuccessStatusCode();
+            
+            var itemsData = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            
+            var ducats = JsonConvert.DeserializeObject<JObject>(itemsData);
+
+            ducats = ducats["payload"]["item"].ToObject<JObject>();
+            var id = ducats["id"].ToObject<string>();
+            ducats = ducats["items_in_set"].AsParallel().First(part => (string)part["id"] == id).ToObject<JObject>();
+            var ducat = !ducats.TryGetValue("ducats", out var temp) ? "0" : temp.ToObject<string>();
+
+            MarketData[itemName] = new JObject
+            {
+                { "ducats", ducat },
+                { "plat", stats["avg_price"] },
+                { "volume", stats["volume"] }
             };
-        }
-        else
-        {
-            stats = latestStats.ToObject<JObject>();
-        }
 
-        Thread.Sleep(333);
-        webClient = CreateWfmClient();
-        data = webClient.DownloadString("https://api.warframe.market/v1/items/" + url);
-        JObject? ducats = JsonConvert.DeserializeObject<JObject>(data);
-
-        ducats = ducats["payload"]["item"].ToObject<JObject>();
-        string id = ducats["id"].ToObject<string>();
-        ducats = ducats["items_in_set"].AsParallel().First(part => (string)part["id"] == id).ToObject<JObject>();
-        string ducat;
-        if (!ducats.TryGetValue("ducats", out JToken temp))
-        {
-            ducat = "0";
         }
-        else
+        catch (Exception exception)
         {
-            ducat = temp.ToObject<string>();
+            Console.WriteLine(exception);
+            throw;
         }
-
-        MarketData[item_name] = new JObject
-        {
-            { "ducats", ducat },
-            { "plat", stats["avg_price"] },
-            { "volume", stats["volume"] }
-        };
+        
+        // Thread.Sleep(333);
     }
 
     private bool LoadEqmtData(JObject allFiltered, bool force = false)
@@ -395,7 +404,7 @@ public sealed class Data
 
             foreach (KeyValuePair<string, JToken> prime in allFiltered["eqmt"].ToObject<JObject>())
             {
-                string primeName = prime.Key.Substring(0, prime.Key.IndexOf("Prime") + 5);
+                string primeName = prime.Key[..(prime.Key.IndexOf("Prime") + 5)];
                 if (!EquipmentData.TryGetValue(primeName, out _))
                     EquipmentData[primeName] = new JObject();
                 EquipmentData[primeName]["vaulted"] = prime.Value["vaulted"];
@@ -471,21 +480,31 @@ public sealed class Data
     public async ValueTask<bool> Update()
     {
         Logger.Debug("Checking for Updates to Databases");
-        WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-        var data = await webClient.DownloadStringTaskAsync(filterAllJSON).ConfigureAwait(ConfigureAwaitOptions.None);
-        JObject allFiltered = JsonConvert.DeserializeObject<JObject>(data);
-        bool saveDatabases = await LoadMarket(allFiltered);
+
+        using var request = new HttpRequestMessage();
+        request.RequestUri = new Uri(filterAllJSON);
+        request.Method = HttpMethod.Get;
+        request.Headers.Add("accept", "application/json");
+        request.Headers.Add("platform", "pc");
+        request.Headers.Add("language", "en");
+        
+        var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
+        response.EnsureSuccessStatusCode();
+        
+        var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
+        var allFiltered = JsonConvert.DeserializeObject<JObject>(data);
+        var saveDatabases = await LoadMarket(allFiltered);
 
         foreach (KeyValuePair<string, JToken> elem in MarketItems)
         {
             if (elem.Key != "version")
             {
                 string[] split = elem.Value.ToString().Split('|');
-                string itemName = split[0];
-                string itemUrl = split[1];
+                var itemName = split[0];
+                var itemUrl = split[1];
                 if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
                 {
-                    LoadMarketItem(itemName, itemUrl);
+                    await LoadMarketItem(itemName, itemUrl);
                     saveDatabases = true;
                 }
             }
@@ -523,24 +542,25 @@ public sealed class Data
         try
         {
             Logger.Debug("Forcing market update");
-            using WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-            var data = await webClient.DownloadStringTaskAsync(filterAllJSON).ConfigureAwait(ConfigureAwaitOptions.None);
-            JObject allFiltered = JsonConvert.DeserializeObject<JObject>(data);
+            var response = await _client.GetAsync(filterAllJSON).ConfigureAwait(ConfigureAwaitOptions.None);
+            response.EnsureSuccessStatusCode();
+            var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
+            var allFiltered = JsonConvert.DeserializeObject<JObject>(data);
             var loaded = await LoadMarket(allFiltered, true).ConfigureAwait(false);
             
             Logger.Debug("Forcing market update complete. success={Loaded}", loaded);
 
             foreach (KeyValuePair<string, JToken> elem in MarketItems)
             {
-                if (elem.Key != "version")
+                if (elem.Key == "version")
+                    continue;
+                
+                var split = elem.Value.ToString().Split('|');
+                var itemName = split[0];
+                var itemUrl = split[1];
+                if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
                 {
-                    string[] split = elem.Value.ToString().Split('|');
-                    string itemName = split[0];
-                    string itemUrl = split[1];
-                    if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
-                    {
-                        LoadMarketItem(itemName, itemUrl);
-                    }
+                    await LoadMarketItem(itemName, itemUrl);
                 }
             }
 
@@ -575,13 +595,17 @@ public sealed class Data
         SaveDatabase(marketDataPath, MarketData);
     }
 
-    public void ForceEquipmentUpdate()
+    public async Task ForceEquipmentUpdate()
     {
         try
         {
             Logger.Debug("Forcing equipment update");
-            WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-            JObject allFiltered = JsonConvert.DeserializeObject<JObject>(webClient.DownloadString(filterAllJSON));
+
+            var response = await _client.GetAsync(filterAllJSON).ConfigureAwait(ConfigureAwaitOptions.None);
+            response.EnsureSuccessStatusCode();
+            var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
+            var allFiltered = JsonConvert.DeserializeObject<JObject>(data);
+            
             LoadEqmtData(allFiltered, true);
             SaveAllJSONs();
             Main.RunOnUIThread(() =>
@@ -607,7 +631,7 @@ public sealed class Data
     {
         if (name.IndexOf("Prime") < 0)
             return false;
-        string eqmt = name.Substring(0, name.IndexOf("Prime") + 5);
+        string eqmt = name[..(name.IndexOf("Prime") + 5)];
         return EquipmentData[eqmt]["parts"][name]["vaulted"].ToObject<bool>();
     }
 
@@ -615,7 +639,7 @@ public sealed class Data
     {
         if (name.IndexOf("Prime") < 0)
             return false;
-        string eqmt = name.Substring(0, name.IndexOf("Prime") + 5);
+        string eqmt = name[..(name.IndexOf("Prime") + 5)];
         return EquipmentData[eqmt]["mastered"].ToObject<bool>();
     }
 
@@ -623,7 +647,7 @@ public sealed class Data
     {
         if (name.IndexOf("Prime") < 0)
             return "0";
-        string eqmt = name.Substring(0, name.IndexOf("Prime") + 5);
+        string eqmt = name[..(name.IndexOf("Prime") + 5)];
         string owned = EquipmentData[eqmt]["parts"][name]["owned"].ToString();
         if (owned == "0")
             return "0";
@@ -744,7 +768,7 @@ public sealed class Data
         return d[n, m];
     }
 
-    public static bool isKorean(string str)
+    public static bool IsKorean(string str)
     {
         char c = str[0];
         if (0x1100 <= c && c <= 0x11FF) return true;
@@ -753,10 +777,10 @@ public sealed class Data
         return false;
     }
 
-    public string getLocaleNameData(string s)
+    private string GetLocaleNameData(string s)
     {
         bool saveDatabases = false;
-        string localeName = "";
+        string localeName = string.Empty;
         foreach (var marketItem in MarketItems)
         {
             if (marketItem.Key == "version")
@@ -787,7 +811,7 @@ public sealed class Data
     public int LevenshteinDistanceKorean(string s, string t)
     {
         // NameData s 를 한글명으로 가져옴
-        s = getLocaleNameData(s);
+        s = GetLocaleNameData(s);
 
         // i18n korean edit distance algorithm
         s = " " + s.Replace("설계도", "").Replace(" ", "");
@@ -1229,8 +1253,8 @@ public sealed class Data
                 {
                     if (watch.ElapsedMilliseconds <= wait) continue;
                     wait += _settings.AutoDelay;
-                    OCR.GetThemeWeighted(out double diff);
-                    if (!(diff > 40)) continue;
+                    OCR.GetThemeWeighted(out var diff);
+                    if (diff <= 40) continue;
                     while (watch.ElapsedMilliseconds < wait) ;
                     Logger.Debug("started auto processing");
                     OCR.ProcessRewardScreen();
@@ -1276,7 +1300,8 @@ public sealed class Data
         request.Headers.Add("platform", "pc");
         request.Headers.Add("auth_type", "header");
         var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-        var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+        var responseBody = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
+
         Regex rgxBody = new Regex("\"check_code\": \".*?\"");
         string censoredResponse = rgxBody.Replace(responseBody, "\"check_code\": \"REDACTED\"");
         Logger.Debug(censoredResponse);
@@ -1358,7 +1383,7 @@ public sealed class Data
         {
             if (!item.Key.ToLower(Main.Culture).Contains("authorization")) continue;
             var temp = item.Value.First();
-            JWT = temp.Substring(4);
+            JWT = temp[4..];
             return;
         }
     }
@@ -1388,7 +1413,7 @@ public sealed class Data
             request.Headers.Add("auth_type", "header");
 
             var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-            var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var responseBody = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
             if (!response.IsSuccessStatusCode)
                 throw new Exception(responseBody);
@@ -1427,7 +1452,7 @@ public sealed class Data
             request.Headers.Add("auth_type", "header");
 
             var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-            var responseBody = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var responseBody = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
             if (!response.IsSuccessStatusCode) throw new Exception(responseBody);
 
@@ -1571,7 +1596,7 @@ public sealed class Data
             request.Headers.Add("platform", "pc");
             request.Headers.Add("auth_type", "header");
             var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
             var payload = JsonConvert.DeserializeObject<JObject>(body);
             if (body.Length < 3)
                 throw new Exception("No sell orders found: " + payload);
@@ -1600,10 +1625,10 @@ public sealed class Data
             using var request = new HttpRequestMessage();
             request.RequestUri = new Uri("https://api.warframe.market/v1/profile");
             request.Method = HttpMethod.Get;
-            request.Headers.Add("Authorization", "JWT " + JWT);
+            request.Headers.Add("Authorization", $"JWT {JWT}");
             var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
             SetJWT(response.Headers);
-            var data = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
             var profile = JsonConvert.DeserializeObject<JObject>(data);
             profile["profile"]["check_code"] = "REDACTED"; // remnove the code that can compromise an account.
             Debug.WriteLine($"JWT check response: {profile["profile"]}");
@@ -1645,7 +1670,7 @@ public sealed class Data
             request.Headers.Add("platform", "pc");
             request.Headers.Add("auth_type", "header");
             var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
             var payload = JsonConvert.DeserializeObject<JObject>(body);
             var sellOrders = (JArray)payload?["payload"]?["sell_orders"];
             string itemID = PrimeItemToItemID(primeName);
@@ -1697,7 +1722,7 @@ public sealed class Data
                 request.Headers.Add("auth_type", "header");
                 request.Content = new StringContent(msg, System.Text.Encoding.UTF8, "application/json");
                 var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-                var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+                var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
                 Debug.WriteLine($"Body: {body}, Content: {msg}");
             }
             catch (Exception e)

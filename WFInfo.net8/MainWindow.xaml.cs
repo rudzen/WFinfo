@@ -254,7 +254,7 @@ public partial class MainWindow : Window
         ReloadMarket.IsEnabled = false;
         DropData.Content = "Loading...";
         Main.StatusUpdate("Forcing Prime Update", 0);
-        Task.Factory.StartNew(Main.DataBase.ForceEquipmentUpdate);
+        Task.Run(async () => { await Main.DataBase.ForceEquipmentUpdate(); });
     }
 
     // Allows the draging of the window

@@ -1,31 +1,12 @@
+using System.Collections.Frozen;
 using System.IO;
-using System.Net;
-using Newtonsoft.Json.Linq;
+using System.Net.Http;
+using Serilog;
 using Tesseract;
+using WFInfo.Extensions;
 using WFInfo.Settings;
 
 namespace WFInfo;
-
-public interface ITesseractService : IDisposable
-{
-    /// <summary>
-    /// Inventory/Profile engine
-    /// </summary>
-    TesseractEngine FirstEngine { get; }
-
-    /// <summary>
-    /// Second slow pass engine
-    /// </summary>
-    TesseractEngine SecondEngine { get; }
-
-    /// <summary>
-    /// Engines for parallel processing the reward screen and snapit
-    /// </summary>
-    TesseractEngine[] Engines { get; }
-
-    void Init();
-    void ReloadEngines();
-}
 
 /// <summary>
 /// Holds all the TesseractEngine instances and is responsible for loadind/reloading them
@@ -33,6 +14,21 @@ public interface ITesseractService : IDisposable
 /// </summary>
 public class TesseractService : ITesseractService
 {
+    private static readonly ILogger Logger = Log.ForContext<TesseractService>();
+    
+    private static string AppdataTessdataFolder => CustomEntrypoint.appdata_tessdata_folder;
+
+    private static readonly string ApplicationDirectory =
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
+
+    private static readonly string DataPath = $@"{ApplicationDirectory}\tessdata";
+
+    private readonly FrozenDictionary<string, string> _checksums = new Dictionary<string, string>
+    {
+        { "en", "7af2ad02d11702c7092a5f8dd044d52f" },
+        { "ko", "c776744205668b7e76b190cc648765da" }
+    }.ToFrozenDictionary();
+
     /// <summary>
     /// Inventory/Profile engine
     /// </summary>
@@ -49,18 +45,17 @@ public class TesseractService : ITesseractService
     public TesseractEngine[] Engines { get; } = new TesseractEngine[4];
 
     private readonly string _locale;
-    
-    private static string AppdataTessdataFolder => CustomEntrypoint.appdata_tessdata_folder;
+    private readonly HttpClient _httpClient;
+    private readonly IHasherService _hasherService;
 
-    private static readonly string ApplicationDirectory =
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
-
-    private static readonly string DataPath = ApplicationDirectory + @"\tessdata";
-
-    public TesseractService(ApplicationSettings applicationSettings)
+    public TesseractService(
+        ApplicationSettings applicationSettings,
+        IHttpClientFactory httpClientFactory,
+        IHasherService hasherService)
     {
         _locale = applicationSettings.Locale;
-        getLocaleTessdata();
+        _httpClient = httpClientFactory.CreateClient(nameof(TesseractService));
+        _hasherService = hasherService;
         FirstEngine = CreateEngine();
         SecondEngine = CreateEngine();
     }
@@ -112,9 +107,9 @@ public class TesseractService : ITesseractService
         }
     }
 
-    public void ReloadEngines()
+    public async Task ReloadEngines()
     {
-        getLocaleTessdata();
+        await GetLocaleTessdata();
         LoadEngines();
         FirstEngine?.Dispose();
         FirstEngine = CreateEngine();
@@ -122,30 +117,33 @@ public class TesseractService : ITesseractService
         SecondEngine = CreateEngine();
     }
 
-    private void getLocaleTessdata()
+    private async Task GetLocaleTessdata()
     {
-        var traineddata_hotlink_prefix = "https://raw.githubusercontent.com/WFCD/WFinfo/libs/tessdata/";
-        JObject traineddata_checksums = new JObject
+        var trainedDataPath = $@"{AppdataTessdataFolder}\{_locale}.traineddata";
+        var shouldDownload = !File.Exists(trainedDataPath);
+
+        if (!shouldDownload
+            && _checksums.TryGetValue(_locale, out var checksum))
         {
-            { "en", "7af2ad02d11702c7092a5f8dd044d52f" },
-            { "ko", "c776744205668b7e76b190cc648765da" }
-        };
+            shouldDownload = string.Equals(checksum, _hasherService.GetMD5hash(trainedDataPath),
+                StringComparison.InvariantCultureIgnoreCase);
+        }
 
-        // get trainned data
-        string traineddata_hotlink = traineddata_hotlink_prefix  + _locale + ".traineddata";
-        string app_data_traineddata_path = AppdataTessdataFolder + @"\"   + _locale + ".traineddata";
-
-        using WebClient webClient = CustomEntrypoint.CreateNewWebClient();
-
-        if (!File.Exists(app_data_traineddata_path) || CustomEntrypoint.GetMD5hash(app_data_traineddata_path) !=
-            traineddata_checksums.GetValue(_locale).ToObject<string>())
+        if (shouldDownload)
         {
+            const string trainedDataHotlinkPrefix = "https://raw.githubusercontent.com/WFCD/WFinfo/libs/tessdata/";
+            var trainedDataHotlink = $"{trainedDataHotlinkPrefix}{_locale}.traineddata";
+            var response = await _httpClient.DownloadFile(
+                trainedDataHotlink,
+                trainedDataPath);
             try
             {
-                webClient.DownloadFile(traineddata_hotlink, app_data_traineddata_path);
+                response.EnsureSuccessStatusCode();
             }
-            catch (Exception)
+            catch (HttpRequestException e)
             {
+                Logger.Error(e, "Failed to download tessdata for locale {locale}", _locale);
+                throw;
             }
         }
     }
