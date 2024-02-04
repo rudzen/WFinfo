@@ -17,7 +17,7 @@ using ILogger = Serilog.ILogger;
 
 namespace WFInfo;
 
-public class CustomEntrypoint
+public sealed class CustomEntrypoint
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<CustomEntrypoint>();
 
@@ -54,7 +54,7 @@ public class CustomEntrypoint
     public static readonly string appdata_tessdata_folder = Path.Combine(appPath, "tessdata");
 
     private static InitialDialogue? dialogue;
-    
+
     public static CancellationTokenSource stopDownloadTask;
     private static string build_version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
@@ -70,11 +70,11 @@ public class CustomEntrypoint
         foreach (var legacyDdlName in legacyDllNames)
         {
             var pathToCheck = app_data_tesseract_catalog + legacyDdlName;
-            if (File.Exists(pathToCheck))
-            {
-                Logger.Debug("Cleaning legacy leftover. file={File}", legacyDdlName);
-                File.Delete(pathToCheck);
-            }
+            if (!File.Exists(pathToCheck))
+                continue;
+
+            Logger.Debug("Cleaning legacy leftover. file={File}", legacyDdlName);
+            File.Delete(pathToCheck);
         }
     }
 
@@ -82,9 +82,6 @@ public class CustomEntrypoint
     public static async Task Run(AppDomain currentDomain, IServiceProvider sp)
     {
         currentDomain.UnhandledException += MyHandler;
-
-        // var configuration = ConfigurationBuilder().Build();
-        // var logger = CreateLogger(configuration);
 
         Logger.Information("Starting WFInfo V{Version}", build_version);
 
@@ -94,7 +91,7 @@ public class CustomEntrypoint
         CreateRequiredDirectories();
         CleanLegacyTesseractIfNeeded();
         CollectDebugInfo();
-        
+
         tesseract_hotlink_platform_specific_prefix = tesseract_hotlink_prefix;
 
         // Refresh traineddata structure
@@ -107,8 +104,8 @@ public class CustomEntrypoint
 
             File.Move(appdata_tessdata_folder + @"\engbest.traineddata", appdata_tessdata_folder + @"\en.traineddata");
         }
-        
-        EnsureRequiredFilesExists(sp);
+
+        await EnsureRequiredFilesExists(sp);
 
         if (stopDownloadTask is not { IsCancellationRequested: true })
         {
@@ -118,7 +115,7 @@ public class CustomEntrypoint
         }
     }
 
-    private static void EnsureRequiredFilesExists(IServiceProvider sp)
+    private static async Task EnsureRequiredFilesExists(IServiceProvider sp)
     {
         var filesNeeded = 0;
         for (var i = 0; i < ListOfDlls.Length; i++)
@@ -136,24 +133,19 @@ public class CustomEntrypoint
         stopDownloadTask = new CancellationTokenSource();
         dialogue = sp.GetRequiredService<InitialDialogue>();
         dialogue.SetFilesNeed(filesNeeded);
-        Task.Run(() =>
+
+        try
         {
-            try
-            {
-                RefreshTesseractDlls(stopDownloadTask.Token);
-            }
-            catch (Exception ex)
-            {
-                if (stopDownloadTask.IsCancellationRequested)
-                {
-                    dialogue.Dispatcher.Invoke(() => { dialogue.Close(); });
-                }
-                else
-                {
-                    Logger.Error(ex, "Error during initial load");
-                }
-            }
-        }, stopDownloadTask.Token);
+            await RefreshTesseractDlls(stopDownloadTask.Token);
+        }
+        catch (Exception ex)
+        {
+            if (stopDownloadTask.IsCancellationRequested)
+                dialogue.Dispatcher.Invoke(() => { dialogue.Close(); });
+            else
+                Logger.Error(ex, "Error during initial load");
+        }
+
         dialogue.ShowDialog();
     }
 
@@ -191,11 +183,9 @@ public class CustomEntrypoint
     public static WebClient CreateNewWebClient()
     {
         WebProxy proxy = null;
-        var proxy_string = Environment.GetEnvironmentVariable("http_proxy");
-        if (proxy_string != null)
-        {
-            proxy = new WebProxy(new Uri(proxy_string));
-        }
+        var proxyString = Environment.GetEnvironmentVariable("http_proxy");
+        if (proxyString != null)
+            proxy = new WebProxy(new Uri(proxyString));
 
         var webClient = new WebClient { Proxy = proxy };
         webClient.Headers.Add("User-Agent", $"WFInfo/{build_version}");
@@ -204,12 +194,14 @@ public class CustomEntrypoint
 
     private static void CollectDebugInfo()
     {
-        Logger.Debug("--------------------------------------------------------------------------------------------------------------------------------------------");
-        
+        Logger.Debug(
+            "--------------------------------------------------------------------------------------------------------------------------------------------");
+
         try
         {
             var mos = new ManagementObjectSearcher("root\\CIMV2", "SELECT * FROM Win32_Processor");
-            foreach (var mo in mos.Get().OfType<ManagementObject>())
+            var managementObjects = mos.Get().OfType<ManagementObject>();
+            foreach (var mo in managementObjects)
                 Logger.Debug("CPU model is {Name}", mo["Name"]);
         }
         catch (Exception e)
@@ -232,10 +224,12 @@ public class CustomEntrypoint
         {
             try
             {
-                foreach (var item in ndpKey.GetSubKeyNames()) // VC,redist.x64,amd64,14.30,bundle
+                // VC,redist.x64,amd64,14.30,bundle
+                foreach (var item in ndpKey.GetSubKeyNames())
                 {
                     if (item.Contains("VC,redist.x64,amd64"))
-                        Logger.Debug("Detected x64 runtime: {DisplayName}", ndpKey.OpenSubKey(item).GetValue("DisplayName"));
+                        Logger.Debug("Detected x64 runtime: {DisplayName}",
+                            ndpKey.OpenSubKey(item).GetValue("DisplayName"));
                 }
             }
             catch (Exception e)
@@ -250,10 +244,12 @@ public class CustomEntrypoint
         {
             try
             {
-                foreach (var item in ndpKey.GetSubKeyNames()) // VC,redist.x86,x86,14.30,bundle
+                // VC,redist.x86,x86,14.30,bundle
+                foreach (var item in ndpKey.GetSubKeyNames())
                 {
                     if (item.Contains("VC,redist.x86,x86"))
-                        Logger.Debug("Detected x86 runtime: {DisplayName}", ndpKey.OpenSubKey(item).GetValue("DisplayName"));
+                        Logger.Debug("Detected x86 runtime: {DisplayName}",
+                            ndpKey.OpenSubKey(item).GetValue("DisplayName"));
                 }
             }
             catch (Exception e)
@@ -382,23 +378,5 @@ public class CustomEntrypoint
         var assemblyRawBytes = new byte[stream.Length];
         stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
         return Assembly.Load(assemblyRawBytes);
-    }
-
-    private static IConfigurationBuilder ConfigurationBuilder()
-    {
-#if RELEASE
-        const string envName = "Production";
-#else
-        const string envName = "Development";
-#endif
-        // Create our configuration sources
-        return new ConfigurationBuilder()
-               // Add environment variables
-               .AddEnvironmentVariables()
-               // Set base path for Json files as the startup location of the application
-               .SetBasePath(Directory.GetCurrentDirectory())
-               // Add application settings json files
-               .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
-               .AddJsonFile($"appsettings.{envName}.json", optional: true, reloadOnChange: false);
     }
 }
