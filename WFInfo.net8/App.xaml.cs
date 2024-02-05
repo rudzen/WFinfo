@@ -110,8 +110,6 @@ public partial class App : Application
 #endif
                         .Enrich.WithThreadId()
                         .Enrich.FromLogContext();
-
-                    // .CreateLogger();
                 })
                 .Build();
     }
@@ -184,6 +182,7 @@ public partial class App : Application
             UseCookies = false
         };
 
+        services.AddHttpClient();
         services.AddHttpClient(nameof(Data), (provider, client) =>
                 {
                     client.Timeout = TimeSpan.FromSeconds(30);
