@@ -2,12 +2,15 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Windows;
 using Windows.Foundation.Metadata;
 using Windows.Graphics.Capture;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.ObjectPool;
 using Serilog;
 using Serilog.Events;
 using WFInfo.Resources;
@@ -82,6 +85,14 @@ public partial class App : Application
                     services.AddSingleton<SettingsViewModel>();
 
                     services.AddDataProtection();
+
+                    services.TryAddSingleton<ObjectPoolProvider, DefaultObjectPoolProvider>();
+                    services.TryAddSingleton<ObjectPool<StringBuilder>>(serviceProvider =>
+                    {
+                        var provider = serviceProvider.GetRequiredService<ObjectPoolProvider>();
+                        var policy = new StringBuilderPooledObjectPolicy();
+                        return provider.Create(policy);
+                    });
                 })
                 .UseSerilog((context, provider, arg3) =>
                 {

@@ -14,11 +14,11 @@ public partial class VerifyCount : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<VerifyCount>();
     
-    private static string itemPath = Main.AppPath   + @"\eqmt_data.json";
-    private static string backupPath = Main.AppPath + @"\eqmt_data.json.bak";
+    private static string itemPath = ApplicationConstants.AppPath   + @"\eqmt_data.json";
+    private static string backupPath = ApplicationConstants.AppPath + @"\eqmt_data.json.bak";
 
     private List<InventoryItem> latestSnap;
-    public static VerifyCount? INSTANCE;
+    private static VerifyCount? INSTANCE;
     private DateTime triggerTime;
 
     public VerifyCount()

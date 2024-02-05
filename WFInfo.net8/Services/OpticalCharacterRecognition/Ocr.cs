@@ -155,7 +155,7 @@ internal class OCR
         IScreenshotService gdiScreenshot,
         IScreenshotService? windowsScreenshot = null)
     {
-        Directory.CreateDirectory(Path.Combine(Main.AppPath, "Debug"));
+        Directory.CreateDirectory(Path.Combine(ApplicationConstants.AppPath, "Debug"));
         _tesseractService = tesseractService;
         _tesseractService.Init();
         _soundPlayer = soundPlayer;
@@ -407,7 +407,7 @@ internal class OCR
             _soundPlayer.Play();
         }
 
-        var path = Path.Combine(Main.AppPath, "Debug");
+        var path = Path.Combine(ApplicationConstants.AppPath, "Debug");
         var directory = new DirectoryInfo(path);
         directory.GetFiles()
                  .Where(f => f.CreationTime < DateTime.Now.AddHours(-1 * _settings.ImageRetentionTime))
@@ -587,7 +587,7 @@ internal class OCR
 
             g.DrawEllipse(pinkP, new Rectangle(lastClick, new Size(10, 10)));
         }
-        img.Save(Main.AppPath + @"\Debug\GetSelectedReward " + timestamp + ".png");
+        img.Save(ApplicationConstants.AppPath + @"\Debug\GetSelectedReward " + timestamp + ".png");
         pinkP.Dispose();
         blackP.Dispose();
         img.Dispose();*/
@@ -788,9 +788,9 @@ internal class OCR
         //timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
         string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         WFtheme theme = GetThemeWeighted(out _, fullShot);
-        snapItImage.Save(Main.AppPath + @"\Debug\SnapItImage " + timestamp + ".png");
+        snapItImage.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImage " + timestamp + ".png");
         Bitmap snapItImageFiltered = ScaleUpAndFilter(snapItImage, theme, out int[] rowHits, out int[] colHits);
-        snapItImageFiltered.Save(Main.AppPath + @"\Debug\SnapItImageFiltered " + timestamp + ".png");
+        snapItImageFiltered.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImageFiltered " + timestamp + ".png");
         List<InventoryItem> foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
         long end = watch.ElapsedMilliseconds;
         Main.StatusUpdate("Completed snapit Processing(" + (end - start) + "ms)", 0);
@@ -1248,7 +1248,7 @@ internal class OCR
                          ", foundItems.Count: " + foundItems.Count);
         }
 
-        filteredImage.Save(Main.AppPath + @"\Debug\SnapItImageBounds " + timestamp + ".png");
+        filteredImage.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImageBounds " + timestamp + ".png");
         return results;
     }
 
@@ -1462,34 +1462,37 @@ internal class OCR
                     int rightmost = 0; //rightmost edge of circle+checkmark icon
                     sumBlack = 1;
                     //use "flood search" approach from the pixel found above to find the whole checkmark+circle icon
-                    Stack<Point> searchSpace = new Stack<Point>();
-                    Dictionary<Point, bool> pixelChecked = new Dictionary<Point, bool>();
+                    var searchSpace = new Stack<Point>();
+                    var pixelsChecked = new Dictionary<Point, bool>();
                     searchSpace.Push(new Point(x, y));
                     while (searchSpace.Count > 0)
                     {
                         Point p = searchSpace.Pop();
-                        if (!pixelChecked.TryGetValue(p, out bool val) || !val)
+
+                        ref var pixelChecked = ref CollectionsMarshal.GetValueRefOrAddDefault(pixelsChecked, p, out var exists);
+
+                        if (exists && pixelChecked)
+                            continue;
+                        
+                        pixelChecked = true;
+                        for (int xOff = -2; xOff <= 2; xOff++)
                         {
-                            pixelChecked[p] = true;
-                            for (int xOff = -2; xOff <= 2; xOff++)
+                            for (int yOff = -2; yOff <= 2; yOff++)
                             {
-                                for (int yOff = -2; yOff <= 2; yOff++)
+                                if (p.X + xOff > 0 && p.X + xOff < imgWidth && p.Y + yOff > 0 &&
+                                    p.Y + yOff < imgHeight)
                                 {
-                                    if (p.X + xOff > 0 && p.X + xOff < imgWidth && p.Y + yOff > 0 &&
-                                        p.Y + yOff < imgHeight)
+                                    index = 4 * (p.X + xOff + (p.Y + yOff) * imgWidth);
+                                    if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                                        LockedBitmapBytes[index                                  + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
                                     {
-                                        index = 4 * (p.X + xOff + (p.Y + yOff) * imgWidth);
-                                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
-                                        {
-                                            searchSpace.Push(new Point(p.X + xOff, p.Y + yOff));
-                                            //cloneBitmap.SetPixel(p.X + xOff, p.Y + yOff, Color.Green); //debugging markings, uncomment as needed
-                                            xCenterNew += p.X + xOff;
-                                            yCenterNew += p.Y + yOff;
-                                            sumBlack++;
-                                            if (p.X + xOff > rightmost)
-                                                rightmost = p.X + xOff;
-                                        }
+                                        searchSpace.Push(new Point(p.X + xOff, p.Y + yOff));
+                                        //cloneBitmap.SetPixel(p.X + xOff, p.Y + yOff, Color.Green); //debugging markings, uncomment as needed
+                                        xCenterNew += p.X + xOff;
+                                        yCenterNew += p.Y + yOff;
+                                        sumBlack++;
+                                        if (p.X + xOff > rightmost)
+                                            rightmost = p.X + xOff;
                                     }
                                 }
                             }
@@ -1531,8 +1534,8 @@ internal class OCR
                     //debugging markings and save, uncomment as needed
                     //cloneBitmap.SetPixel(xCenter, yCenter, Color.Red);
                     //cloneBitmap.SetPixel(xCenterNew, yCenterNew, Color.Magenta);
-                    //cloneBitmap.Save(Main.AppPath + @"\Debug\NumberCenter_" + i + "_" + j + "_" + sumBlack + " " + timestamp + ".png");
-                    //cloneBitmapColoured.Save(Main.AppPath + @"\Debug\ColoredNumberCenter_" + i + "_" + j + "_" + sumBlack + " " + timestamp + ".png");
+                    //cloneBitmap.Save(ApplicationConstants.AppPath + @"\Debug\NumberCenter_" + i + "_" + j + "_" + sumBlack + " " + timestamp + ".png");
+                    //cloneBitmapColoured.Save(ApplicationConstants.AppPath + @"\Debug\ColoredNumberCenter_" + i + "_" + j + "_" + sumBlack + " " + timestamp + ".png");
 
                     //get cloneBitmapColoured as array for fast access
                     imgHeight = cloneBitmapColoured.Height;
@@ -1577,13 +1580,9 @@ internal class OCR
                         {
                             Color color = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
                                 LockedBitmapBytes[index                          + 1], LockedBitmapBytes[index]);
-                            if (colorHits.ContainsKey(color))
+                            if (!colorHits.TryAdd(color, 1))
                             {
                                 colorHits[color]++;
-                            }
-                            else
-                            {
-                                colorHits[color] = 1;
                             }
                         }
                     }
@@ -1756,7 +1755,7 @@ internal class OCR
         long start = Stopwatch.GetTimestamp();
 
         string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
-        fullShot.Save(Main.AppPath + @"\Debug\ProfileImage " + timestamp + ".png");
+        fullShot.Save(ApplicationConstants.AppPath + @"\Debug\ProfileImage " + timestamp + ".png");
         List<InventoryItem> foundParts = FindOwnedItems(fullShot, timestamp, in start);
         for (int i = 0; i < foundParts.Count; i++)
         {
@@ -2049,7 +2048,7 @@ internal class OCR
                             prevHit = hitSomething;
                         }
 
-                        //cloneBitmap.Save(Main.AppPath + @"\Debug\ProfileImageClone " + foundItems.Count + " " + timestamp + ".png");
+                        //cloneBitmap.Save(ApplicationConstants.AppPath + @"\Debug\ProfileImageClone " + foundItems.Count + " " + timestamp + ".png");
 
 
                         //do OCR
@@ -2083,7 +2082,7 @@ internal class OCR
         }
 
         ProfileImageClean.Dispose();
-        ProfileImage.Save(Main.AppPath + @"\Debug\ProfileImageBounds " + timestamp + ".png");
+        ProfileImage.Save(ApplicationConstants.AppPath + @"\Debug\ProfileImageBounds " + timestamp + ".png");
         darkCyan.Dispose();
         pink.Dispose();
         cyan.Dispose();
@@ -2340,7 +2339,7 @@ internal class OCR
             //Debug.Write(rows[y] + " ");
         }
 
-        //postFilter.Save(Main.AppPath + @"\Debug\PostFilter" + timestamp + ".png");
+        //postFilter.Save(ApplicationConstants.AppPath + @"\Debug\PostFilter" + timestamp + ".png");
 
         end = Stopwatch.GetElapsedTime(start);
         Logger.Debug("Filtered Image " + end);
@@ -2434,11 +2433,11 @@ internal class OCR
             g.DrawRectangle(Pens.Chartreuse, uidebug);
         }
 
-        fullScreen.Save(Main.AppPath + @"\Debug\BorderScreenshot " + timestamp + ".png");
+        fullScreen.Save(ApplicationConstants.AppPath + @"\Debug\BorderScreenshot " + timestamp + ".png");
 
 
-        //postFilter.Save(Main.appPath + @"\Debug\DebugBox1 " + timestamp + ".png");
-        preFilter.Save(Main.AppPath + @"\Debug\FullPartArea " + timestamp + ".png");
+        //postFilter.Save(ApplicationConstants.AppPath + @"\Debug\DebugBox1 " + timestamp + ".png");
+        preFilter.Save(ApplicationConstants.AppPath + @"\Debug\FullPartArea " + timestamp + ".png");
         scaling = topFive[4] +
                   50; //scaling was sometimes going to 50 despite being set to 100, so taking the value from above that seems to be accurate.
 
@@ -2473,7 +2472,7 @@ internal class OCR
 
         end = Stopwatch.GetElapsedTime(beginning);
         Logger.Debug("Finished function "   + end);
-        partialScreenshot.Save(Main.AppPath + @"\Debug\PartialScreenshot" + timestamp + ".png");
+        partialScreenshot.Save(ApplicationConstants.AppPath + @"\Debug\PartialScreenshot" + timestamp + ".png");
         return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
     }
 
@@ -2565,7 +2564,7 @@ internal class OCR
             Bitmap newBox = new Bitmap(boxWidth, boxHeight);
             using (Graphics grD = Graphics.FromImage(newBox))
                 grD.DrawImage(filtered, destRegion, srcRegion, GraphicsUnit.Pixel);
-            newBox.Save(Main.AppPath + @"\Debug\PartBox(" + i + ") " + timestamp + ".png");
+            newBox.Save(ApplicationConstants.AppPath + @"\Debug\PartBox(" + i + ") " + timestamp + ".png");
             yield return newBox;
         }
 
@@ -2763,7 +2762,7 @@ internal class OCR
 
         var image = screenshot.CaptureScreenshot().Result[0];
         var fileName =
-            $@"{Main.AppPath}\Debug\FullScreenShot {DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture)}.png";
+            $@"{ApplicationConstants.AppPath}\Debug\FullScreenShot {DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture)}.png";
         image.Save(fileName);
         return image;
     }

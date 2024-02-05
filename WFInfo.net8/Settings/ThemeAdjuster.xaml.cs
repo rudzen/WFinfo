@@ -81,7 +81,7 @@ public partial class ThemeAdjuster : Window
 
     private void LoadLatest(object sender, RoutedEventArgs e)
     {
-        List<FileInfo> files = (new DirectoryInfo(Main.AppPath + @"\Debug\")).GetFiles()
+        List<FileInfo> files = (new DirectoryInfo(ApplicationConstants.AppPath + @"\Debug\")).GetFiles()
                                                                              .Where(f => f.Name.Contains(
                                                                                  "FullScreenShot"))
                                                                              .ToList();

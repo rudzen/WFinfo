@@ -362,9 +362,9 @@ public partial class MainWindow : Window
             case 3: //Sign out
                 LoggOut(null, null);
                 //delete the jwt token if user logs out
-                if (File.Exists(Main.AppPath + @"\jwt_encrypted"))
+                if (File.Exists(ApplicationConstants.AppPath + @"\jwt_encrypted"))
                 {
-                    File.Delete(Main.AppPath + @"\jwt_encrypted");
+                    File.Delete(ApplicationConstants.AppPath + @"\jwt_encrypted");
                 }
 
                 break;
@@ -444,9 +444,11 @@ public partial class MainWindow : Window
 
     private void OpenAppDataFolder(object sender, MouseButtonEventArgs e)
     {
-        var processInfo = new ProcessStartInfo();
-        processInfo.FileName = Main.AppPath;
-        processInfo.UseShellExecute = true;
+        var processInfo = new ProcessStartInfo
+        {
+            FileName = ApplicationConstants.AppPath,
+            UseShellExecute = true
+        };
 
         Process.Start(processInfo);
     }

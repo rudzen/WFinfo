@@ -14,11 +14,14 @@ public partial class SettingsWindow : Window
 
     private bool IsActivationFocused => Activation_key_box.IsFocused;
 
-    public SettingsWindow(SettingsViewModel settingsViewModel)
+    private readonly Data _data;
+    
+    public SettingsWindow(SettingsViewModel settingsViewModel, Data data)
     {
         InitializeComponent();
         DataContext = this;
         SettingsViewModel = settingsViewModel;
+        _data = data;
     }
 
     public void Populate()
@@ -120,7 +123,7 @@ public partial class SettingsWindow : Window
                 MessageBox.Show(message, "Automation Mode Opt-In", MessageBoxButton.YesNo);
             if (messageBoxResult == MessageBoxResult.Yes)
             {
-                Main.DataBase.EnableLogCapture();
+                _data.EnableLogCapture();
                 Autolist.IsEnabled = true;
                 Autocsv.IsEnabled = true;
                 Autoadd.IsEnabled = true;
@@ -129,7 +132,7 @@ public partial class SettingsWindow : Window
             {
                 SettingsViewModel.Auto = false;
                 autoCheckbox.IsChecked = false;
-                Main.DataBase.DisableLogCapture();
+                _data.DisableLogCapture();
                 Autolist.IsEnabled = false;
                 Autocsv.IsEnabled = false;
                 Autoadd.IsEnabled = false;
@@ -141,7 +144,7 @@ public partial class SettingsWindow : Window
             Autolist.IsEnabled = false;
             Autocsv.IsEnabled = false;
             Autoadd.IsEnabled = false;
-            Main.DataBase.DisableLogCapture();
+            _data.DisableLogCapture();
         }
 
         Save();
@@ -199,7 +202,7 @@ public partial class SettingsWindow : Window
         Save();
 
         _ = OCR.updateEngineAsync();
-        _ = Task.Run(async () => { Main.DataBase.ReloadItems(); });
+        _ = Task.Run(async () => { await _data.ReloadItems(); });
     }
 
     private void LightRadioChecked(object sender, RoutedEventArgs e)

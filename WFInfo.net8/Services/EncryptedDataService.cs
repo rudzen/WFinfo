@@ -8,7 +8,7 @@ namespace WFInfo;
 public sealed class EncryptedDataService(IDataProtectionProvider provider) : IEncryptedDataService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<EncryptedDataService>();
-    private static readonly string FileName = Path.Combine(Main.AppPath, "jwt_encrypted");
+    private static readonly string FileName = Path.Combine(ApplicationConstants.AppPath, "jwt_encrypted");
 
     private readonly IDataProtector _jwtProtector = provider.CreateProtector("WFInfo.JWT.v1");
 

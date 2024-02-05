@@ -31,7 +31,7 @@ class LogCapture : IDisposable
         memoryMappedFile = MemoryMappedFile.CreateOrOpen("DBWIN_BUFFER", 4096L);
 
         bufferReadyEvent =
-            new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_BUFFER_READY", out bool createdBuffer);
+            new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_BUFFER_READY", out var createdBuffer);
 
         if (!createdBuffer)
         {
@@ -58,14 +58,14 @@ class LogCapture : IDisposable
 
                 if (_process is { Warframe: not null, GameIsStreamed: false })
                 {
-                    using MemoryMappedViewStream stream = memoryMappedFile.CreateViewStream();
-                    using BinaryReader reader = new BinaryReader(stream, Encoding.Default);
-                    uint processId = reader.ReadUInt32();
+                    using var stream = memoryMappedFile.CreateViewStream();
+                    using var reader = new BinaryReader(stream, Encoding.Default);
+                    var processId = reader.ReadUInt32();
                     if (processId == _process.Warframe.Id)
                     {
-                        char[] chars = reader.ReadChars(4092);
-                        int index = Array.IndexOf(chars, '\0');
-                        string message = new string(chars, 0, index);
+                        var chars = reader.ReadChars(4092);
+                        var index = Array.IndexOf(chars, '\0');
+                        var message = new string(chars, 0, index);
                         TextChanged(message.Trim());
                     }
                 }
@@ -88,8 +88,10 @@ class LogCapture : IDisposable
 
     private void GetProcess()
     {
-        if (!_process.IsRunning) return;
-        dataReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_DATA_READY", out bool createdData);
+        if (!_process.IsRunning)
+            return;
+        
+        dataReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_DATA_READY", out var createdData);
 
         if (!createdData)
         {

@@ -363,11 +363,11 @@ public partial class ListingHelper : Window
 
     private static bool IsItemBanned(string item)
     {
-        return item.ToLower(Main.Culture).Contains("kuva")   ||
-               item.ToLower(Main.Culture).Contains("exilus") ||
-               item.ToLower(Main.Culture).Contains("riven")  ||
-               item.ToLower(Main.Culture).Contains("ayatan") ||
-               item.ToLower(Main.Culture).Contains("forma");
+        return item.Contains("kuva", StringComparison.CurrentCultureIgnoreCase) ||
+               item.Contains("exilus", StringComparison.CurrentCultureIgnoreCase) ||
+               item.Contains("riven", StringComparison.CurrentCultureIgnoreCase) ||
+               item.Contains("ayatan", StringComparison.CurrentCultureIgnoreCase) ||
+               item.Contains("forma", StringComparison.CurrentCultureIgnoreCase);
     }
 
     /// <summary>

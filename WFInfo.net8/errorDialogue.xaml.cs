@@ -13,9 +13,9 @@ namespace WFInfo;
 public partial class ErrorDialogue : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ErrorDialogue>();
-    
-    string startPath = Main.AppPath + @"\Debug";
-    string zipPath = Main.AppPath   + @"\generatedZip";
+
+    private readonly string startPath = Path.Combine(ApplicationConstants.AppPath, "Debug");
+    private readonly string zipPath = Path.Combine(ApplicationConstants.AppPath, "generatedZip");
 
     private int distance;
     private DateTime closest;
@@ -34,12 +34,12 @@ public partial class ErrorDialogue : Window
     {
         Directory.CreateDirectory(zipPath);
 
-        List<FileInfo> files = (new DirectoryInfo(Main.AppPath + @"\Debug\")).GetFiles()
-                                                                             .Where(f => f.CreationTimeUtc >
-                                                                                 closest.AddSeconds(-1 * distance))
-                                                                             .Where(f => f.CreationTimeUtc <
-                                                                                 closest.AddSeconds(distance))
-                                                                             .ToList();
+        List<FileInfo> files = new DirectoryInfo(startPath).GetFiles()
+                                                           .Where(f => f.CreationTimeUtc >
+                                                                       closest.AddSeconds(-1 * distance))
+                                                           .Where(f => f.CreationTimeUtc <
+                                                                       closest.AddSeconds(distance))
+                                                           .ToList();
 
         var fullZipPath = zipPath + @"\WFInfoError_" + closest.ToString("yyyy-MM-dd_HH-mm-ssff");
         try
@@ -47,6 +47,7 @@ public partial class ErrorDialogue : Window
             using ZipFile zip = new ZipFile();
             foreach (FileInfo file in files)
                 zip.AddFile(file.FullName, "");
+            
             if (File.Exists(startPath + @"\..\eqmt_data.json"))
             {
                 zip.AddFile(startPath + @"\..\eqmt_data.json", "");
@@ -100,9 +101,11 @@ public partial class ErrorDialogue : Window
             throw;
         }
 
-        var processStartInfo = new ProcessStartInfo();
-        processStartInfo.FileName = Path.Combine(Main.AppPath, "generatedZip");
-        processStartInfo.UseShellExecute = true;
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = Path.Combine(zipPath),
+            UseShellExecute = true
+        };
 
         Process.Start(processStartInfo);
         Close();

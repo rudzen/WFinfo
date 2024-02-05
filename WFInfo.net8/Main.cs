@@ -33,8 +33,6 @@ public class Main
 
     public static Main INSTANCE { get; private set; }
 
-    public static string AppPath => Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
-
     public static Data DataBase { get; private set; }
     public static RewardWindow Window { get; set; } = new RewardWindow();
     public static SettingsWindow SettingsWindow { get; private set; }
@@ -218,7 +216,6 @@ public class Main
         }
     }
 
-
     public static void RunOnUIThread(Action act)
     {
         MainWindow.INSTANCE.Dispatcher.Invoke(act);
@@ -226,9 +223,9 @@ public class Main
 
     private static void StartMessage()
     {
-        Directory.CreateDirectory(AppPath);
-        Directory.CreateDirectory(AppPath + @"\debug");
-        using StreamWriter sw = File.AppendText(AppPath + @"\debug.log");
+        Directory.CreateDirectory(ApplicationConstants.AppPath);
+        Directory.CreateDirectory(Path.Combine(ApplicationConstants.AppPath, "debug"));
+        using var sw = File.AppendText($@"{ApplicationConstants.AppPath}\debug.log");
         sw.WriteLineAsync(
             "--------------------------------------------------------------------------------------------------------------------------------------------");
         sw.WriteLineAsync("   STARTING WFINFO " + BuildVersion + " at " + DateTime.UtcNow);
