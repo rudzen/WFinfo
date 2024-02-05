@@ -18,10 +18,7 @@ public class TesseractService : ITesseractService
     
     private static string AppdataTessdataFolder => CustomEntrypoint.appdata_tessdata_folder;
 
-    private static readonly string ApplicationDirectory =
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
-
-    private static readonly string DataPath = $@"{ApplicationDirectory}\tessdata";
+    private static readonly string DataPath = Path.Combine(ApplicationConstants.AppPath, "tessdata");
 
     private readonly FrozenDictionary<string, string> _checksums = new Dictionary<string, string>
     {

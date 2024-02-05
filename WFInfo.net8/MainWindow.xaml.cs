@@ -362,10 +362,9 @@ public partial class MainWindow : Window
             case 3: //Sign out
                 LoggOut(null, null);
                 //delete the jwt token if user logs out
-                if (File.Exists(ApplicationConstants.AppPath + @"\jwt_encrypted"))
-                {
-                    File.Delete(ApplicationConstants.AppPath + @"\jwt_encrypted");
-                }
+                var jwtFile = Path.Combine(ApplicationConstants.AppPath, "jwt_encrypted");
+                if (File.Exists(jwtFile))
+                    File.Delete(jwtFile);
 
                 break;
         }

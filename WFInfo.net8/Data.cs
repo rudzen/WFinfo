@@ -111,11 +111,11 @@ public sealed class Data
 
         Logger.Debug("Initializing Databases");
         
-        marketItemsPath = ApplicationConstants.AppPath   + @"\market_items.json";
-        marketDataPath = ApplicationConstants.AppPath    + @"\market_data.json";
-        equipmentDataPath = ApplicationConstants.AppPath + @"\eqmt_data.json";
-        relicDataPath = ApplicationConstants.AppPath     + @"\relic_data.json";
-        nameDataPath = ApplicationConstants.AppPath      + @"\name_data.json";
+        marketItemsPath = Path.Combine(ApplicationConstants.AppPath, "market_items.json");
+        marketDataPath = Path.Combine(ApplicationConstants.AppPath, "market_data.json");
+        equipmentDataPath = Path.Combine(ApplicationConstants.AppPath, "eqmt_data.json");
+        relicDataPath = Path.Combine(ApplicationConstants.AppPath, "relic_data.json");
+        nameDataPath = Path.Combine(ApplicationConstants.AppPath, "name_data.json");
 
         Directory.CreateDirectory(ApplicationConstants.AppPath);
 
@@ -1152,7 +1152,7 @@ public sealed class Data
 
                 if (_settings.AutoCSV)
                 {
-                    if (csv.Length == 0 && !File.Exists(ApplicationConstants.AppPath + @"\rewardExport.csv"))
+                    if (csv.Length == 0 && !File.Exists(Path.Combine(ApplicationConstants.AppPath, "rewardExport.csv")))
                         csv +=
                             "Timestamp,ChosenIndex,Reward_0_Name,Reward_0_Plat,Reward_0_Ducats,Reward_1_Name,Reward_1_Plat,Reward_1_Ducats,Reward_2_Name,Reward_2_Plat,Reward_2_Ducats,Reward_3_Name,Reward_3_Plat,Reward_3_Ducats" +
                             Environment.NewLine;
@@ -1211,7 +1211,7 @@ public sealed class Data
             {
                 Logger.Debug("appending rewardExport.csv");
                 await File
-                      .AppendAllTextAsync(ApplicationConstants.AppPath + @"\rewardExport.csv", csv)
+                      .AppendAllTextAsync(Path.Combine(ApplicationConstants.AppPath, "rewardExport.csv"), csv)
                       .ConfigureAwait(ConfigureAwaitOptions.None);
             }
 

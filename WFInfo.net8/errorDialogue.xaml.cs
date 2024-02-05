@@ -14,8 +14,8 @@ public partial class ErrorDialogue : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ErrorDialogue>();
 
-    private readonly string startPath = Path.Combine(ApplicationConstants.AppPath, "Debug");
-    private readonly string zipPath = Path.Combine(ApplicationConstants.AppPath, "generatedZip");
+    private static readonly string startPath = Path.Combine(ApplicationConstants.AppPath, "Debug");
+    private static readonly string zipPath = Path.Combine(ApplicationConstants.AppPath, "generatedZip");
 
     private int distance;
     private DateTime closest;
@@ -30,74 +30,49 @@ public partial class ErrorDialogue : Window
         Focus();
     }
 
-    public void YesClick(object sender, RoutedEventArgs e)
+    private void YesClick(object sender, RoutedEventArgs e)
     {
         Directory.CreateDirectory(zipPath);
 
-        List<FileInfo> files = new DirectoryInfo(startPath).GetFiles()
-                                                           .Where(f => f.CreationTimeUtc >
-                                                                       closest.AddSeconds(-1 * distance))
-                                                           .Where(f => f.CreationTimeUtc <
-                                                                       closest.AddSeconds(distance))
-                                                           .ToList();
+        var files = new DirectoryInfo(startPath)
+                    .GetFiles()
+                    .Where(f => f.CreationTimeUtc > closest.AddSeconds(-1 * distance))
+                    .Where(f => f.CreationTimeUtc < closest.AddSeconds(distance));
 
-        var fullZipPath = zipPath + @"\WFInfoError_" + closest.ToString("yyyy-MM-dd_HH-mm-ssff");
+        var staticFiles = new string[]
+        {
+            Path.Combine(startPath, "..", "eqmt_data.json"),
+            Path.Combine(startPath, "..", "market_data.json"),
+            Path.Combine(startPath, "..", "market_items.json"),
+            Path.Combine(startPath, "..", "name_data.json"),
+            Path.Combine(startPath, "..", "relic_data.json"),
+            Path.Combine(startPath, "..", "settings.json"),
+            Path.Combine(startPath, "..", "debug.json"),
+        };
+
+        var time = closest.ToString("yyyy-MM-dd_HH-mm-ssff");
+        var fullZipPath = Path.Combine(zipPath, $"WFInfoError_{time}");
         try
         {
             using ZipFile zip = new ZipFile();
             foreach (FileInfo file in files)
-                zip.AddFile(file.FullName, "");
-            
-            if (File.Exists(startPath + @"\..\eqmt_data.json"))
-            {
-                zip.AddFile(startPath + @"\..\eqmt_data.json", "");
-            }
-            else
-                Logger.Debug(startPath + "eqmt_data.json didn't exist.");
+                zip.AddFile(file.FullName, string.Empty);
 
-            if (File.Exists(startPath + @"\..\market_data.json"))
+            foreach (var staticFile in staticFiles)
             {
-                zip.AddFile(startPath + @"\..\market_data.json", "");
+                if (File.Exists(staticFile))
+                    zip.AddFile(staticFile, string.Empty);
+                else
+                    Logger.Debug("File doesn't exist. file={File}", staticFile);
             }
-            else
-                Logger.Debug(startPath + "market_data.json didn't exist.");
 
-            if (File.Exists(startPath + @"\..\market_items.json"))
-            {
-                zip.AddFile(startPath + @"\..\market_items.json", "");
-            }
-            else
-                Logger.Debug(startPath + "market_items.json didn't exist.");
-
-            if (File.Exists(startPath + @"\..\name_data.json"))
-            {
-                zip.AddFile(startPath + @"\..\name_data.json", "");
-            }
-            else
-                Logger.Debug(startPath + "name_data.json didn't exist.");
-
-            if (File.Exists(startPath + @"\..\relic_data.json"))
-            {
-                zip.AddFile(startPath + @"\..\relic_data.json", "");
-            }
-            else
-                Logger.Debug(startPath + "relic_data.json didn't exist.");
-
-            if (File.Exists(startPath + @"\..\settings.json"))
-            {
-                zip.AddFile(startPath + @"\..\settings.json", "");
-            }
-            else
-                Logger.Debug(startPath + "settings.json didn't exist.");
-
-            zip.AddFile(startPath + @"\..\debug.log", "");
-            zip.Comment = "This zip was created at " + closest.ToString("yyyy-MM-dd_HH-mm-ssff");
+            zip.Comment = $"This zip was created at {time}";
             zip.MaxOutputSegmentSize64 = 25000 * 1024; // 8m segments
-            zip.Save(fullZipPath + ".zip");
+            zip.Save(Path.Combine(fullZipPath, ".zip"));
         }
         catch (Exception ex)
         {
-            Logger.Debug("Unable to zip due to: " + ex.ToString());
+            Logger.Error(ex, "Unable to zip file(s)");
             throw;
         }
 

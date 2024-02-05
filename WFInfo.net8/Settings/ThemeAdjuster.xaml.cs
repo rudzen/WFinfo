@@ -81,10 +81,11 @@ public partial class ThemeAdjuster : Window
 
     private void LoadLatest(object sender, RoutedEventArgs e)
     {
-        List<FileInfo> files = (new DirectoryInfo(ApplicationConstants.AppPath + @"\Debug\")).GetFiles()
-                                                                             .Where(f => f.Name.Contains(
-                                                                                 "FullScreenShot"))
-                                                                             .ToList();
+        List<FileInfo> files = new DirectoryInfo(Path.Combine(ApplicationConstants.AppPath, "Debug"))
+                               .GetFiles()
+                               .Where(f => f.Name.Contains("FullScreenShot"))
+                               .ToList();
+
         files = files.OrderBy(f => f.CreationTimeUtc).ToList();
         files.Reverse();
 

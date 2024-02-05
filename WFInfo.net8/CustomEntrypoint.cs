@@ -42,15 +42,12 @@ public sealed class CustomEntrypoint
         "528d4d1eb0e07cfe1370b592da6f49fd"  //  Tesseract
     ];
 
-    private static readonly string appPath =
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
-
     private static readonly string libs_hotlink_prefix = "https://raw.githubusercontent.com/WFCD/WFinfo/libs";
     private static readonly string tesseract_hotlink_prefix = libs_hotlink_prefix + @"/" + libtesseract + @"/";
     private static string tesseract_hotlink_platform_specific_prefix;
-    private static readonly string app_data_tesseract_catalog = Path.Combine(appPath, tesseract_version_folder);
+    private static readonly string app_data_tesseract_catalog = Path.Combine(ApplicationConstants.AppPath, tesseract_version_folder);
 
-    public static readonly string appdata_tessdata_folder = Path.Combine(appPath, "tessdata");
+    public static readonly string appdata_tessdata_folder = Path.Combine(ApplicationConstants.AppPath, "tessdata");
 
     private static InitialDialogue? _dialogue;
 
@@ -74,13 +71,13 @@ public sealed class CustomEntrypoint
 
         // Refresh traineddata structure
         // This is temporary, to be removed in half year from now
-        if (File.Exists(appdata_tessdata_folder + @"\engbest.traineddata"))
+        if (File.Exists(Path.Combine(appdata_tessdata_folder, "engbest.traineddata")))
         {
             // To avoid conflicts for folks who like to experiment...
-            if (File.Exists(appdata_tessdata_folder + @"\en.traineddata"))
-                File.Delete(appdata_tessdata_folder + @"\en.traineddata");
+            if (File.Exists(Path.Combine(appdata_tessdata_folder, "en.traineddata")))
+                File.Delete(Path.Combine(appdata_tessdata_folder, "en.traineddata"));
 
-            File.Move(appdata_tessdata_folder + @"\engbest.traineddata", appdata_tessdata_folder + @"\en.traineddata");
+            File.Move(Path.Combine(appdata_tessdata_folder, "engbest.traineddata"), Path.Combine(appdata_tessdata_folder, "en.traineddata"));
         }
 
         await EnsureRequiredFilesExists(sp);
@@ -150,7 +147,7 @@ public sealed class CustomEntrypoint
 
     private static void CreateRequiredDirectories()
     {
-        Directory.CreateDirectory(appPath);
+        Directory.CreateDirectory(ApplicationConstants.AppPath);
         Directory.CreateDirectory(app_data_tesseract_catalog);
         Directory.CreateDirectory(Path.Combine(app_data_tesseract_catalog, "x86"));
         Directory.CreateDirectory(Path.Combine(app_data_tesseract_catalog, "x64"));
@@ -331,7 +328,7 @@ public sealed class CustomEntrypoint
 
     private static Assembly CurrentDomain_AssemblyResolve_Tesseract(object sender, ResolveEventArgs args)
     {
-        var probingPath = Path.Combine(appPath, tesseract_version_folder);
+        var probingPath = Path.Combine(ApplicationConstants.AppPath, tesseract_version_folder);
         var assyName = new AssemblyName(args.Name).Name;
 
         if (assyName is null)
