@@ -168,8 +168,10 @@ public partial class MainWindow : Window
     /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
     public void ChangeStatus(string status, int severity)
     {
-        if (Status == null) return;
-        Debug.WriteLine("Status message: " + status);
+        if (Status == null)
+            return;
+
+        Logger.Debug("Status. message={Msg}", status);
         Status.Text = status;
 
         Status.Foreground = severity is >= 0 and <= 2
@@ -398,14 +400,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        var t = Task.Run(() =>
+        var t = Task.Run(async () =>
         {
             foreach (var rewardscreen in Main.ListingHelper.PrimeRewards)
             {
-                var rewardCollection = Task.Run(() => Main.ListingHelper.GetRewardCollection(rewardscreen)).Result;
+                var rewardCollection = await Main.ListingHelper.GetRewardCollection(rewardscreen);
                 if (rewardCollection.PrimeNames.Count == 0)
                     continue;
-                Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
+                Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>(string.Empty, rewardCollection));
             }
         });
         t.Wait();

@@ -43,7 +43,7 @@ public sealed class Data
 
     private JObject? _nameData; // Contains relic to market name translation          {<relic_name>: <market_name>}
 
-    private static List<Dictionary<int, List<int>>> korean =
+    private static readonly List<Dictionary<int, List<int>>> korean =
     [
         new Dictionary<int, List<int>>()
         {
@@ -162,30 +162,13 @@ public sealed class Data
 
         MarketItems = new JObject();
 
-        var body = await DownloadItems(url).ConfigureAwait(ConfigureAwaitOptions.None);
-        var obj = JsonConvert.DeserializeObject<JObject>(body);
-
-        var items = JArray.FromObject(obj["payload"]["items"]);
-
-        foreach (var item in items)
-        {
-            var name = item["item_name"].ToString();
-            if (!name.Contains("Prime "))
-                continue;
-
-            if (CanHaveBluePrint(name))
-                name = name.Replace(" Blueprint", string.Empty);
-
-            MarketItems[item["id"].ToString()] = $"{name}|{item["url_name"]}";
-        }
-
         try
         {
-            body = await DownloadItems(url).ConfigureAwait(ConfigureAwaitOptions.None);
-            Logger.Debug("Items: {Items}", body);
+            var body = await DownloadItems(url).ConfigureAwait(ConfigureAwaitOptions.None);
+            Logger.Debug("First 256 char items: {Items}", body[..256]);
 
-            obj = JsonConvert.DeserializeObject<JObject>(body);
-            items = JArray.FromObject(obj["payload"]["items"]);
+            var obj = JsonConvert.DeserializeObject<JObject>(body);
+            var items = JArray.FromObject(obj["payload"]["items"]);
             foreach (var item in items)
             {
                 var name = item["url_name"].ToString();
@@ -217,7 +200,7 @@ public sealed class Data
         request.Headers.Add("platform", "pc");
         var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
         response = response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+        var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
         return body;
     }
 
@@ -226,11 +209,12 @@ public sealed class Data
     {
         if (!force && File.Exists(marketDataPath) && File.Exists(marketItemsPath))
         {
-            MarketData ??= JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(marketDataPath));
-            MarketItems ??= JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(marketItemsPath));
+            MarketData ??= JsonConvert.DeserializeObject<JObject>(ReadFileContent(marketDataPath));
+            MarketData ??= new JObject();
+            MarketItems ??= JsonConvert.DeserializeObject<JObject>(ReadFileContent(marketItemsPath));
+            MarketItems ??= new JObject();
 
-            if (MarketData.TryGetValue("version", out _) &&
-                (MarketData["version"].ToObject<string>() == Main.BuildVersion))
+            if (MarketData.TryGetValue("version", out var version) && version.ToObject<string>() == Main.BuildVersion)
             {
                 var now = DateTime.Now;
                 var timestamp = MarketData["timestamp"].ToObject<DateTime>();
@@ -312,7 +296,7 @@ public sealed class Data
 
             var response = await _client.SendAsync(statsRequest).ConfigureAwait(ConfigureAwaitOptions.None);
             response.EnsureSuccessStatusCode();
-            var statsData = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var statsData = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
             var stats = JsonConvert.DeserializeObject<JObject>(statsData);
             var latestStats = stats["payload"]["statistics_closed"]["90days"].LastOrDefault();
@@ -337,7 +321,7 @@ public sealed class Data
             response = await _client.SendAsync(itemsRequest).ConfigureAwait(ConfigureAwaitOptions.None);
             response.EnsureSuccessStatusCode();
 
-            var itemsData = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+            var itemsData = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
             var ducats = JsonConvert.DeserializeObject<JObject>(itemsData);
 
@@ -362,25 +346,22 @@ public sealed class Data
 
     private async ValueTask<bool> LoadEqmtData(JObject allFiltered, bool force = false)
     {
-        if (EquipmentData == null)
-            EquipmentData = File.Exists(equipmentDataPath)
-                ? JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(equipmentDataPath))
-                : new JObject();
-        if (RelicData == null)
-            RelicData = File.Exists(relicDataPath)
-                ? JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(relicDataPath))
-                : new JObject();
-        if (_nameData == null)
-            _nameData = File.Exists(nameDataPath)
-                ? JsonConvert.DeserializeObject<JObject>(await File.ReadAllTextAsync(nameDataPath))
-                : new JObject();
+        EquipmentData ??= File.Exists(equipmentDataPath)
+            ? JsonConvert.DeserializeObject<JObject>(ReadFileContent(equipmentDataPath))
+            : new JObject();
+        RelicData ??= File.Exists(relicDataPath)
+            ? JsonConvert.DeserializeObject<JObject>(ReadFileContent(relicDataPath))
+            : new JObject();
+        _nameData ??= File.Exists(nameDataPath)
+            ? JsonConvert.DeserializeObject<JObject>(ReadFileContent(nameDataPath))
+            : new JObject();
 
         // fill in equipmentData (NO OVERWRITE)
         // fill in nameData
         // fill in relicData
 
-        DateTime filteredDate = allFiltered["timestamp"].ToObject<DateTime>().ToLocalTime().AddHours(-1);
-        DateTime eqmtDate = EquipmentData.TryGetValue("timestamp", out _)
+        var filteredDate = allFiltered["timestamp"].ToObject<DateTime>().ToLocalTime().AddHours(-1);
+        var eqmtDate = EquipmentData.TryGetValue("timestamp", out _)
             ? EquipmentData["timestamp"].ToObject<DateTime>()
             : filteredDate;
 
@@ -399,7 +380,7 @@ public sealed class Data
 
             foreach (KeyValuePair<string, JToken> prime in allFiltered["eqmt"].ToObject<JObject>())
             {
-                string primeName = prime.Key[..(prime.Key.IndexOf("Prime") + 5)];
+                var primeName = prime.Key[..(prime.Key.IndexOf("Prime") + 5)];
                 if (!EquipmentData.TryGetValue(primeName, out _))
                     EquipmentData[primeName] = new JObject();
                 EquipmentData[primeName]["vaulted"] = prime.Value["vaulted"];
@@ -413,7 +394,7 @@ public sealed class Data
 
                 foreach (KeyValuePair<string, JToken> part in prime.Value["parts"].ToObject<JObject>())
                 {
-                    string partName = part.Key;
+                    var partName = part.Key;
                     if (!EquipmentData[primeName]["parts"].ToObject<JObject>().TryGetValue(partName, out _))
                         EquipmentData[primeName]["parts"][partName] = new JObject();
                     if (!EquipmentData[primeName]["parts"][partName].ToObject<JObject>().TryGetValue("owned", out _))
@@ -423,7 +404,7 @@ public sealed class Data
                     EquipmentData[primeName]["parts"][partName]["ducats"] = part.Value["ducats"];
 
 
-                    string gameName = IsBlueprint(in prime, in part) ? $"{part.Key} Blueprint" : part.Key;
+                    var gameName = IsBlueprint(in prime, in part) ? $"{part.Key} Blueprint" : part.Key;
 
                     if (MarketData.TryGetValue(partName, out _))
                     {
@@ -629,7 +610,7 @@ public sealed class Data
     {
         if (name.IndexOf("Prime") < 0)
             return false;
-        string eqmt = name[..(name.IndexOf("Prime") + 5)];
+        var eqmt = name[..(name.IndexOf("Prime") + 5)];
         return EquipmentData[eqmt]["parts"][name]["vaulted"].ToObject<bool>();
     }
 
@@ -637,7 +618,7 @@ public sealed class Data
     {
         if (name.IndexOf("Prime") < 0)
             return false;
-        string eqmt = name[..(name.IndexOf("Prime") + 5)];
+        var eqmt = name[..(name.IndexOf("Prime") + 5)];
         return EquipmentData[eqmt]["mastered"].ToObject<bool>();
     }
 
@@ -645,8 +626,8 @@ public sealed class Data
     {
         if (name.IndexOf("Prime") < 0)
             return "0";
-        string eqmt = name[..(name.IndexOf("Prime") + 5)];
-        string owned = EquipmentData[eqmt]["parts"][name]["owned"].ToString();
+        var eqmt = name[..(name.IndexOf("Prime") + 5)];
+        var owned = EquipmentData[eqmt]["parts"][name]["owned"].ToString();
         if (owned == "0")
             return "0";
         return owned;
@@ -658,8 +639,8 @@ public sealed class Data
 
         if (primeIndex < 0)
             return "0";
-        string eqmt = name[..(primeIndex + 5)];
-        string count = EquipmentData[eqmt]["parts"][name]["count"].ToString();
+        var eqmt = name[..(primeIndex + 5)];
+        var count = EquipmentData[eqmt]["parts"][name]["count"].ToString();
         if (count == "0")
             return "0";
         return count;
@@ -667,8 +648,8 @@ public sealed class Data
 
     private void AddElement(int[,] d, List<int> xList, List<int> yList, int x, int y)
     {
-        int loc = 0;
-        int temp = d[x, y];
+        var loc = 0;
+        var temp = d[x, y];
         while (loc < xList.Count && temp > d[xList[loc], yList[loc]])
         {
             loc += 1;
@@ -694,7 +675,7 @@ public sealed class Data
             return 0;
         }
 
-        for (int i = 0; i < ReplacementList.GetLength(0) - 1; i++)
+        for (var i = 0; i < ReplacementList.GetLength(0) - 1; i++)
         {
             if ((c1 == ReplacementList[i, 0] || c2 == ReplacementList[i, 0]) &&
                 (c1 == ReplacementList[i, 1] || c2 == ReplacementList[i, 1]))
@@ -706,57 +687,55 @@ public sealed class Data
         return 1;
     }
 
-    public int LevenshteinDistance(string s, string t)
+    private int LevenshteinDistance(string s, string t)
     {
-        switch (_settings.Locale)
+        return _settings.Locale switch
         {
-            case "ko":
-                // for korean
-                return LevenshteinDistanceKorean(s, t);
-            default:
-                return LevenshteinDistanceDefault(s, t);
-        }
+            // for korean
+            "ko" => LevenshteinDistanceKorean(s, t),
+            _ => LevenshteinDistanceDefault(s, t)
+        };
     }
 
-    public int LevenshteinDistanceDefault(string s, string t)
+    private int LevenshteinDistanceDefault(string s, string t)
     {
         // Levenshtein Distance determines how many character changes it takes to form a known result
         // For example: Nuvo Prime is closer to Nova Prime (2) then Ash Prime (4)
         // For more info see: https://en.wikipedia.org/wiki/Levenshtein_distance
         s = s.ToLower(Main.Culture);
         t = t.ToLower(Main.Culture);
-        int n = s.Length;
-        int m = t.Length;
-        int[,] d = new int[n + 1, m + 1];
+        var n = s.Length;
+        var m = t.Length;
+        var d = new int[n + 1, m + 1];
 
         if (n == 0 || m == 0)
             return n + m;
 
         d[0, 0] = 0;
 
-        int count = 0;
-        for (int i = 1; i <= n; i++)
+        var count = 0;
+        for (var i = 1; i <= n; i++)
             d[i, 0] = (s[i - 1] == ' ' ? count : ++count);
 
         count = 0;
-        for (int j = 1; j <= m; j++)
+        for (var j = 1; j <= m; j++)
             d[0, j] = (t[j - 1] == ' ' ? count : ++count);
 
-        for (int i = 1; i <= n; i++)
-        for (int j = 1; j <= m; j++)
+        for (var i = 1; i <= n; i++)
+        for (var j = 1; j <= m; j++)
         {
             // deletion of s
-            int opt1 = d[i - 1, j];
+            var opt1 = d[i - 1, j];
             if (s[i - 1] != ' ')
                 opt1++;
 
             // deletion of t
-            int opt2 = d[i, j - 1];
+            var opt2 = d[i, j - 1];
             if (t[j - 1] != ' ')
                 opt2++;
 
             // swapping s to t
-            int opt3 = d[i - 1, j - 1];
+            var opt3 = d[i - 1, j - 1];
             if (t[j - 1] != s[i - 1])
                 opt3++;
             d[i, j] = Math.Min(Math.Min(opt1, opt2), opt3);
@@ -768,7 +747,7 @@ public sealed class Data
 
     public static bool IsKorean(string str)
     {
-        char c = str[0];
+        var c = str[0];
         if (0x1100 <= c && c <= 0x11FF) return true;
         if (0x3130 <= c && c <= 0x318F) return true;
         if (0xAC00 <= c && c <= 0xD7A3) return true;
@@ -777,8 +756,8 @@ public sealed class Data
 
     private string GetLocaleNameData(string s)
     {
-        bool saveDatabases = false;
-        string localeName = string.Empty;
+        var saveDatabases = false;
+        var localeName = string.Empty;
         foreach (var marketItem in MarketItems)
         {
             if (marketItem.Key == "version")
@@ -804,27 +783,31 @@ public sealed class Data
         return localeName;
     }
 
-    private protected static string e = "A?s/,;j_<Z3Q4z&)";
-
-    public int LevenshteinDistanceKorean(string s, string t)
+    private int LevenshteinDistanceKorean(string s, string t)
     {
         // NameData s 를 한글명으로 가져옴
         s = GetLocaleNameData(s);
 
         // i18n korean edit distance algorithm
-        s = " " + s.Replace("설계도", "").Replace(" ", "");
-        t = " " + t.Replace("설계도", "").Replace(" ", "");
+        s = " " + s.Replace("설계도", string.Empty).Replace(" ", string.Empty);
+        t = " " + t.Replace("설계도", string.Empty).Replace(" ", string.Empty);
 
-        int n = s.Length;
-        int m = t.Length;
-        int[,] d = new int[n + 1, m + 1];
+        var n = s.Length;
+        var m = t.Length;
+        var d = new int[n + 1, m + 1];
 
         if (n == 0 || m == 0)
             return n + m;
         int i, j;
 
-        for (i = 1; i < s.Length; i++) d[i, 0] = i * 9;
-        for (j = 1; j < t.Length; j++) d[0, j] = j * 9;
+        for (i = 1; i < s.Length; i++)
+            d[i, 0] = i * 9;
+        
+        for (j = 1; j < t.Length; j++)
+            d[0, j] = j * 9;
+
+        Span<int> a = stackalloc int[3];
+        Span<int> b = stackalloc int[3];
 
         for (i = 1; i < s.Length; i++)
         {
@@ -833,10 +816,10 @@ public sealed class Data
                 var s1 = 0;
                 var s2 = 0;
 
-                char cha = s[i];
-                char chb = t[j];
-                int[] a = new int[3];
-                int[] b = new int[3];
+                var cha = s[i];
+                var chb = t[j];
+                a.Clear();
+                b.Clear();
                 a[0] = (((cha - 0xAC00) - (cha - 0xAC00) % 28) / 28) / 21;
                 a[1] = (((cha - 0xAC00) - (cha - 0xAC00) % 28) / 28) % 21;
                 a[2] = (cha - 0xAC00)                                % 28;
@@ -846,24 +829,18 @@ public sealed class Data
                 b[2] = (chb - 0xAC00)                                % 28;
 
                 if (a[0] != b[0] && a[1] != b[1] && a[2] != b[2])
-                {
                     s1 = 9;
-                }
                 else
                 {
-                    for (int k = 0; k < 3; k++)
+                    for (var k = 0; k < 3; k++)
                     {
-                        if (a[k] != b[k])
-                        {
-                            if (GroupEquals(korean[k], a[k], b[k]))
-                            {
-                                s2 += 1;
-                            }
-                            else
-                            {
-                                s1 += 1;
-                            }
-                        }
+                        if (a[k] == b[k])
+                            continue;
+                        
+                        if (GroupEquals(korean[k], a[k], b[k]))
+                            s2 += 1;
+                        else
+                            s1 += 1;
                     }
 
                     s1 *= 3;
@@ -877,41 +854,39 @@ public sealed class Data
         return d[s.Length - 1, t.Length - 1];
     }
 
-    private bool GroupEquals(Dictionary<int, List<int>> group, int ak, int bk)
+    private static bool GroupEquals(Dictionary<int, List<int>> group, int ak, int bk)
     {
         return group.Any(entry => entry.Value.Contains(ak) && entry.Value.Contains(bk));
     }
 
-    public int LevenshteinDistanceSecond(string str1, string str2, int limit = -1)
+    private int LevenshteinDistanceSecond(string str1, string str2, int limit = -1)
     {
         int num;
-        bool maxY;
-        int temp;
-        bool maxX;
-        string s = str1.ToLower(Main.Culture);
-        string t = str2.ToLower(Main.Culture);
-        int n = s.Length;
-        int m = t.Length;
+        var s = str1.ToLower(Main.Culture);
+        var t = str2.ToLower(Main.Culture);
+        var n = s.Length;
+        var m = t.Length;
+        
         if (!(n == 0 || m == 0))
         {
-            int[,] d = new int[n + 1 + 1 - 1, m + 1 + 1 - 1];
+            var d = new int[n + 1 + 1 - 1, m + 1 + 1 - 1];
             List<int> activeX = [];
             List<int> activeY = [];
             d[0, 0] = 1;
             activeX.Add(0);
             activeY.Add(0);
+            bool maxY;
+            bool maxX;
             do
             {
-                int currX = activeX[0];
+                var currX = activeX[0];
                 activeX.RemoveAt(0);
-                int currY = activeY[0];
+                var currY = activeY[0];
                 activeY.RemoveAt(0);
 
-                temp = d[currX, currY];
+                var temp = d[currX, currY];
                 if (limit != -1 && temp > limit)
-                {
                     return temp;
-                }
 
                 maxX = currX == n;
                 maxY = currY == m;
@@ -949,9 +924,7 @@ public sealed class Data
             num = d[n, m] - 1;
         }
         else
-        {
             num = n + m;
-        }
 
         return num;
     }
@@ -959,34 +932,33 @@ public sealed class Data
     public string GetPartName(string name, out int low, bool suppressLogging, out bool multipleLowest)
     {
         // Checks the Levenshtein Distance of a string and returns the index in Names() of the closest part
-        string lowest = null;
-        string lowest_unfiltered = null;
+        string lowest = null!;
+        string lowestUnfiltered = null!;
         low = 9999;
         multipleLowest = false;
         foreach (KeyValuePair<string, JToken> prop in _nameData)
         {
-            int val = LevenshteinDistance(prop.Key, name);
+            var val = LevenshteinDistance(prop.Key, name);
             if (val < low)
             {
                 low = val;
                 lowest = prop.Value.ToObject<string>();
-                lowest_unfiltered = prop.Key;
+                lowestUnfiltered = prop.Key;
                 multipleLowest = false;
             }
             else if (val == low)
-            {
                 multipleLowest = true;
-            }
 
-            if (val == low && lowest.StartsWith("Gara") && prop.Key.StartsWith("Ivara")) //If both
+            //If both
+            if (val == low && lowest.StartsWith("Gara") && prop.Key.StartsWith("Ivara"))
             {
                 lowest = prop.Value.ToObject<string>();
-                lowest_unfiltered = prop.Key;
+                lowestUnfiltered = prop.Key;
             }
         }
 
         if (!suppressLogging)
-            Logger.Debug("Found part(" + low + "): \"" + lowest_unfiltered + "\" from \"" + name + "\"");
+            Logger.Debug("Found part(" + low + "): \"" + lowestUnfiltered + "\" from \"" + name + "\"");
         return lowest;
     }
 
@@ -994,18 +966,18 @@ public sealed class Data
     {
         // Checks the Levenshtein Distance of a string and returns the index in Names() of the closest part optimized for human searching
         string lowest = null;
-        string lowest_unfiltered = null;
+        string lowestUnfiltered = null;
         low = 9999;
         foreach (KeyValuePair<string, JToken> prop in _nameData)
         {
-            if (prop.Value.ToString().ToLower(Main.Culture).Contains(name.ToLower(Main.Culture)))
+            if (prop.Value.ToString().Contains(name, StringComparison.CurrentCultureIgnoreCase))
             {
-                int val = LevenshteinDistance(prop.Value.ToString(), name);
+                var val = LevenshteinDistance(prop.Value.ToString(), name);
                 if (val < low)
                 {
                     low = val;
                     lowest = prop.Value.ToObject<string>();
-                    lowest_unfiltered = prop.Value.ToString();
+                    lowestUnfiltered = prop.Value.ToString();
                 }
             }
         }
@@ -1014,28 +986,26 @@ public sealed class Data
         {
             foreach (KeyValuePair<string, JToken> prop in _nameData)
             {
-                int val = LevenshteinDistance(prop.Value.ToString(), name);
+                var val = LevenshteinDistance(prop.Value.ToString(), name);
                 if (val < low)
                 {
                     low = val;
                     lowest = prop.Value.ToObject<string>();
-                    lowest_unfiltered = prop.Value.ToString();
+                    lowestUnfiltered = prop.Value.ToString();
                 }
             }
         }
 
-        Logger.Debug("Found part(" + low + "): \"" + lowest_unfiltered + "\" from \"" + name + "\"");
+        Logger.Debug("Found part(" + low + "): \"" + lowestUnfiltered + "\" from \"" + name + "\"");
         return lowest;
     }
 
-    public string GetSetName(string name)
+    public static string GetSetName(string name)
     {
-        string result = name.ToLower(Main.Culture);
+        var result = name.ToLower(Main.Culture);
 
         if (result.Contains("kavasa"))
-        {
             return "Kavasa Prime Kubrow Collar Set";
-        }
 
         result = result.Replace("lower limb", "");
         result = result.Replace("upper limb", "");
@@ -1070,7 +1040,7 @@ public sealed class Data
     public string GetRelicName(string string1)
     {
         string lowest = null;
-        int low = 999;
+        var low = 999;
         int temp;
         string eraName = null;
         JObject job = null;
@@ -1133,14 +1103,14 @@ public sealed class Data
                 Disconnect();
 
             Overlay.rewardsDisplaying = false;
-            string csv = string.Empty;
+            var csv = string.Empty;
             Logger.Debug("Looping through rewards");
             Logger.Debug("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +
                          _settings.AutoCount);
             foreach (var rewardscreen in Main.ListingHelper.PrimeRewards)
             {
-                string rewards = string.Empty;
-                for (int i = 0; i < rewardscreen.Count; i++)
+                var rewards = string.Empty;
+                for (var i = 0; i < rewardscreen.Count; i++)
                 {
                     rewards += rewardscreen[i];
                     if (i + 1 < rewardscreen.Count)
@@ -1158,13 +1128,13 @@ public sealed class Data
                             Environment.NewLine;
                     csv += DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture) + "," +
                            Main.ListingHelper.SelectedRewardIndex;
-                    for (int i = 0; i < 4; i++)
+                    for (var i = 0; i < 4; i++)
                     {
                         if (i < rewardscreen.Count)
                         {
-                            JObject job = MarketData.GetValue(rewardscreen[i]).ToObject<JObject>();
-                            string plat = job["plat"].ToObject<string>();
-                            string ducats = job["ducats"].ToObject<string>();
+                            var job = MarketData.GetValue(rewardscreen[i]).ToObject<JObject>();
+                            var plat = job["plat"].ToObject<string>();
+                            var ducats = job["ducats"].ToObject<string>();
                             csv += "," + rewardscreen[i] + "," + plat + "," + ducats;
                         }
                         else
@@ -1187,7 +1157,7 @@ public sealed class Data
 
                 if (_settings.AutoList)
                 {
-                    var rewardCollection = Task.Run(() => Main.ListingHelper.GetRewardCollection(rewardscreen)).Result;
+                    var rewardCollection = Main.ListingHelper.GetRewardCollection(rewardscreen).GetAwaiter().GetResult();
                     if (rewardCollection.PrimeNames.Count == 0)
                         continue;
 
@@ -1238,9 +1208,9 @@ public sealed class Data
         try
         {
             var watch = Stopwatch.StartNew();
-            long stop = watch.ElapsedMilliseconds + 5000;
-            long wait = watch.ElapsedMilliseconds;
-            long fixedStop = watch.ElapsedMilliseconds + _settings.FixedAutoDelay;
+            var stop = watch.ElapsedMilliseconds + 5000;
+            var wait = watch.ElapsedMilliseconds;
+            var fixedStop = watch.ElapsedMilliseconds + _settings.FixedAutoDelay;
 
             _window.UpdateWindow();
 
@@ -1298,8 +1268,8 @@ public sealed class Data
         var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
         var responseBody = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
-        Regex rgxBody = new Regex("\"check_code\": \".*?\"");
-        string censoredResponse = rgxBody.Replace(responseBody, "\"check_code\": \"REDACTED\"");
+        var rgxBody = new Regex("\"check_code\": \".*?\"");
+        var censoredResponse = rgxBody.Replace(responseBody, "\"check_code\": \"REDACTED\"");
         Logger.Debug(censoredResponse);
         if (response.IsSuccessStatusCode)
         {
@@ -1308,8 +1278,8 @@ public sealed class Data
         }
         else
         {
-            Regex rgxEmail = new Regex("[a-zA-Z0-9]");
-            string censoredEmail = rgxEmail.Replace(email, "*");
+            var rgxEmail = new Regex("[a-zA-Z0-9]");
+            var censoredEmail = rgxEmail.Replace(email, "*");
             throw new Exception($"GetUserLogin, {responseBody}Email: {censoredEmail}, Pw length: {password.Length}");
         }
     }
@@ -1662,7 +1632,7 @@ public sealed class Data
             var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
             var payload = JsonConvert.DeserializeObject<JObject>(body);
             var sellOrders = (JArray)payload?["payload"]?["sell_orders"];
-            string itemID = PrimeItemToItemID(primeName);
+            var itemID = PrimeItemToItemID(primeName);
 
             if (sellOrders == null)
                 throw new Exception("No sell orders found: " + payload);
@@ -1738,7 +1708,7 @@ public sealed class Data
         request.Headers.Add("platform", "pc");
         request.Headers.Add("auth_type", "header");
         var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
-        var content = await response.Content.ReadAsStringAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+        var content = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
         //setJWT(response.Headers);
         var profile = JsonConvert.DeserializeObject<JObject>(content);
         inGameName = profile["profile"]?.Value<string>("ingame_name");
@@ -1749,5 +1719,11 @@ public sealed class Data
     {
         return name.Contains("Neuroptics") || name.Contains("Chassis") || name.Contains("Systems") ||
                name.Contains("Harness")    || name.Contains("Wings");
+    }
+
+    private static string ReadFileContent(string file)
+    {
+        using var streamReader = new StreamReader(file);
+        return streamReader.ReadToEnd();
     }
 }

@@ -304,7 +304,7 @@ public class TreeNode : INPC
 
     public bool GetSetInfo()
     {
-        string primeSetName = Main.DataBase.GetSetName(Name);
+        string primeSetName = Data.GetSetName(Name);
         if (!Main.DataBase.MarketData.TryGetValue(primeSetName, out JToken primeSetJToken))
         {
             return false; // This is not a set

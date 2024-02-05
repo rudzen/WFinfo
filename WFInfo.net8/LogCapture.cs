@@ -109,6 +109,6 @@ public sealed class LogCapture : IDisposable
         _dataReadyEvent?.Dispose();
         _tokenSource.Cancel();
         _tokenSource.Dispose();
-        Logger.Debug("Stoping LogCapture");
+        Logger.Debug("Stopping LogCapture");
     }
 }

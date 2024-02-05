@@ -15,9 +15,9 @@ public partial class ListingHelper : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ListingHelper>();
 
-    public List<KeyValuePair<string, RewardCollection>> ScreensList { get; private set; } = new();
+    public List<KeyValuePair<string, RewardCollection>> ScreensList { get; private set; } = [];
 
-    public List<List<string>> PrimeRewards { get; set; } = new List<List<string>>();
+    public List<List<string>> PrimeRewards { get; set; } = [];
 
     //Helper, allowing to store the rewards until needed to be processed
     private int PageIndex { get; set; } = 0;
@@ -42,7 +42,7 @@ public partial class ListingHelper : Window
     private void Close(object sender, RoutedEventArgs e)
     {
         Hide();
-        ScreensList = new List<KeyValuePair<string, RewardCollection>>();
+        ScreensList.Clear();
         PageIndex = 0;
     }
 
@@ -68,18 +68,14 @@ public partial class ListingHelper : Window
         if (ScreensList.Count == 0)
             Hide();
         if (ScreensList.Count < index || 0 > index)
-        {
             throw new Exception("Tried setting screen to an item that didn't exist");
-        }
 
         var screen = ScreensList[index];
         updating = true;
         ComboBox.Items.Clear();
         ComboBox.SelectedIndex = screen.Value.RewardIndex;
         foreach (var primeItem in screen.Value.PrimeNames.Where(primeItem => !primeItem.IsNullOrEmpty()))
-        {
             ComboBox.Items.Add(primeItem);
-        }
 
         SetCurrentStatus();
         SetListings(screen.Value.RewardIndex);
@@ -89,7 +85,7 @@ public partial class ListingHelper : Window
     /// <summary>
     /// changes screen over if there is a follow up screen
     /// </summary>
-    public void NextScreen(object sender, RoutedEventArgs e)
+    private void NextScreen(object sender, RoutedEventArgs e)
     {
         Back.IsEnabled = true;
         if (PrimeRewards.Count > 0)
@@ -98,11 +94,10 @@ public partial class ListingHelper : Window
             try
             {
                 Next.Content = "...";
-                var rewardCollection =
-                    Task.Run(() => Main.ListingHelper.GetRewardCollection(PrimeRewards[0])).Result;
+                // TODO (rudzen) : fix this .Result
+                var rewardCollection = Main.ListingHelper.GetRewardCollection(PrimeRewards[0]).GetAwaiter().GetResult();
                 if (rewardCollection.PrimeNames.Count != 0)
-                    Main.ListingHelper.ScreensList.Add(
-                        new KeyValuePair<string, RewardCollection>("", rewardCollection));
+                    Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>(string.Empty, rewardCollection));
                 PrimeRewards.RemoveAt(0);
                 Next.Content = "Next";
             }
@@ -126,12 +121,12 @@ public partial class ListingHelper : Window
     /// <summary>
     /// changes screen back if there is a previous screen
     /// </summary>
-    public void PreviousScreen(object sender, RoutedEventArgs e)
+    private void PreviousScreen(object sender, RoutedEventArgs e)
     {
         Next.IsEnabled = true;
 
-        Debug.WriteLine(
-            $"There are {ScreensList.Count} screens and: {PrimeRewards} prime rewards. Currently on screen {PageIndex} and trying to go to the previous screen");
+        Logger.Debug("There are {ScreensList} screens and: {PrimeRewards} prime rewards. Currently on screen {PageIndex} and trying to go to the previous screen",
+            ScreensList.Count, PrimeRewards.Count, PageIndex);
 
         if (PageIndex == 0)
         {
@@ -149,7 +144,7 @@ public partial class ListingHelper : Window
     /// </summary>
     private void SetCurrentStatus()
     {
-        Debug.WriteLine($"Current status is: {ScreensList[PageIndex].Key}");
+        Logger.Debug("Current status is: {Status}",ScreensList[PageIndex].Key);
         switch (ScreensList[PageIndex].Key)
         {
             //listing already successfully posted
@@ -329,7 +324,7 @@ public partial class ListingHelper : Window
     /// </summary>
     /// <param name="primeNames">The human friendly name to search listings for</param>
     /// <returns>the data for an entire "Create listing" screen</returns>
-    public RewardCollection GetRewardCollection(List<string> primeNames)
+    public async Task<RewardCollection> GetRewardCollection(List<string> primeNames)
     {
         var platinumValues = new List<short>(4);
         var marketListings = new List<List<MarketListing>>(5);
@@ -344,7 +339,7 @@ public partial class ListingHelper : Window
         {
             try
             {
-                var tempListings = GetMarketListing(primeItem);
+                var tempListings = await GetMarketListing(primeItem);
                 marketListings.Add(tempListings);
                 platinumValues.Add(tempListings[0].Platinum);
             }
@@ -375,7 +370,7 @@ public partial class ListingHelper : Window
     /// </summary>
     /// <param name="primeName">The human friendly name to search listings for</param>
     /// <returns>the top 5 current market listings</returns>
-    public static List<MarketListing> GetMarketListing(string primeName)
+    private static async Task<List<MarketListing>> GetMarketListing(string primeName)
     {
         if (IsItemBanned(primeName))
         {
@@ -388,8 +383,8 @@ public partial class ListingHelper : Window
             return bannedListing;
         }
 
-        Debug.WriteLine($"Getting listing for {primeName}");
-        var results = Task.Run(async () => await Main.DataBase.GetTopListings(primeName)).Result;
+        Logger.Debug("Getting listing for {PrimeName}", primeName);
+        var results = await Main.DataBase.GetTopListings(primeName);
         var listings = new List<MarketListing>();
         var sellOrders = new JArray(results["payload"]["sell_orders"].Children());
         foreach (var item in sellOrders)
@@ -414,15 +409,18 @@ public partial class ListingHelper : Window
         var listing = await Main.DataBase.GetCurrentListing(primeItem);
         if (listing == null) return await Main.DataBase.ListItem(primeItem, platinum, 1);
         //listing already exists, thus update it
-        var listingId = (string)listing["id"];
+        var listingId = listing["id"].ToString();
         var quantity = (int)listing["quantity"];
         return await Main.DataBase.UpdateListing(listingId, platinum, quantity);
     }
 
     private void PlatinumTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        PlatinumTextBox.Text = Regex.Replace(PlatinumTextBox.Text, "[^0-9.]", "");
+        PlatinumTextBox.Text = PlatinumReplaceRegEx().Replace(PlatinumTextBox.Text, string.Empty);
     }
+
+    [GeneratedRegex("[^0-9.]")]
+    private static partial Regex PlatinumReplaceRegEx();
 }
 
 /// <summary>

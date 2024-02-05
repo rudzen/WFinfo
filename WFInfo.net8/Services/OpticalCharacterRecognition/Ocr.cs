@@ -270,7 +270,7 @@ internal class OCR
                 #region found a part
 
                 string correctName = Main.DataBase.GetPartName(part, out firstProximity[i], false, out _);
-                string primeSetName = Main.DataBase.GetSetName(correctName);
+                string primeSetName = Data.GetSetName(correctName);
                 JObject job = (JObject)Main.DataBase.MarketData.GetValue(correctName);
                 JObject primeSet = (JObject)Main.DataBase.MarketData.GetValue(primeSetName);
                 string ducats = job["ducats"].ToObject<string>();
@@ -820,7 +820,7 @@ internal class OCR
 
             Debug.WriteLine($"Part  {foundParts.IndexOf(part)} out of {foundParts.Count}");
             string name = Main.DataBase.GetPartName(part.Name, out int levenDist, false, out bool multipleLowest);
-            string primeSetName = Main.DataBase.GetSetName(name);
+            string primeSetName = Data.GetSetName(name);
             if (levenDist > Math.Min(part.Name.Length, name.Length) / 3 || multipleLowest)
             {
                 //show warning triangle if the result is of questionable accuracy. The limit is basically arbitrary
@@ -2049,10 +2049,8 @@ internal class OCR
 
                         //cloneBitmap.Save(ApplicationConstants.AppPath + @"\Debug\ProfileImageClone " + foundItems.Count + " " + timestamp + ".png");
 
-
                         //do OCR
-                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist",
-                            " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
+                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
                         using (var page = _tesseractService.FirstEngine.Process(cloneBitmap, PageSegMode.SingleLine))
                         {
                             using (var iterator = page.GetIterator())
@@ -2062,14 +2060,12 @@ internal class OCR
                                 rawText = Regex.Replace(rawText, @"\s", "");
                                 foundItems.Add(new InventoryItem(rawText, cloneRect));
 
-                                g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height,
-                                    cloneRect.Width, cloneRect.Height);
-                                g.DrawString(rawText, font, Brushes.DarkBlue,
-                                    new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
+                                g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height, cloneRect.Width, cloneRect.Height);
+                                g.DrawString(rawText, font, Brushes.DarkBlue, new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
                             }
                         }
 
-                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", "");
+                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", string.Empty);
                     }
                 }
 
@@ -2228,7 +2224,6 @@ internal class OCR
 
         rowHits = new int[filtered.Height];
         colHits = new int[filtered.Width];
-        Color clr;
         BitmapData lockedBitmapData = filtered.LockBits(new Rectangle(0, 0, filtered.Width, filtered.Height),
             ImageLockMode.ReadWrite, filtered.PixelFormat);
         int numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
@@ -2237,8 +2232,7 @@ internal class OCR
         int PixelSize = 4; //ARGB, order in array is BGRA
         for (int i = 0; i < numbytes; i += PixelSize)
         {
-            clr = Color.FromArgb(LockedBitmapBytes[i + 3], LockedBitmapBytes[i + 2], LockedBitmapBytes[i + 1],
-                LockedBitmapBytes[i]);
+            var clr = Color.FromArgb(LockedBitmapBytes[i + 3], LockedBitmapBytes[i + 2], LockedBitmapBytes[i + 1], LockedBitmapBytes[i]);
             if (ThemeThresholdFilter(clr, active))
             {
                 LockedBitmapBytes[i] = 0;
@@ -2271,15 +2265,13 @@ internal class OCR
     // we ignore the "tippy top" because it has a lot of variance, so we just look at the "bottom half of the top"
     private static readonly int[] TextSegments = [2, 4, 16, 21];
 
-    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(out double scaling, out WFtheme active,
-        Bitmap fullScreen)
+    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(out double scaling, out WFtheme active, Bitmap fullScreen)
     {
         var start = Stopwatch.GetTimestamp();
         long beginning = start;
 
         int lineHeight = (int)(pixelRewardLineHeight / 2 * _window.ScreenScaling);
 
-        Color clr;
         int width = _window.Window.Width;
         int height = _window.Window.Height;
         int mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling);
@@ -2290,7 +2282,7 @@ internal class OCR
                       (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) * _window.ScreenScaling);
         int mostBot = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5);
         //Bitmap postFilter = new Bitmap(mostWidth, mostBot - mostTop);
-        var rectangle = new Rectangle((int)(mostLeft), (int)(mostTop), mostWidth, mostBot - mostTop);
+        var rectangle = new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop);
         Bitmap preFilter;
 
         try
@@ -2302,7 +2294,7 @@ internal class OCR
         }
         catch (Exception ex)
         {
-            Logger.Debug("Something went wrong with getting the starting image: " + ex.ToString());
+            Logger.Error(ex, "Something went wrong with getting the starting image");
             throw;
         }
 
@@ -2326,7 +2318,7 @@ internal class OCR
             rows[y] = 0;
             for (int x = 0; x < preFilter.Width; x++)
             {
-                clr = preFilter.GetPixel(x, y);
+                var clr = preFilter.GetPixel(x, y);
                 if (ThemeThresholdFilter(clr, active))
                     //{
                     rows[y]++;
@@ -2348,87 +2340,30 @@ internal class OCR
         double[] midWeights = new double[51];
         double[] botWeights = new double[51];
 
-        int topLine_100 = preFilter.Height - lineHeight;
-        int topLine_50 = lineHeight / 2;
-
-        scaling = -1;
-        double lowestWeight = 0;
-        Rectangle uidebug = new Rectangle((topLine_100 - topLine_50) / 50 + topLine_50,
-            (int)(preFilter.Height / _window.ScreenScaling), preFilter.Width, 50);
-        for (int i = 0; i <= 50; i++)
-        {
-            int yFromTop = preFilter.Height - (i * (topLine_100 - topLine_50) / 50 + topLine_50);
-
-            int scale = (50 + i);
-            int scaleWidth = preFilter.Width * scale / 100;
-
-            int textTop = (int)(_window.ScreenScaling     * TextSegments[0] * scale / 100);
-            int textTopBot = (int)(_window.ScreenScaling  * TextSegments[1] * scale / 100);
-            int textBothBot = (int)(_window.ScreenScaling * TextSegments[2] * scale / 100);
-            int textTailBot = (int)(_window.ScreenScaling * TextSegments[3] * scale / 100);
-
-            int loc = textTop;
-            for (; loc <= textTopBot; loc++)
-                topWeights[i] += Math.Abs(scaleWidth * 0.06 - rows[yFromTop + loc]);
-
-            loc++;
-            for (; loc < textBothBot; loc++)
-            {
-                if (rows[yFromTop                       + loc] < scaleWidth / 15)
-                    midWeights[i] += (scaleWidth * 0.26 - rows[yFromTop + loc]) * 5;
-                else
-                    midWeights[i] += Math.Abs(scaleWidth * 0.24 - rows[yFromTop + loc]);
-            }
-
-            loc++;
-            for (; loc < textTailBot; loc++)
-                botWeights[i] += 10 * Math.Abs(scaleWidth * 0.007 - rows[yFromTop + loc]);
-
-            topWeights[i] /= textTopBot - textTop + 1;
-            midWeights[i] /= textBothBot          - textTopBot    - 2;
-            botWeights[i] /= textTailBot          - textBothBot   - 1;
-            percWeights[i] = topWeights[i]        + midWeights[i] + botWeights[i];
-
-            if (scaling == -1 || lowestWeight > percWeights[i])
-            {
-                scaling = scale;
-                lowestWeight = percWeights[i];
-            }
-        }
+        scaling = PartBoxScaling(
+            preFilter: preFilter,
+            lineHeight: lineHeight,
+            topWeights: topWeights,
+            rows: rows,
+            midWeights: midWeights,
+            botWeights: botWeights,
+            percWeights: percWeights,
+            uiDebug: out var uiDebug
+        );
 
         end = Stopwatch.GetElapsedTime(start);
 
-        Logger.Debug("Got scaling " + end);
+        Logger.Debug("Got scaling. time={Time}", end);
 
-        int[] topFive = [-1, -1, -1, -1, -1];
+        Span<int> topFive = stackalloc int[] { -1, -1, -1, -1, -1 };
 
-        for (int i = 0; i <= 50; i++)
-        {
-            int match = 4;
-            while (match != -1 && topFive[match] != -1 && percWeights[i] > percWeights[topFive[match]])
-                match--;
-
-            if (match != -1)
-            {
-                for (int move = 0; move < match; move++)
-                    topFive[move] = topFive[move + 1];
-                topFive[match] = i;
-            }
-        }
-
-        for (int i = 0; i < 5; i++)
-        {
-            Logger.Debug("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
-                         percWeights[topFive[i]].ToString("F2", Main.Culture) + " -- " +
-                         topWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
-                         midWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
-                         botWeights[topFive[i]].ToString("F2", Main.Culture));
-        }
+        PartBoxTopFive(topFive, percWeights);
+        PartBoxLogTopFive(topFive, percWeights, topWeights, midWeights, botWeights);
 
         using (Graphics g = Graphics.FromImage(fullScreen))
         {
             g.DrawRectangle(Pens.Red, rectangle);
-            g.DrawRectangle(Pens.Chartreuse, uidebug);
+            g.DrawRectangle(Pens.Chartreuse, uiDebug);
         }
 
         fullScreen.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"BorderScreenshot {timestamp}.png"));
@@ -2470,6 +2405,112 @@ internal class OCR
         Logger.Debug("Finished function. time={End}", end);
         partialScreenshot.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"PartialScreenshot{timestamp}.png"));
         return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
+    }
+
+    private static void PartBoxLogTopFive(
+        Span<int> topFive,
+        double[] percWeights,
+        double[] topWeights,
+        double[] midWeights,
+        double[] botWeights)
+    {
+        for (var i = 0; i < topFive.Length; i++)
+        {
+            var top = topFive[i];
+            Logger.Debug("Rank={Rank},Scale={Scale},PercWeight={PercWeight},TopWeight={TopWeight},MidWeight={MidWeight},BotWeight={BotWeight}",
+                5   - i,
+                top + 50,
+                percWeights[top].ToString("F2", Main.Culture),
+                topWeights[top].ToString("F2", Main.Culture),
+                midWeights[top].ToString("F2", Main.Culture),
+                botWeights[top].ToString("F2", Main.Culture)
+            );
+        }
+    }
+
+    private static void PartBoxTopFive(Span<int> topFive, double[] percWeights)
+    {
+        for (var i = 0; i <= 50; i++)
+        {
+            var match = 4;
+            while (match != -1 && topFive[match] != -1 && percWeights[i] > percWeights[topFive[match]])
+                match--;
+
+            if (match == -1)
+                continue;
+            
+            for (var move = 0; move < match; move++)
+                topFive[move] = topFive[move + 1];
+            
+            topFive[match] = i;
+        }
+    }
+
+    private static double PartBoxScaling(
+        Image preFilter,
+        int lineHeight,
+        double[] topWeights,
+        int[] rows,
+        double[] midWeights,
+        double[] botWeights,
+        double[] percWeights,
+        out Rectangle uiDebug)
+    {
+        int topLine_100 = preFilter.Height - lineHeight;
+        int topLine_50 = lineHeight / 2;
+
+        double scaling = -1;
+        double lowestWeight = 0;
+
+        uiDebug = new Rectangle(
+            x: (topLine_100 - topLine_50) / 50 + topLine_50,
+            y: (int)(preFilter.Height / _window.ScreenScaling),
+            width: preFilter.Width,
+            height: 50
+        );
+        
+        for (int i = 0; i <= 50; i++)
+        {
+            int yFromTop = preFilter.Height - (i * (topLine_100 - topLine_50) / 50 + topLine_50);
+
+            int scale = (50 + i);
+            int scaleWidth = preFilter.Width * scale / 100;
+
+            int textTop = (int)(_window.ScreenScaling     * TextSegments[0] * scale / 100);
+            int textTopBot = (int)(_window.ScreenScaling  * TextSegments[1] * scale / 100);
+            int textBothBot = (int)(_window.ScreenScaling * TextSegments[2] * scale / 100);
+            int textTailBot = (int)(_window.ScreenScaling * TextSegments[3] * scale / 100);
+
+            int loc = textTop;
+            for (; loc <= textTopBot; loc++)
+                topWeights[i] += Math.Abs(scaleWidth * 0.06 - rows[yFromTop + loc]);
+
+            loc++;
+            for (; loc < textBothBot; loc++)
+            {
+                if (rows[yFromTop                       + loc] < scaleWidth / 15)
+                    midWeights[i] += (scaleWidth * 0.26 - rows[yFromTop + loc]) * 5;
+                else
+                    midWeights[i] += Math.Abs(scaleWidth * 0.24 - rows[yFromTop + loc]);
+            }
+
+            loc++;
+            for (; loc < textTailBot; loc++)
+                botWeights[i] += 10 * Math.Abs(scaleWidth * 0.007 - rows[yFromTop + loc]);
+
+            topWeights[i] /= textTopBot - textTop + 1;
+            midWeights[i] /= textBothBot          - textTopBot    - 2;
+            botWeights[i] /= textTailBot          - textBothBot   - 1;
+            percWeights[i] = topWeights[i]        + midWeights[i] + botWeights[i];
+
+            if (scaling == -1 || lowestWeight > percWeights[i])
+            {
+                scaling = scale;
+                lowestWeight = percWeights[i];
+            }
+        }
+
+        return scaling;
     }
 
     private static IEnumerable<Bitmap> FilterAndSeparatePartsFromPartBox(Bitmap partBox, WFtheme active)
