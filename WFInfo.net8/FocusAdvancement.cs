@@ -23,11 +23,10 @@ public static class FocusAdvancement
         DependencyProperty.RegisterAttached("FocusUIElement", typeof(UIElement), typeof(FocusAdvancement),
             new UIPropertyMetadata(null));
 
-
     static void OnAdvancesByEnterKeyPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var element = d as UIElement;
-        if (element == null) return;
+        if (d is not UIElement element)
+            return;
 
         if ((bool)e.NewValue) element.KeyDown += Keydown;
         else element.KeyDown -= Keydown;

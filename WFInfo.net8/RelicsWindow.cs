@@ -27,7 +27,6 @@ public partial class RelicsWindow : Window
             DragMove();
     }
 
-
     private void SingleClickExpand(object sender, RoutedEventArgs e)
     {
         TreeViewItem tvi = e.OriginalSource as TreeViewItem;
