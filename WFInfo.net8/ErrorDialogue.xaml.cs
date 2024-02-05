@@ -65,7 +65,7 @@ public partial class ErrorDialogue : Window
                 else
                     Logger.Debug("File doesn't exist. file={File}", staticFile);
             }
-
+    
             zip.Comment = $"This zip was created at {time}";
             zip.MaxOutputSegmentSize64 = 25000 * 1024; // 8m segments
             zip.Save(Path.Combine(fullZipPath, ".zip"));
