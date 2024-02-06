@@ -431,16 +431,13 @@ public sealed class Data
     private static bool IsBlueprint(in KeyValuePair<string, JToken> prime, in KeyValuePair<string, JToken> part)
     {
         var primeType = prime.Value["type"].ToString();
-        if (primeType == "Archwing")
+        return primeType switch
         {
-            return part.Key.EndsWith("Systems") || part.Key.EndsWith("Harness") || part.Key.EndsWith("Wings");
-        }
-        else if (primeType == "Warframes")
-        {
-            return part.Key.EndsWith("Systems") || part.Key.EndsWith("Neuroptics") || part.Key.EndsWith("Chassis");
-        }
-
-        return false;
+            "Archwing" => part.Key.EndsWith("Systems") || part.Key.EndsWith("Harness") || part.Key.EndsWith("Wings"),
+            "Warframes" => part.Key.EndsWith("Systems") || part.Key.EndsWith("Neuroptics") ||
+                           part.Key.EndsWith("Chassis"),
+            _ => false
+        };
     }
 
     private void RefreshMarketDucats()
@@ -624,13 +621,12 @@ public sealed class Data
 
     public string PartsOwned(string name)
     {
-        if (name.IndexOf("Prime") < 0)
+        var primeIndex = name.IndexOf("Prime");
+        if (primeIndex < 0)
             return "0";
-        var eqmt = name[..(name.IndexOf("Prime") + 5)];
+        var eqmt = name[..(primeIndex + 5)];
         var owned = EquipmentData[eqmt]["parts"][name]["owned"].ToString();
-        if (owned == "0")
-            return "0";
-        return owned;
+        return owned == "0" ? "0" : owned;
     }
 
     public string PartsCount(string name)
@@ -641,19 +637,15 @@ public sealed class Data
             return "0";
         var eqmt = name[..(primeIndex + 5)];
         var count = EquipmentData[eqmt]["parts"][name]["count"].ToString();
-        if (count == "0")
-            return "0";
-        return count;
+        return count == "0" ? "0" : count;
     }
 
-    private void AddElement(int[,] d, List<int> xList, List<int> yList, int x, int y)
+    private static void AddElement(int[,] d, List<int> xList, List<int> yList, int x, int y)
     {
         var loc = 0;
         var temp = d[x, y];
         while (loc < xList.Count && temp > d[xList[loc], yList[loc]])
-        {
-            loc += 1;
-        }
+            loc++;
 
         if (loc == xList.Count)
         {
@@ -668,12 +660,10 @@ public sealed class Data
 
     readonly char[,] ReplacementList = null;
 
-    public int GetDifference(char c1, char c2)
+    private int GetDifference(char c1, char c2)
     {
         if (c1 == c2 || c1 == '?' || c2 == '?')
-        {
             return 0;
-        }
 
         for (var i = 0; i < ReplacementList.GetLength(0) - 1; i++)
         {

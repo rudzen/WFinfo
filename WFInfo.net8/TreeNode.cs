@@ -983,7 +983,7 @@ public class TreeNode : INPC
     {
         var owned = UseCappedOwned ? Owned_Capped_Val : Owned_Val;
 
-        Diff_Val = owned / (double)(Count_Val) - 0.01 * Count_Val;
-        Col1_Text1 = owned                     + "/" + Count_Val;
+        Diff_Val = owned / (double)Count_Val - 0.01 * Count_Val;
+        Col1_Text1 = $"{owned}/{Count_Val}";
     }
 }
