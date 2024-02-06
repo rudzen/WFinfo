@@ -585,7 +585,7 @@ public sealed class Data
             var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
             var allFiltered = JsonConvert.DeserializeObject<JObject>(data);
 
-            LoadEqmtData(allFiltered, true);
+            await LoadEqmtData(allFiltered, true);
             SaveAllJSONs();
             Main.RunOnUIThread(() =>
             {

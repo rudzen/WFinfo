@@ -34,4 +34,12 @@ public static class HttpClientExtensions
         using var reader = new StreamReader(decompressed);
         return await reader.ReadToEndAsync();
     }
+    
+    public static Stream GetDecompressedStream(this HttpResponseMessage response)
+    {
+        if (response.Headers.TryGetValues("Content-Encoding", out var values)
+            && !values.Contains("br"))
+            return response.Content.ReadAsStream();
+        return new BrotliStream(response.Content.ReadAsStream(), CompressionMode.Decompress);
+    }
 }
