@@ -94,7 +94,7 @@ public class AutoAddSingleItem : INPC
             string[] nameParts = item.Split(["Prime"], 2, StringSplitOptions.None);
             string primeName = $"{nameParts[0]}Prime";
             string partName = primeName + (nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow")
-                ? nameParts[1].Replace(" Blueprint", "")
+                ? nameParts[1].Replace(" Blueprint", string.Empty)
                 : nameParts[1]);
 
             Logger.Debug("Incrementing owned amount for part {PartName}", partName);

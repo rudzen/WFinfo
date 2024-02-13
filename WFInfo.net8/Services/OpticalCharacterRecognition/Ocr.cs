@@ -30,9 +30,6 @@ internal class OCR
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<OCR>();
 
-    private static readonly string applicationDirectory =
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
-
     #region variabels and sizzle
 
     // Colors for the top left "profile bar"
@@ -223,7 +220,7 @@ internal class OCR
         Task.WaitAll(tasks);
 
         // Remove any empty (or suspiciously short) items from the array
-        firstChecks = firstChecks.Where(s => !string.IsNullOrEmpty(s) && s.Replace(" ", "").Length > 6).ToArray();
+        firstChecks = firstChecks.Where(s => !string.IsNullOrEmpty(s) && s.Replace(" ", string.Empty).Length > 6).ToArray();
         if (firstChecks == null || firstChecks.Length == 0 || CheckIfError())
         {
             processingActive = false;
@@ -784,7 +781,7 @@ internal class OCR
         string csv = string.Empty;
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
-        if (!File.Exists(applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) +
+        if (!File.Exists(ApplicationConstants.AppPath + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) +
                          ".csv") && _settings.SnapitExport)
             csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
                    DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)      + Environment.NewLine;
@@ -881,7 +878,7 @@ internal class OCR
         Logger.Debug("Snap-it finished, displayed reward count:{Count}, time: {Time}ms", resultCount, end - start);
         if (_settings.SnapitExport)
         {
-            var file = Path.Combine(applicationDirectory,
+            var file = Path.Combine(ApplicationConstants.AppPath,
                 $"export {DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)}.csv");
             File.AppendAllText(file, csv);
         }
@@ -1039,7 +1036,7 @@ internal class OCR
                         tempbounds.Width, tempbounds.Height);
                     if (currentWord != null)
                     {
-                        currentWord = RE.Replace(currentWord, "").Trim();
+                        currentWord = RE.Replace(currentWord, string.Empty).Trim();
                         if (currentWord.Length > 0)
                         {
                             //word is valid start comparing to others
@@ -1679,9 +1676,8 @@ internal class OCR
                         using (var iterator = page.GetIterator())
                         {
                             iterator.Begin();
-                            string rawText = iterator.GetText(PageIteratorLevel.TextLine);
-                            if (rawText != null)
-                                rawText = rawText.Replace(" ", "");
+                            var rawText = iterator.GetText(PageIteratorLevel.TextLine);
+                            rawText = rawText?.Replace(" ", string.Empty);
                             //if no number found, 1 of item
                             if (!int.TryParse(rawText, out int itemCount))
                             {
@@ -1716,7 +1712,7 @@ internal class OCR
             }
 
             //return OCR to any symbols
-            _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", "");
+            _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", string.Empty);
         }
 
         darkCyan.Dispose();
@@ -2039,7 +2035,7 @@ internal class OCR
                             {
                                 iterator.Begin();
                                 string rawText = iterator.GetText(PageIteratorLevel.TextLine);
-                                rawText = Regex.Replace(rawText, @"\s", "");
+                                rawText = Regex.Replace(rawText, @"\s", string.Empty);
                                 foundItems.Add(new InventoryItem(rawText, cloneRect));
 
                                 g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height,
@@ -2603,7 +2599,7 @@ internal class OCR
                     string word = iter.GetText(PageIteratorLevel.Word);
                     if (word != null)
                     {
-                        word = RE.Replace(word, "").Trim();
+                        word = RE.Replace(word, string.Empty).Trim();
                         if (word.Length > 0)
                         {
                             int topOrBot = outRect.Y1 > (outRect.Height * 3 / 4) ? 0 : 1;
@@ -2670,8 +2666,8 @@ internal class OCR
             {
                 left += wid;
                 ret.Add((currPartTop.Trim() + " " + currPartBot.Trim()).Trim());
-                currPartTop = "";
-                currPartBot = "";
+                currPartTop = string.Empty;
+                currPartBot = string.Empty;
             }
 
             if (arr2D[ind][3] == 1)

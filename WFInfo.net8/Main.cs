@@ -529,7 +529,7 @@ public class Main
     public static int VersionToInteger(string vers)
     {
         var ret = 0;
-        string[] versParts = Regex.Replace(vers, "[^0-9.]+", "").Split('.');
+        string[] versParts = Regex.Replace(vers, "[^0-9.]+", string.Empty).Split('.');
         if (versParts.Length == 3)
             for (var i = 0; i < versParts.Length; i++)
             {

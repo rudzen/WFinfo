@@ -246,7 +246,7 @@ public sealed class CustomEntrypoint
     {
         using var stream = File.OpenRead(filePath);
         var hash = MD5.HashData(stream);
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
     }
 
     private static void DownloadProgressCallback(object sender, DownloadProgressChangedEventArgs e)
