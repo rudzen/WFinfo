@@ -21,7 +21,7 @@ public sealed class WarframeProcessFinder : IProcessFinder
     public HandleRef HandleRef => IsRunning ? new HandleRef(Warframe, Warframe.MainWindowHandle) : new HandleRef();
     public bool IsRunning => Warframe is { HasExited: false };
     public bool GameIsStreamed => Warframe?.MainWindowTitle.Contains("GeForce NOW") ?? false;
-    public event ProcessChangedArgs OnProcessChanged;
+    public event ProcessChangedArgs? OnProcessChanged;
 
     private Process? _warframe;
 
@@ -90,8 +90,9 @@ public sealed class WarframeProcessFinder : IProcessFinder
             else if (process.MainWindowTitle.Contains("Warframe") && process.MainWindowTitle.Contains("GeForce NOW"))
             {
                 Main.RunOnUIThread(Main.SpawnGFNWarning);
-                Logger.Debug("GFN -- Found Warframe Process: ID - " + process.Id          + ", MainTitle - " +
-                            process.MainWindowTitle                + ", Process Name - " + process.ProcessName);
+                Logger.Debug(
+                    "GFN -- Found Warframe Process: ID - {ProcessId}, MainTitle - {MainTitle}, Process Name - {ProcessName}",
+                    process.Id, process.MainWindowTitle, process.ProcessName);
 
                 _warframe = process;
 

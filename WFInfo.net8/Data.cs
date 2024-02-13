@@ -69,10 +69,9 @@ public sealed class Data
             },                            // ㄴ, ㄵ, ㄶ, ㄷ, ㄹ, ㄺ, ㄻ, ㄼ, ㄽ, ㄾ, ㄿ, ㅀ, ㅅ, ㅆ, ㅌ
             { 2, [22, 23] },              // ㅈ, ㅊ
             { 3, [1, 2, 3, 24, 21, 27] }, // ㄱ, ㄲ, ㄳ, ㅋ, ㅑ, ㅎ
-            { 4, [0] },                   // 
+            { 4, [0] }
         }
     ];
-
 
     private readonly string marketItemsPath;
     private readonly string marketDataPath;
@@ -131,6 +130,7 @@ public sealed class Data
 
         try
         {
+            Logger.Debug("Starting log capture for EE");
             EElogWatcher = new LogCapture(_process);
             EElogWatcher.TextChanged = LogChanged;
         }
@@ -150,8 +150,9 @@ public sealed class Data
         EElogWatcher = null;
     }
 
-    private static void SaveDatabase(string path, object db)
+    private static void SaveDatabase<T>(string path, T db)
     {
+        Logger.Debug("Saving database. file={File}", Path.GetFileName(path));
         File.WriteAllText(path, JsonConvert.SerializeObject(db, Formatting.Indented));
     }
 
@@ -746,7 +747,6 @@ public sealed class Data
 
     private string GetLocaleNameData(string s)
     {
-        var saveDatabases = false;
         var localeName = string.Empty;
         foreach (var marketItem in MarketItems)
         {
@@ -755,21 +755,12 @@ public sealed class Data
             string[] split = marketItem.Value.ToString().Split('|');
             if (split[0] == s)
             {
-                if (split.Length == 3)
-                {
-                    localeName = split[2];
-                }
-                else
-                {
-                    localeName = split[0];
-                }
-
+                var splitIndex = split.Length == 3 ? 2 : 0;
+                localeName = split[splitIndex];
                 break;
             }
         }
 
-        if (saveDatabases)
-            SaveAllJSONs();
         return localeName;
     }
 
@@ -779,8 +770,8 @@ public sealed class Data
         s = GetLocaleNameData(s);
 
         // i18n korean edit distance algorithm
-        s = " " + s.Replace("설계도", string.Empty).Replace(" ", string.Empty);
-        t = " " + t.Replace("설계도", string.Empty).Replace(" ", string.Empty);
+        s = $" {s.Replace("설계도", string.Empty).Replace(" ", string.Empty)}";
+        t = $" {t.Replace("설계도", string.Empty).Replace(" ", string.Empty)}";
 
         var n = s.Length;
         var m = t.Length;
@@ -1392,8 +1383,9 @@ public sealed class Data
     {
         try
         {
+            var url = $"https://api.warframe.market/v1/profile/orders/{listingId}";
             using var request = new HttpRequestMessage();
-            request.RequestUri = new Uri("https://api.warframe.market/v1/profile/orders/" + listingId);
+            request.RequestUri = new Uri(url);
             request.Method = HttpMethod.Put;
             var json =
                 $"{{\"order_id\":\"{listingId}\", \"platinum\": {platinum}, \"quantity\":{quantity + 1}, \"visible\":true}}";
@@ -1407,14 +1399,15 @@ public sealed class Data
             var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
             var responseBody = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
-            if (!response.IsSuccessStatusCode) throw new Exception(responseBody);
+            if (!response.IsSuccessStatusCode)
+                throw new Exception(responseBody);
 
             SetJWT(response.Headers);
             return true;
         }
         catch (Exception e)
         {
-            Logger.Debug($"updateListing: {e.Message} ");
+            Logger.Error(e, "UpdateListing");
             return false;
         }
     }

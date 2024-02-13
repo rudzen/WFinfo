@@ -26,7 +26,7 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
     private GraphicsCaptureSession _session;
     private GraphicsCaptureItem _item;
 
-    private object _frameLock = new object();
+    private readonly object _frameLock = new();
     private Direct3D11CaptureFrame _frame;
 
     private DirectXPixelFormat pixelFormat =>

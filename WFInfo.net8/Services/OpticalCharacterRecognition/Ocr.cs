@@ -3,9 +3,8 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
-#if RELEASE
+using System.Runtime.CompilerServices;
 using System.Numerics;
-#endif
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -30,6 +29,9 @@ namespace WFInfo.Services.OpticalCharacterRecognition;
 internal class OCR
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<OCR>();
+
+    private static readonly string applicationDirectory =
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
 
     #region variabels and sizzle
 
@@ -152,7 +154,7 @@ internal class OCR
         IScreenshotService gdiScreenshot,
         IScreenshotService? windowsScreenshot = null)
     {
-        Directory.CreateDirectory(Path.Combine(ApplicationConstants.AppPath, "Debug"));
+        Directory.CreateDirectory(ApplicationConstants.AppPathDebug);
         _tesseractService = tesseractService;
         _tesseractService.Init();
         _soundPlayer = soundPlayer;
@@ -203,7 +205,7 @@ internal class OCR
         catch (Exception e)
         {
             processingActive = false;
-            Logger.Error(e, "Error while extracting part boxes");
+            Debug.WriteLine(e);
             return;
         }
 
@@ -317,9 +319,13 @@ internal class OCR
                     bestDucatItem = i;
                 }
 
-                if (duc > 0
-                    && !mastered && int.Parse(partsOwned, Main.Culture) < int.Parse(partsCount, Main.Culture))
-                    unownedItems.Add(i);
+                if (duc > 0)
+                {
+                    if (!mastered && int.Parse(partsOwned, Main.Culture) < int.Parse(partsCount, Main.Culture))
+                    {
+                        unownedItems.Add(i);
+                    }
+                }
 
                 #endregion
 
@@ -465,7 +471,7 @@ internal class OCR
 
     internal static int GetSelectedReward(Point lastClick)
     {
-        Logger.Debug("Last click: {LastClick}", lastClick);
+        Debug.WriteLine(lastClick.ToString());
         var primeRewardIndex = 0;
         lastClick.Offset(-_window.Window.X, -_window.Window.Y);
         var width = _window.Window.Width   * (int)_window.DpiScaling;
@@ -491,22 +497,30 @@ internal class OCR
         var middelHeight = top + bottom / 4;
         var length = mostWidth / 8;
 
+        var RewardPoints4 = new List<Point>()
+        {
+            new Point(mostLeft + length, middelHeight),
+            new Point(mostLeft + 3 * length, middelHeight),
+            new Point(mostLeft + 5 * length, middelHeight),
+            new Point(mostLeft + 7 * length, middelHeight)
+        };
+
+        var RewardPoints3 = new List<Point>()
+        {
+            new Point(mostLeft + 2 * length, middelHeight),
+            new Point(mostLeft + 4 * length, middelHeight),
+            new Point(mostLeft + 6 * length, middelHeight)
+        };
+
         var lowestDistance = int.MaxValue;
+        var lowestDistancePoint = new Point();
         if (numberOfRewardsDisplayed == 1) //rare, but can happen if others don't get enough traces
         {
             primeRewardIndex = 0;
         }
         else if (numberOfRewardsDisplayed != 3)
         {
-            Span<Point> rewardPoints4 = stackalloc Point[]
-            {
-                new(mostLeft + length, middelHeight),
-                new(mostLeft + 3 * length, middelHeight),
-                new(mostLeft + 5 * length, middelHeight),
-                new(mostLeft + 7 * length, middelHeight)
-            };
-
-            foreach (var pnt in rewardPoints4)
+            foreach (var pnt in RewardPoints4)
             {
                 var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
                                            (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
@@ -516,29 +530,21 @@ internal class OCR
                     continue;
 
                 lowestDistance = distanceToLastClick;
-                primeRewardIndex = rewardPoints4.IndexOf(pnt);
+                lowestDistancePoint = pnt;
+                primeRewardIndex = RewardPoints4.IndexOf(pnt);
             }
 
             if (numberOfRewardsDisplayed == 2)
             {
-                primeRewardIndex = primeRewardIndex switch
-                {
-                    1    => 0,
-                    >= 2 => 1,
-                    _    => primeRewardIndex
-                };
+                if (primeRewardIndex == 1)
+                    primeRewardIndex = 0;
+                if (primeRewardIndex >= 2)
+                    primeRewardIndex = 1;
             }
         }
         else
         {
-            Span<Point> rewardPoints3 = stackalloc Point[]
-            {
-                new(mostLeft + 2 * length, middelHeight),
-                new(mostLeft + 4 * length, middelHeight),
-                new(mostLeft + 6 * length, middelHeight)
-            };
-
-            foreach (var pnt in rewardPoints3)
+            foreach (var pnt in RewardPoints3)
             {
                 var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
                                            (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
@@ -546,7 +552,8 @@ internal class OCR
 
                 if (distanceToLastClick >= lowestDistance) continue;
                 lowestDistance = distanceToLastClick;
-                primeRewardIndex = rewardPoints3.IndexOf(pnt);
+                lowestDistancePoint = pnt;
+                primeRewardIndex = RewardPoints3.IndexOf(pnt);
             }
         }
 
@@ -554,7 +561,7 @@ internal class OCR
 
         /*Debug.WriteLine($"Closest point: {lowestDistancePoint}, with distance: {lowestDistance}");
 
-        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         var img = CaptureScreenshot();
         var pinkP = new Pen(Brushes.Pink);
         var blackP = new Pen(Brushes.Black);
@@ -654,25 +661,8 @@ internal class OCR
             }
         }
 
-        double max;
-        WFtheme active = WFtheme.UNKNOWN;
-#if DEBUG
-
-        max = 0;
-        
-        for (int i = 0; i < weights.Length; i++)
-        {
-            Debug.Write(weights[i].ToString("F2", Main.Culture) + " ");
-            if (weights[i] > max)
-            {
-                max = weights[i];
-                active = (WFtheme)i;
-            }
-        }
-
-#else
-        max = GetMaxWeight(weights);
-        active = (WFtheme)weights.IndexOf(max);
+        var simdMax = GetMaxWeight(weights);
+        var simdActive = (WFtheme)weights.IndexOf(simdMax);
         
         static double GetMaxWeight(ReadOnlySpan<double> span)
         {
@@ -711,17 +701,17 @@ internal class OCR
 
             return result;
         }
-#endif
-
-        Logger.Debug("CLOSEST THEME(" + max.ToString("F2", Main.Culture) + "): " + active.ToString());
-        closestThresh = max;
+        
+        Logger.Debug("CLOSEST THEME ({Culture}): {Active}", simdMax.ToString("F2", Main.Culture), simdActive);
+        
+        closestThresh = simdMax;
         if (_settings.ThemeSelection != WFtheme.AUTO)
         {
-            Logger.Debug("Theme overwrite present, setting to: " + _settings.ThemeSelection.ToString());
+            Logger.Debug("Theme overwrite present, setting to: {ThemeSelection}", _settings.ThemeSelection.ToString());
             return _settings.ThemeSelection;
         }
 
-        return active;
+        return simdActive;
     }
 #pragma warning disable IDE0044 // Add readonly modifier
     private static short[,,] GetThemeCache = new short[256, 256, 256];
@@ -778,35 +768,27 @@ internal class OCR
     /// <param name="snapItImage"></param>
     internal static void ProcessSnapIt(Bitmap snapItImage, Bitmap fullShot, Point snapItOrigin)
     {
-        var start = Stopwatch.GetTimestamp();
+        var watch = new Stopwatch();
+        watch.Start();
+        long start = watch.ElapsedMilliseconds;
 
-        //timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.culture);
+        //timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         WFtheme theme = GetThemeWeighted(out _, fullShot);
-
-        var imageFile = $"{timestamp}.png";
-        snapItImage.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"SnapItImage{imageFile}"));
-        
+        snapItImage.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImage " + timestamp + ".png");
         Bitmap snapItImageFiltered = ScaleUpAndFilter(snapItImage, theme, out int[] rowHits, out int[] colHits);
-        snapItImageFiltered.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"SnapItImageFiltered{imageFile}"));
-        
+        snapItImageFiltered.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImageFiltered " + timestamp + ".png");
         List<InventoryItem> foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
-        var end = Stopwatch.GetElapsedTime(start);
-        Main.StatusUpdate($"Completed snapit Processing({end})", 0);
-
+        long end = watch.ElapsedMilliseconds;
+        Main.StatusUpdate("Completed snapit Processing(" + (end - start) + "ms)", 0);
+        string csv = string.Empty;
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
-
-        // TODO (rudzen) : use a real csv parser instead of this hack
-        
-        var csv = string.Empty;
-        var now = DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture);
-        var csvFile = Path.Combine(ApplicationConstants.AppPath, "export " + now + ".csv");
-        if (!File.Exists(csvFile) && _settings.SnapitExport)
-            csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" + now + Environment.NewLine;
-        
+        if (!File.Exists(applicationDirectory + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) +
+                         ".csv") && _settings.SnapitExport)
+            csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
+                   DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)      + Environment.NewLine;
         int resultCount = foundParts.Count;
-        
         for (int i = 0; i < foundParts.Count; i++)
         {
             var part = foundParts[i];
@@ -884,24 +866,24 @@ internal class OCR
 
         if (Main.SnapItOverlayWindow.tempImage != null)
             Main.SnapItOverlayWindow.tempImage.Dispose();
-        end = Stopwatch.GetElapsedTime(start);
-        
+        end = watch.ElapsedMilliseconds;
         if (resultCount == 0)
         {
-            Main.StatusUpdate($"Couldn't find any items to display (took {end}) ", 1);
+            Main.StatusUpdate("Couldn't find any items to display (took " + (end - start) + "ms) ", 1);
             Main.RunOnUIThread(() => { Main.SpawnErrorPopup(DateTime.UtcNow); });
         }
         else
         {
-            Main.StatusUpdate($"Completed snapit Displaying({end})", 0);
+            Main.StatusUpdate("Completed snapit Displaying(" + (end - start) + "ms)", 0);
         }
 
-        Logger.Debug("Snap-it finished, displayed reward(s). count={Count},time={Time}", resultCount, end);
+        watch.Stop();
+        Logger.Debug("Snap-it finished, displayed reward count:{Count}, time: {Time}ms", resultCount, end - start);
         if (_settings.SnapitExport)
         {
-            now = DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture);
-            csvFile = Path.Combine(ApplicationConstants.AppPath, $"export {now}.csv");
-            File.AppendAllText(csvFile, csv);
+            var file = Path.Combine(applicationDirectory,
+                $"export {DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)}.csv");
+            File.AppendAllText(file, csv);
         }
     }
 
@@ -1242,12 +1224,12 @@ internal class OCR
         if (numberTooLarge > .3 * foundItems.Count || numberTooFewCharacters > .4 * foundItems.Count)
         {
             //Log old noise level heuristics
-            Logger.Debug("numberTooLarge: " + numberTooLarge + ", numberTooFewCharacters: " + numberTooFewCharacters +
-                         ", numberTooLargeButEnoughCharacters: " + numberTooLargeButEnoughCharacters +
-                         ", foundItems.Count: " + foundItems.Count);
+            Logger.Debug(
+                "numberTooLarge: {TooLarge}, numberTooFewCharacters: {TooFew}, numberTooLargeButEnoughCharacters: {TooLargeButEnough}, foundItems: {Found}",
+                numberTooLarge, numberTooFewCharacters, numberTooLargeButEnoughCharacters, foundItems.Count);
         }
 
-        filteredImage.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"SnapItImageBounds {timestamp}.png"));
+        filteredImage.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImageBounds {timestamp}.png"));
         return results;
     }
 
@@ -1461,37 +1443,34 @@ internal class OCR
                     int rightmost = 0; //rightmost edge of circle+checkmark icon
                     sumBlack = 1;
                     //use "flood search" approach from the pixel found above to find the whole checkmark+circle icon
-                    var searchSpace = new Stack<Point>();
-                    var pixelsChecked = new Dictionary<Point, bool>();
+                    Stack<Point> searchSpace = new Stack<Point>();
+                    Dictionary<Point, bool> pixelChecked = new Dictionary<Point, bool>();
                     searchSpace.Push(new Point(x, y));
                     while (searchSpace.Count > 0)
                     {
                         Point p = searchSpace.Pop();
-
-                        ref var pixelChecked = ref CollectionsMarshal.GetValueRefOrAddDefault(pixelsChecked, p, out var exists);
-
-                        if (exists && pixelChecked)
-                            continue;
-                        
-                        pixelChecked = true;
-                        for (int xOff = -2; xOff <= 2; xOff++)
+                        if (!pixelChecked.TryGetValue(p, out bool val) || !val)
                         {
-                            for (int yOff = -2; yOff <= 2; yOff++)
+                            pixelChecked[p] = true;
+                            for (int xOff = -2; xOff <= 2; xOff++)
                             {
-                                if (p.X + xOff > 0 && p.X + xOff < imgWidth && p.Y + yOff > 0 &&
-                                    p.Y + yOff < imgHeight)
+                                for (int yOff = -2; yOff <= 2; yOff++)
                                 {
-                                    index = 4 * (p.X + xOff + (p.Y + yOff) * imgWidth);
-                                    if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                                        LockedBitmapBytes[index                                  + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                                    if (p.X + xOff > 0 && p.X + xOff < imgWidth && p.Y + yOff > 0 &&
+                                        p.Y + yOff < imgHeight)
                                     {
-                                        searchSpace.Push(new Point(p.X + xOff, p.Y + yOff));
-                                        //cloneBitmap.SetPixel(p.X + xOff, p.Y + yOff, Color.Green); //debugging markings, uncomment as needed
-                                        xCenterNew += p.X + xOff;
-                                        yCenterNew += p.Y + yOff;
-                                        sumBlack++;
-                                        if (p.X + xOff > rightmost)
-                                            rightmost = p.X + xOff;
+                                        index = 4 * (p.X + xOff + (p.Y + yOff) * imgWidth);
+                                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
+                                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                                        {
+                                            searchSpace.Push(new Point(p.X + xOff, p.Y + yOff));
+                                            //cloneBitmap.SetPixel(p.X + xOff, p.Y + yOff, Color.Green); //debugging markings, uncomment as needed
+                                            xCenterNew += p.X + xOff;
+                                            yCenterNew += p.Y + yOff;
+                                            sumBlack++;
+                                            if (p.X + xOff > rightmost)
+                                                rightmost = p.X + xOff;
+                                        }
                                     }
                                 }
                             }
@@ -1753,25 +1732,26 @@ internal class OCR
     {
         long start = Stopwatch.GetTimestamp();
 
-        var timeStamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
-        fullShot.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"ProfileImage {timeStamp}.png"));
-        List<InventoryItem> foundParts = FindOwnedItems(fullShot, timeStamp, in start);
-        for (int i = 0; i < foundParts.Count; i++)
+        string timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        fullShot.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"ProfileImage {timestamp}.png"));
+        List<InventoryItem> foundParts = FindOwnedItems(fullShot, timestamp, in start);
+        var parts = CollectionsMarshal.AsSpan(foundParts);
+        foreach (var part in parts)
         {
-            InventoryItem part = foundParts[i];
-            if (!PartNameValid(part.Name + " Blueprint"))
+            var partName = part.Name;
+            if (!PartNameValid($"{partName} Blueprint"))
                 continue;
-            string name =
-                Main.DataBase.GetPartName(part.Name + " Blueprint", out int proximity, true,
-                    out _); //add blueprint to name to check against prime drop table
-            string checkName =
-                Main.DataBase.GetPartName(part.Name + " prime Blueprint", out int primeProximity, true,
-                    out _); //also add prime to check if that gives better match. If so, this is a non-prime
-            Logger.Debug("Checking \""  + part.Name.Trim() + "\", ("   + proximity + ")\"" + name + "\", +prime (" +
-                         primeProximity + ")\""            + checkName + "\"");
+            
+            // add blueprint to name to check against prime drop table
+            var name = Main.DataBase.GetPartName($"{partName} Blueprint", out var proximity, true, out _);
+            
+            // also add prime to check if that gives better match. If so, this is a non-prime
+            var checkName = Main.DataBase.GetPartName($"{partName} prime Blueprint", out var primeProximity, true, out _);
+
+            Logger.Debug("Checking \"{Part}\", ({Prox})\"{Name}\", +prime ({PrimeProx})\"{CheckName}\"", partName.Trim(), proximity, name, primeProximity, checkName);
 
             //Decide if item is an actual prime, if so mark as mastered
-            if (proximity < 3 && proximity < primeProximity && part.Name.Length > 6 && name.Contains("Prime"))
+            if (proximity < 3 && proximity < primeProximity && partName.Length > 6 && name.Contains("Prime"))
             {
                 //mark as mastered
                 string[] nameParts = name.Split(["Prime"], 2, StringSplitOptions.None);
@@ -1781,11 +1761,11 @@ internal class OCR
                 {
                     Main.DataBase.EquipmentData[primeName]["mastered"] = true;
 
-                    Logger.Debug("Marked \"" + primeName + "\" as mastered");
+                    Logger.Debug("Marked \"{PrimeName}\" as mastered", primeName);
                 }
                 else
                 {
-                    Logger.Debug("Failed to mark \"" + primeName + "\" as mastered");
+                    Logger.Debug("Failed to mark \"{PrimeName}\" as mastered", primeName);
                 }
             }
         }
@@ -1813,7 +1793,7 @@ internal class OCR
     /// <param name="y">Pixel Y coordinate</param>
     /// <param name="lowSensitivity">Use lower threshold, mainly for finding black pixels instead</param>
     /// <returns>if pixel is above threshold for "white"</returns>
-    private static bool ProbeProfilePixel(byte[] byteArr, int width, int x, int y, bool lowSensitivity)
+    private static bool probeProfilePixel(byte[] byteArr, int width, int x, int y, bool lowSensitivity)
     {
         int A = byteArr[(x + y * width) * 4 + 3]; //4 bytes for ARGB, in order BGRA in the array
         int R = byteArr[(x + y * width) * 4 + 2];
@@ -1844,7 +1824,7 @@ internal class OCR
         List<InventoryItem> foundItems = [];
         Bitmap ProfileImageClean = new Bitmap(ProfileImage);
         int probe_interval = ProfileImage.Width / 120;
-        Logger.Debug("Using probe. interval={Interval}", probe_interval);
+        Logger.Debug("Using probe interval: {Interval}", probe_interval);
 
         int imgWidth = ProfileImageClean.Width;
         BitmapData lockedBitmapData = ProfileImageClean.LockBits(
@@ -1863,7 +1843,7 @@ internal class OCR
             {
                 for (int x = 0; x < imgWidth; x += probe_interval) //probe every few pixels for performance
                 {
-                    if (ProbeProfilePixel(LockedBitmapBytes, imgWidth, x, y, false))
+                    if (probeProfilePixel(LockedBitmapBytes, imgWidth, x, y, false))
                     {
                         //find left edge and check that the coloured area is at least as big as probe_interval
                         int leftEdge = -1;
@@ -1875,7 +1855,7 @@ internal class OCR
                              tempX++)
                         {
                             areaWidth++;
-                            if (ProbeProfilePixel(LockedBitmapBytes, imgWidth, tempX, y, false))
+                            if (probeProfilePixel(LockedBitmapBytes, imgWidth, tempX, y, false))
                             {
                                 hits++;
                                 leftEdge = (leftEdge == -1 ? tempX : leftEdge);
@@ -1892,8 +1872,8 @@ internal class OCR
                         //find where the line ends
                         int rightEdge = leftEdge;
                         while (rightEdge + 2 < imgWidth &&
-                               (ProbeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge    + 1, y, false)
-                                || ProbeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 2, y, false)))
+                               (probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge    + 1, y, false)
+                                || probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 2, y, false)))
                         {
                             rightEdge++;
                         }
@@ -1934,7 +1914,7 @@ internal class OCR
                             bottomEdge++;
                             for (int i = leftEdge; i < rightEdge; i++)
                             {
-                                if (ProbeProfilePixel(LockedBitmapBytes, imgWidth, i, bottomEdge, false))
+                                if (probeProfilePixel(LockedBitmapBytes, imgWidth, i, bottomEdge, false))
                                 {
                                     hits++;
                                     rightMostHit = i;
@@ -1969,7 +1949,7 @@ internal class OCR
                                 hitRatios.Clear();
                                 hitRatios.Add(1);
                             }
-                        } while (bottomEdge + 2 < ProfileImageClean.Height && hitRatios.Last() > 0.2);
+                        } while (bottomEdge + 2 < ProfileImageClean.Height && hitRatios[^1] > 0.2);
 
                         hitRatios.RemoveAt(hitRatios.Count - 1);
                         //find if/where it transitions from text (some misses) to no text (basically no misses) then back to text (some misses). This is proof it's an owned item and marks the bottom edge of the text
@@ -2028,7 +2008,7 @@ internal class OCR
                             bool hitSomething = false;
                             for (int j = 0; j < cloneRect.Height; j++)
                             {
-                                if (!ProbeProfilePixel(LockedBitmapBytes, imgWidth, cloneRect.X + i, cloneRect.Y + j,
+                                if (!probeProfilePixel(LockedBitmapBytes, imgWidth, cloneRect.X + i, cloneRect.Y + j,
                                         true))
                                 {
                                     cloneBitmap.SetPixel(i            + offset, j, Color.Black);
@@ -2049,8 +2029,10 @@ internal class OCR
 
                         //cloneBitmap.Save(ApplicationConstants.AppPath + @"\Debug\ProfileImageClone " + foundItems.Count + " " + timestamp + ".png");
 
+
                         //do OCR
-                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
+                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist",
+                            " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
                         using (var page = _tesseractService.FirstEngine.Process(cloneBitmap, PageSegMode.SingleLine))
                         {
                             using (var iterator = page.GetIterator())
@@ -2060,8 +2042,10 @@ internal class OCR
                                 rawText = Regex.Replace(rawText, @"\s", "");
                                 foundItems.Add(new InventoryItem(rawText, cloneRect));
 
-                                g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height, cloneRect.Width, cloneRect.Height);
-                                g.DrawString(rawText, font, Brushes.DarkBlue, new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
+                                g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height,
+                                    cloneRect.Width, cloneRect.Height);
+                                g.DrawString(rawText, font, Brushes.DarkBlue,
+                                    new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
                             }
                         }
 
@@ -2077,7 +2061,7 @@ internal class OCR
         }
 
         ProfileImageClean.Dispose();
-        ProfileImage.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"ProfileImageBounds {timestamp}.png"));
+        ProfileImage.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"ProfileImageBounds {timestamp}.png"));
         darkCyan.Dispose();
         pink.Dispose();
         cyan.Dispose();
@@ -2086,6 +2070,7 @@ internal class OCR
         return foundItems;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int ColorDifference(Color test, Color thresh)
     {
         return Math.Abs(test.R - thresh.R) + Math.Abs(test.G - thresh.G) + Math.Abs(test.B - thresh.B);
@@ -2131,7 +2116,8 @@ internal class OCR
 
     private static bool ThemeThresholdFilter(Color test, WFtheme theme)
     {
-        if (theme == WFtheme.CUSTOM || theme == WFtheme.UNKNOWN) //treat unknown as custom, for safety
+        //treat unknown as custom, for safety
+        if (theme is WFtheme.CUSTOM or WFtheme.UNKNOWN)
             return CustomThresholdFilter(test);
         Color primary = ThemePrimary[(int)theme];
         Color secondary = ThemeSecondary[(int)theme];
@@ -2232,7 +2218,8 @@ internal class OCR
         int PixelSize = 4; //ARGB, order in array is BGRA
         for (int i = 0; i < numbytes; i += PixelSize)
         {
-            var clr = Color.FromArgb(LockedBitmapBytes[i + 3], LockedBitmapBytes[i + 2], LockedBitmapBytes[i + 1], LockedBitmapBytes[i]);
+            var clr = Color.FromArgb(LockedBitmapBytes[i + 3], LockedBitmapBytes[i + 2], LockedBitmapBytes[i + 1],
+                LockedBitmapBytes[i]);
             if (ThemeThresholdFilter(clr, active))
             {
                 LockedBitmapBytes[i] = 0;
@@ -2265,7 +2252,8 @@ internal class OCR
     // we ignore the "tippy top" because it has a lot of variance, so we just look at the "bottom half of the top"
     private static readonly int[] TextSegments = [2, 4, 16, 21];
 
-    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(out double scaling, out WFtheme active, Bitmap fullScreen)
+    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(out double scaling, out WFtheme active,
+        Bitmap fullScreen)
     {
         var start = Stopwatch.GetTimestamp();
         long beginning = start;
@@ -2282,7 +2270,7 @@ internal class OCR
                       (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) * _window.ScreenScaling);
         int mostBot = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5);
         //Bitmap postFilter = new Bitmap(mostWidth, mostBot - mostTop);
-        var rectangle = new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop);
+        var rectangle = new Rectangle((int)(mostLeft), (int)(mostTop), mostWidth, mostBot - mostTop);
         Bitmap preFilter;
 
         try
@@ -2294,7 +2282,7 @@ internal class OCR
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, "Something went wrong with getting the starting image");
+            Logger.Debug("Something went wrong with getting the starting image: " + ex.ToString());
             throw;
         }
 
@@ -2340,135 +2328,13 @@ internal class OCR
         double[] midWeights = new double[51];
         double[] botWeights = new double[51];
 
-        scaling = PartBoxScaling(
-            preFilter: preFilter,
-            lineHeight: lineHeight,
-            topWeights: topWeights,
-            rows: rows,
-            midWeights: midWeights,
-            botWeights: botWeights,
-            percWeights: percWeights,
-            uiDebug: out var uiDebug
-        );
-
-        end = Stopwatch.GetElapsedTime(start);
-
-        Logger.Debug("Got scaling. time={Time}", end);
-
-        Span<int> topFive = stackalloc int[] { -1, -1, -1, -1, -1 };
-
-        PartBoxTopFive(topFive, percWeights);
-        PartBoxLogTopFive(topFive, percWeights, topWeights, midWeights, botWeights);
-
-        using (Graphics g = Graphics.FromImage(fullScreen))
-        {
-            g.DrawRectangle(Pens.Red, rectangle);
-            g.DrawRectangle(Pens.Chartreuse, uiDebug);
-        }
-
-        fullScreen.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"BorderScreenshot {timestamp}.png"));
-
-        //postFilter.Save(ApplicationConstants.AppPath + @"\Debug\DebugBox1 " + timestamp + ".png");
-        preFilter.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"FullPartArea {timestamp}.png"));
-        
-        //scaling was sometimes going to 50 despite being set to 100, so taking the value from above that seems to be accurate.
-        scaling = topFive[4] + 50;
-
-        scaling /= 100;
-        double highScaling = scaling < 1.0 ? scaling + 0.01 : scaling;
-        double lowScaling = scaling  > 0.5 ? scaling - 0.01 : scaling;
-
-        int cropWidth = (int)(pixleRewardWidth * _window.ScreenScaling * highScaling);
-        int cropLeft = (preFilter.Width / 2) - (cropWidth / 2);
-        int cropTop = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) *
-                                         _window.ScreenScaling * highScaling);
-        int cropBot = height / 2 -
-                      (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * lowScaling);
-        int cropHei = cropBot - cropTop;
-        cropTop -= mostTop;
-        try
-        {
-            Rectangle rect = new Rectangle(cropLeft, cropTop, cropWidth, cropHei);
-            partialScreenshot = preFilter.Clone(rect, PixelFormat.DontCare);
-            if (partialScreenshot.Height == 0 || partialScreenshot.Width == 0)
-                throw new ArithmeticException("New image was null");
-        }
-        catch (Exception ex)
-        {
-            Logger.Error(ex, "Something went wrong while trying to copy the right part of the screen into partial screenshot");
-            throw;
-        }
-
-        preFilter.Dispose();
-
-        end = Stopwatch.GetElapsedTime(beginning);
-        Logger.Debug("Finished function. time={End}", end);
-        partialScreenshot.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"PartialScreenshot{timestamp}.png"));
-        return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
-    }
-
-    private static void PartBoxLogTopFive(
-        Span<int> topFive,
-        double[] percWeights,
-        double[] topWeights,
-        double[] midWeights,
-        double[] botWeights)
-    {
-        for (var i = 0; i < topFive.Length; i++)
-        {
-            var top = topFive[i];
-            Logger.Debug("Rank={Rank},Scale={Scale},PercWeight={PercWeight},TopWeight={TopWeight},MidWeight={MidWeight},BotWeight={BotWeight}",
-                5   - i,
-                top + 50,
-                percWeights[top].ToString("F2", Main.Culture),
-                topWeights[top].ToString("F2", Main.Culture),
-                midWeights[top].ToString("F2", Main.Culture),
-                botWeights[top].ToString("F2", Main.Culture)
-            );
-        }
-    }
-
-    private static void PartBoxTopFive(Span<int> topFive, double[] percWeights)
-    {
-        for (var i = 0; i <= 50; i++)
-        {
-            var match = 4;
-            while (match != -1 && topFive[match] != -1 && percWeights[i] > percWeights[topFive[match]])
-                match--;
-
-            if (match == -1)
-                continue;
-            
-            for (var move = 0; move < match; move++)
-                topFive[move] = topFive[move + 1];
-            
-            topFive[match] = i;
-        }
-    }
-
-    private static double PartBoxScaling(
-        Image preFilter,
-        int lineHeight,
-        double[] topWeights,
-        int[] rows,
-        double[] midWeights,
-        double[] botWeights,
-        double[] percWeights,
-        out Rectangle uiDebug)
-    {
         int topLine_100 = preFilter.Height - lineHeight;
         int topLine_50 = lineHeight / 2;
 
-        double scaling = -1;
+        scaling = -1;
         double lowestWeight = 0;
-
-        uiDebug = new Rectangle(
-            x: (topLine_100 - topLine_50) / 50 + topLine_50,
-            y: (int)(preFilter.Height / _window.ScreenScaling),
-            width: preFilter.Width,
-            height: 50
-        );
-        
+        Rectangle uidebug = new Rectangle((topLine_100 - topLine_50) / 50 + topLine_50,
+            (int)(preFilter.Height / _window.ScreenScaling), preFilter.Width, 50);
         for (int i = 0; i <= 50; i++)
         {
             int yFromTop = preFilter.Height - (i * (topLine_100 - topLine_50) / 50 + topLine_50);
@@ -2510,7 +2376,82 @@ internal class OCR
             }
         }
 
-        return scaling;
+        end = Stopwatch.GetElapsedTime(start);
+
+        Logger.Debug("Got scaling " + end);
+
+        int[] topFive = [-1, -1, -1, -1, -1];
+
+        for (int i = 0; i <= 50; i++)
+        {
+            int match = 4;
+            while (match != -1 && topFive[match] != -1 && percWeights[i] > percWeights[topFive[match]])
+                match--;
+
+            if (match != -1)
+            {
+                for (int move = 0; move < match; move++)
+                    topFive[move] = topFive[move + 1];
+                topFive[match] = i;
+            }
+        }
+
+        for (int i = 0; i < 5; i++)
+        {
+            Logger.Debug("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
+                         percWeights[topFive[i]].ToString("F2", Main.Culture) + " -- " +
+                         topWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
+                         midWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
+                         botWeights[topFive[i]].ToString("F2", Main.Culture));
+        }
+
+        using (Graphics g = Graphics.FromImage(fullScreen))
+        {
+            g.DrawRectangle(Pens.Red, rectangle);
+            g.DrawRectangle(Pens.Chartreuse, uidebug);
+        }
+
+        fullScreen.Save(ApplicationConstants.AppPath + @"\Debug\BorderScreenshot " + timestamp + ".png");
+
+
+        //postFilter.Save(ApplicationConstants.AppPath + @"\Debug\DebugBox1 " + timestamp + ".png");
+        preFilter.Save(ApplicationConstants.AppPath + @"\Debug\FullPartArea " + timestamp + ".png");
+        scaling = topFive[4] +
+                  50; //scaling was sometimes going to 50 despite being set to 100, so taking the value from above that seems to be accurate.
+
+        scaling /= 100;
+        double highScaling = scaling < 1.0 ? scaling + 0.01 : scaling;
+        double lowScaling = scaling  > 0.5 ? scaling - 0.01 : scaling;
+
+        int cropWidth = (int)(pixleRewardWidth * _window.ScreenScaling * highScaling);
+        int cropLeft = (preFilter.Width / 2) - (cropWidth / 2);
+        int cropTop = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) *
+                                         _window.ScreenScaling * highScaling);
+        int cropBot = height / 2 -
+                      (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * lowScaling);
+        int cropHei = cropBot - cropTop;
+        cropTop -= mostTop;
+        try
+        {
+            Rectangle rect = new Rectangle(cropLeft, cropTop, cropWidth, cropHei);
+            partialScreenshot = preFilter.Clone(rect, PixelFormat.DontCare);
+            if (partialScreenshot.Height == 0 || partialScreenshot.Width == 0)
+                throw new ArithmeticException("New image was null");
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug(
+                "Something went wrong while trying to copy the right part of the screen into partial screenshot: " +
+                ex.ToString());
+            throw;
+        }
+
+        preFilter.Dispose();
+
+        end = Stopwatch.GetElapsedTime(beginning);
+        Logger.Debug("Finished function "   + end);
+        partialScreenshot.Save(ApplicationConstants.AppPath + @"\Debug\PartialScreenshot" + timestamp + ".png");
+        return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
     }
 
     private static IEnumerable<Bitmap> FilterAndSeparatePartsFromPartBox(Bitmap partBox, WFtheme active)
@@ -2601,7 +2542,7 @@ internal class OCR
             Bitmap newBox = new Bitmap(boxWidth, boxHeight);
             using (Graphics grD = Graphics.FromImage(newBox))
                 grD.DrawImage(filtered, destRegion, srcRegion, GraphicsUnit.Pixel);
-            newBox.Save(Path.Combine(ApplicationConstants.AppPath, "Debug", $"PartBox({i}) {timestamp}.png"));
+            newBox.Save(ApplicationConstants.AppPath + @"\Debug\PartBox(" + i + ") " + timestamp + ".png");
             yield return newBox;
         }
 
@@ -2705,7 +2646,7 @@ internal class OCR
             }
         }
 
-        arr2D.Sort(new Arr2D_Compare());
+        arr2D.Sort(_arr2D_Compare);
 
         List<string> ret = [];
         // time to group text together
@@ -2755,11 +2696,13 @@ internal class OCR
         return ret.Where(s => !string.IsNullOrEmpty(s)).ToList();
     }
 
-    private class Arr2D_Compare : IComparer<List<int>>
+    private static readonly Arr2D_Compare _arr2D_Compare = new();
+    
+    private sealed class Arr2D_Compare : IComparer<List<int>>
     {
-        public int Compare(List<int> x, List<int> y)
+        public int Compare(List<int>? x, List<int>? y)
         {
-            return x[0].CompareTo(y[0]);
+            return x![0].CompareTo(y![0]);
         }
     }
 
@@ -2797,9 +2740,9 @@ internal class OCR
             }
         }
 
-        var image = screenshot.CaptureScreenshot().Result[0];
-        var fileName =
-            $@"{ApplicationConstants.AppPath}\Debug\FullScreenShot {DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture)}.png";
+        var image = screenshot.CaptureScreenshot().GetAwaiter().GetResult()[0];
+        var date = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        var fileName = Path.Combine(ApplicationConstants.AppPath, "Debug", $"FullScreenShot {date}.png");
         image.Save(fileName);
         return image;
     }
@@ -2817,9 +2760,9 @@ internal class OCR
         Main.SnapItOverlayWindow.Focus();
     }
 
-    public static Task updateEngineAsync()
+    public static async Task updateEngineAsync()
     {
-        return _tesseractService.ReloadEngines();
+        _tesseractService.ReloadEngines();
     }
 }
 

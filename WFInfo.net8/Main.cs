@@ -117,7 +117,7 @@ public class Main
             OCR.Init(_sp, _overlays);
 
             StatusUpdate("Updating Databases...", 0);
-            DataBase.Update();
+            await DataBase.Update();
 
             if (_settings.Auto)
                 DataBase.EnableLogCapture();
@@ -152,7 +152,7 @@ public class Main
         if (!await DataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
             return;
 
-        DateTime now = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
         Logger.Debug("Checking if the user has been inactive. Now={Now}, lastActive={LastActive}", now, _latestActive);
 
         if (!_process.IsRunning && LastMarketStatus != "invisible")
@@ -173,46 +173,49 @@ public class Main
                 StatusUpdate("WFM status set offline, Warframe was closed", 0);
             }).ConfigureAwait(false);
         }
-        else if (UserAway && _latestActive > now)
+        else switch (UserAway)
         {
-            Logger.Debug("User has returned. Last Status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
-
-            UserAway = false;
-            if (LastMarketStatusB4AFK != "invisible")
+            case true when _latestActive > now:
             {
-                await Task.Run(async () =>
+                Logger.Debug("User has returned. Last Status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
+
+                UserAway = false;
+                if (LastMarketStatusB4AFK != "invisible")
                 {
-                    await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(false);
+                    await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(ConfigureAwaitOptions.None);
                     var user = DataBase.inGameName.IsNullOrEmpty() ? "user" : DataBase.inGameName;
                     StatusUpdate($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0);
-                }).ConfigureAwait(false);
-            }
-            else
-                StatusUpdate($"Welcome back user", 0);
-        }
-        else if (!UserAway && _latestActive <= now)
-        {
-            //set users offline if afk for longer than set timer
-            LastMarketStatusB4AFK = LastMarketStatus;
-            Debug.WriteLine($"User is now away - Storing last known user status as: {LastMarketStatusB4AFK}");
+                }
+                else
+                    StatusUpdate($"Welcome back user", 0);
 
-            UserAway = true;
-            if (LastMarketStatus != "invisible")
-            {
-                await Task.Run(async () =>
-                {
-                    await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                    StatusUpdate($"User has been inactive for {TimeTillAfk} minutes", 0);
-                }).ConfigureAwait(false);
+                break;
             }
-        }
-        else
-        {
-            if (UserAway)
+            case false when _latestActive <= now:
+            {
+                //set users offline if afk for longer than set timer
+                LastMarketStatusB4AFK = LastMarketStatus;
+                Debug.WriteLine($"User is now away - Storing last known user status as: {LastMarketStatusB4AFK}");
+
+                UserAway = true;
+                if (LastMarketStatus != "invisible")
+                {
+                    await Task.Run(async () =>
+                    {
+                        await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
+                        StatusUpdate($"User has been inactive for {TimeTillAfk} minutes", 0);
+                    }).ConfigureAwait(ConfigureAwaitOptions.None);
+                }
+
+                break;
+            }
+            case true:
                 Logger.Debug("User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}",
                     LastMarketStatusB4AFK);
-            else
+                break;
+            default:
                 Logger.Debug("User is active - no status change needed");
+                break;
         }
     }
 
@@ -225,12 +228,7 @@ public class Main
     {
         Directory.CreateDirectory(ApplicationConstants.AppPath);
         Directory.CreateDirectory(Path.Combine(ApplicationConstants.AppPath, "debug"));
-        using var sw = File.AppendText($@"{ApplicationConstants.AppPath}\debug.log");
-        sw.WriteLineAsync(
-            "--------------------------------------------------------------------------------------------------------------------------------------------");
-        sw.WriteLineAsync("   STARTING WFINFO " + BuildVersion + " at " + DateTime.UtcNow);
-        sw.WriteLineAsync(
-            "--------------------------------------------------------------------------------------------------------------------------------------------");
+        Logger.Debug("   STARTING WFINFO {BuildVersion} at {DateTime}", BuildVersion, DateTime.UtcNow);
     }
 
     /// <summary>
@@ -318,7 +316,7 @@ public class Main
             StatusUpdate("Starting master it", 0);
             Task.Factory.StartNew(() =>
             {
-                using Bitmap bigScreenshot = OCR.CaptureScreenshot();
+                using var bigScreenshot = OCR.CaptureScreenshot();
                 OCR.ProcessProfileScreen(bigScreenshot);
             });
         }
@@ -366,7 +364,7 @@ public class Main
             Task.Run(() =>
             {
                 var lastClick = System.Windows.Forms.Cursor.Position;
-                int index = OCR.GetSelectedReward(lastClick);
+                var index = OCR.GetSelectedReward(lastClick);
                 Logger.Debug("Reward chosen. index={Index}", index);
                 if (index < 0)
                     return;
@@ -429,7 +427,7 @@ public class Main
     private void LoadScreenshot(ScreenshotType type)
     {
         // Using WinForms for the openFileDialog because it's simpler and much easier
-        using OpenFileDialog openFileDialog = new OpenFileDialog();
+        using var openFileDialog = new OpenFileDialog();
         openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         openFileDialog.Filter = "image files (*.png)|*.png|All files (*.*)|*.*";
         openFileDialog.FilterIndex = 2;
@@ -444,7 +442,7 @@ public class Main
                     try
                     {
                         // TODO: This
-                        foreach (string file in openFileDialog.FileNames)
+                        foreach (var file in openFileDialog.FileNames)
                         {
                             switch (type)
                             {
@@ -453,7 +451,7 @@ public class Main
                                     Logger.Debug("Testing file. name={File}", file);
 
                                     //Get the path of specified file
-                                    Bitmap image = new Bitmap(file);
+                                    var image = new Bitmap(file);
                                     _windowInfo.UseImage(image);
                                     OCR.ProcessRewardScreen(image);
                                     break;
@@ -462,7 +460,7 @@ public class Main
                                 {
                                     Logger.Debug("Testing snapit on file. name={File}", file);
 
-                                    Bitmap image = new Bitmap(file);
+                                    var image = new Bitmap(file);
                                     _windowInfo.UseImage(image);
                                     OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
                                     break;
@@ -471,7 +469,7 @@ public class Main
                                 {
                                     Logger.Debug("Testing masterit on file. name={File}", file);
 
-                                    Bitmap image = new Bitmap(file);
+                                    var image = new Bitmap(file);
                                     _windowInfo.UseImage(image);
                                     OCR.ProcessProfileScreen(image);
                                     break;
@@ -504,8 +502,8 @@ public class Main
 
         // start the AFK timer
         _latestActive = DateTime.UtcNow.AddMinutes(1);
-        TimeSpan startTimeSpan = TimeSpan.Zero;
-        TimeSpan periodTimeSpan = TimeSpan.FromMinutes(1);
+        var startTimeSpan = TimeSpan.Zero;
+        var periodTimeSpan = TimeSpan.FromMinutes(1);
 
         _timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, startTimeSpan, periodTimeSpan);
     }
@@ -530,10 +528,10 @@ public class Main
 
     public static int VersionToInteger(string vers)
     {
-        int ret = 0;
+        var ret = 0;
         string[] versParts = Regex.Replace(vers, "[^0-9.]+", "").Split('.');
         if (versParts.Length == 3)
-            for (int i = 0; i < versParts.Length; i++)
+            for (var i = 0; i < versParts.Length; i++)
             {
                 if (versParts[i].Length == 0)
                     return -1;

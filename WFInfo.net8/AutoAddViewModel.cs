@@ -84,7 +84,7 @@ public class AutoAddSingleItem : INPC
         Increment = new SimpleCommand(() => AddCount(true));
     }
 
-    public void AddCount(bool save)
+    public async Task AddCount(bool save)
     {
         //get item count, increment, save
         bool saveFailed = false;
@@ -116,15 +116,21 @@ public class AutoAddSingleItem : INPC
         {
             //shouldn't need Main.RunOnUIThread since this is already on the UI Thread
             //adjust for time diff between snap-it finishing and save being pressed, in case of long delay
-            Main.SpawnErrorPopup(DateTime.UtcNow);
-            Main.StatusUpdate("Failed to save one or more item, report to dev", 2);
+            Main.RunOnUIThread(() =>
+            {
+                Main.SpawnErrorPopup(DateTime.UtcNow);
+                Main.StatusUpdate("Failed to save one or more item, report to dev", 2);
+            });
         }
 
         RemoveFromParent();
         if (save)
         {
             Main.DataBase.SaveAllJSONs();
-            EquipmentWindow.INSTANCE.ReloadItems();
+            Main.RunOnUIThread(() =>
+            {
+                EquipmentWindow.INSTANCE.ReloadItems();
+            });
         }
     }
 
