@@ -6,6 +6,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using Akka.Util;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -39,13 +40,13 @@ internal partial class OCR
     private static readonly Regex RE = WordTrimRegEx();
 
     // Pixel measurements for reward screen @ 1920 x 1080 with 100% scale https://docs.google.com/drawings/d/1Qgs7FU2w1qzezMK-G1u9gMTsQZnDKYTEU36UPakNRJQ/edit
-    public const int pixleRewardWidth = 968;
-    public const int pixleRewardHeight = 235;
-    public const int pixleRewardYDisplay = 316;
-    public const int pixelRewardLineHeight = 48;
+    private const int pixleRewardWidth = 968;
+    private const int pixleRewardHeight = 235;
+    private const int pixleRewardYDisplay = 316;
+    private const int pixelRewardLineHeight = 48;
 
-    public const int SCALING_LIMIT = 100;
-    public static bool processingActive;
+    private const int SCALING_LIMIT = 100;
+    public static AtomicBoolean processingActive;
 
     private static Bitmap bigScreenshot;
     private static Bitmap? partialScreenshot;
@@ -81,7 +82,7 @@ internal partial class OCR
         var settings = sp.GetRequiredService<ApplicationSettings>();
         var window = sp.GetRequiredService<IWindowInfoService>();
         var themeDetector = sp.GetRequiredService<IThemeDetector>();
-        var snapZoneDivider = sp.GetRequiredService<SnapZoneDivider>();
+        var snapZoneDivider = sp.GetRequiredService<ISnapZoneDivider>();
         var hdrDetector = sp.GetRequiredService<IHDRDetectorService>();
         var gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
         var windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
@@ -108,7 +109,7 @@ internal partial class OCR
         ISoundPlayer soundPlayer,
         ApplicationSettings settings,
         IThemeDetector themeDetector,
-        SnapZoneDivider snapZoneDivider,
+        ISnapZoneDivider snapZoneDivider,
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
         Overlay[] overlays,
@@ -147,7 +148,7 @@ internal partial class OCR
 
         var primeRewards = new List<string>();
 
-        processingActive = true;
+        processingActive.GetAndSet(true);
         Main.StatusUpdate("Processing...", 0);
         Logger.Debug(
             "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
@@ -161,11 +162,11 @@ internal partial class OCR
         bigScreenshot = file ?? CaptureScreenshot();
         try
         {
-            parts.AddRange(ExtractPartBoxAutomatically(out uiScaling, out _, bigScreenshot));
+            parts.AddRange(ExtractPartBoxAutomatically(out uiScaling, out var _, bigScreenshot));
         }
         catch (Exception e)
         {
-            processingActive = false;
+            processingActive.GetAndSet(false);
             Debug.WriteLine(e);
             return;
         }
@@ -189,7 +190,7 @@ internal partial class OCR
                       .ToArray();
         if (firstChecks == null || firstChecks.Length == 0 || CheckIfError())
         {
-            processingActive = false;
+            processingActive.GetAndSet(false);
             var end = Stopwatch.GetElapsedTime(start);
             Logger.Debug(
                 "----  Partial Processing Time, couldn't find rewards {Time}  ------------------------------------------------------------------------------------------"[..108],
@@ -384,7 +385,7 @@ internal partial class OCR
             partialScreenshot = null;
         }
 
-        processingActive = false;
+        processingActive.GetAndSet(false);
     }
 
     #region clipboard
@@ -2227,7 +2228,7 @@ internal partial class OCR
                     "Unable to detect reward from selection screen\nScanning inventory? Hold down snap-it modifier",
                     1);
             });
-            processingActive = false;
+            processingActive.GetAndSet(false);
             throw new Exception("Unable to find any parts");
         }
 
@@ -2263,13 +2264,15 @@ internal partial class OCR
 
     private static string GetTextFromImage(Bitmap image, TesseractEngine engine)
     {
-        string ret = string.Empty;
-        using (Page page = engine.Process(image))
+        var ret = string.Empty;
+        using (var page = engine.Process(image))
         {
-            var text = page.GetText();
-            var s = text.AsSpan().Trim();
-            ret = s.ToString();
+            ret = page.GetText();
         }
+
+        var s = ret.AsSpan().Trim();
+        if (s.Length != ret.Length)
+            ret = s.ToString();
 
         return RE.Replace(ret, string.Empty).Trim();
     }

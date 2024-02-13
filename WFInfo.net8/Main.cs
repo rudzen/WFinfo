@@ -488,7 +488,7 @@ public class Main
             StatusUpdate("Failed to load image", 1);
             if (type == ScreenshotType.NORMAL)
             {
-                OCR.processingActive = false;
+                OCR.processingActive.GetAndSet(false);
             }
         }
     }
