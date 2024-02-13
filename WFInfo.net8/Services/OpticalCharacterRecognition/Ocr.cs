@@ -19,7 +19,6 @@ using Clipboard = System.Windows.Forms.Clipboard;
 using Color = System.Drawing.Color;
 using Pen = System.Drawing.Pen;
 using Point = System.Drawing.Point;
-using Rect = Tesseract.Rect;
 
 namespace WFInfo.Services.OpticalCharacterRecognition;
 
@@ -68,6 +67,7 @@ internal partial class OCR
     private static IWindowInfoService _window;
     private static IHDRDetectorService _hdrDetector;
     private static IThemeDetector ThemeDetector;
+    private static ISnapZoneDivider SnapZoneDivider;
 
     private static Overlay[] _overlays;
 
@@ -81,6 +81,7 @@ internal partial class OCR
         var settings = sp.GetRequiredService<ApplicationSettings>();
         var window = sp.GetRequiredService<IWindowInfoService>();
         var themeDetector = sp.GetRequiredService<IThemeDetector>();
+        var snapZoneDivider = sp.GetRequiredService<SnapZoneDivider>();
         var hdrDetector = sp.GetRequiredService<IHDRDetectorService>();
         var gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
         var windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
@@ -90,6 +91,7 @@ internal partial class OCR
             settings: settings,
             window: window,
             themeDetector: themeDetector,
+            snapZoneDivider: snapZoneDivider,
             hdrDetector: hdrDetector,
             overlays: overlays,
             gdiScreenshot: gdiScreenshot,
@@ -106,6 +108,7 @@ internal partial class OCR
         ISoundPlayer soundPlayer,
         ApplicationSettings settings,
         IThemeDetector themeDetector,
+        SnapZoneDivider snapZoneDivider,
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
         Overlay[] overlays,
@@ -118,6 +121,7 @@ internal partial class OCR
         _soundPlayer = soundPlayer;
         _settings = settings;
         ThemeDetector = themeDetector;
+        SnapZoneDivider = snapZoneDivider;
         _window = window;
         _hdrDetector = hdrDetector;
         _overlays = overlays;
@@ -725,140 +729,6 @@ internal partial class OCR
         }
     }
 
-    private static List<(Bitmap, Rectangle)> DivideSnapZones(
-        Bitmap filteredImage,
-        Bitmap filteredImageClean,
-        int[] rowHits,
-        int[] colHits)
-    {
-        Pen brown = new Pen(Brushes.Brown);
-        Pen white = new Pen(Brushes.White);
-
-        //find rows
-        List<Tuple<int, int>> rows = []; //item1 = row top, item2 = row height
-        int i = 0;
-        int rowHeight = 0;
-        while (i < filteredImage.Height)
-        {
-            if ((double)(rowHits[i]) / filteredImage.Width > _settings.SnapRowTextDensity)
-            {
-                int j = 0;
-                while (i + j < filteredImage.Height &&
-                       (double)(rowHits[i + j]) / filteredImage.Width > _settings.SnapRowEmptyDensity)
-                {
-                    j++;
-                }
-
-                if (j > 3) //only add "rows" of reasonable height
-                {
-                    rows.Add(Tuple.Create(i, j));
-                    rowHeight += j;
-                }
-
-                i += j;
-            }
-            else
-            {
-                i++;
-            }
-        }
-
-        rowHeight /= Math.Max(rows.Count, 1);
-
-        //combine adjacent rows into one block of text
-        i = 0;
-
-        using (Graphics g = Graphics.FromImage(filteredImage))
-        {
-            using (Graphics gClean = Graphics.FromImage(filteredImageClean))
-            {
-                while (i + 1 < rows.Count)
-                {
-                    g.DrawLine(brown, 0, rows[i].Item1 + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
-                    gClean.DrawLine(white, 0, rows[i].Item1 + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
-                    if (rows[i].Item1 + rows[i].Item2 + rowHeight > rows[i + 1].Item1)
-                    {
-                        rows[i + 1] = Tuple.Create(rows[i].Item1,
-                            rows[i + 1].Item1 - rows[i].Item1 + rows[i + 1].Item2);
-                        rows.RemoveAt(i);
-                    }
-                    else
-                    {
-                        i++;
-                    }
-                }
-            }
-        }
-
-        //find columns
-        List<(int, int)> cols = []; //item1 = col start, item2 = col width
-
-        int colStart = 0;
-        i = 0;
-        while (i + 1 < filteredImage.Width)
-        {
-            if ((double)(colHits[i]) / filteredImage.Height < _settings.SnapColEmptyDensity)
-            {
-                int j = 0;
-                while (i + j + 1 < filteredImage.Width &&
-                       (double)(colHits[i + j]) / filteredImage.Width < _settings.SnapColEmptyDensity)
-                {
-                    j++;
-                }
-
-                if (j > rowHeight / 2)
-                {
-                    if (i != 0)
-                    {
-                        cols.Add((colStart, i - colStart));
-                    }
-
-                    colStart = i + j + 1;
-                }
-
-                i += j;
-            }
-
-            i += 1;
-        }
-
-        if (i != colStart)
-        {
-            cols.Add((colStart, i - colStart));
-        }
-
-        List<(Bitmap, Rectangle)> zones = [];
-
-        //divide image into text blocks
-        for (i = 0; i < rows.Count; i++)
-        {
-            for (int j = 0; j < cols.Count; j++)
-            {
-                int top = Math.Max(rows[i].Item1 - (rowHeight / 2), 0);
-                int height = Math.Min(rows[i].Item2 + rowHeight, filteredImageClean.Height - top - 1);
-                int left = Math.Max(cols[j].Item1 - (rowHeight / 4), 0);
-                int width = Math.Min(cols[j].Item2 + (rowHeight / 2), filteredImageClean.Width - left - 1);
-                Rectangle cloneRect = new Rectangle(left, top, width, height);
-                var temp = (filteredImageClean.Clone(cloneRect, filteredImageClean.PixelFormat), cloneRect);
-                zones.Add(temp);
-            }
-        }
-
-        using (Graphics g = Graphics.FromImage(filteredImage))
-        {
-            foreach (var (bitMap, rect) in zones)
-            {
-                g.DrawRectangle(brown, rect);
-            }
-
-            g.DrawRectangle(brown, 0, 0, rowHeight / 2, rowHeight);
-        }
-
-        brown.Dispose();
-        white.Dispose();
-        return zones;
-    }
-
     private static List<Tuple<string, Rectangle>> GetTextWithBoundsFromImage(
         TesseractEngine engine, Bitmap image,
         int rectXOffset, int rectYOffset)
@@ -918,23 +788,25 @@ internal partial class OCR
         var greenp = new Pen(green);
         var pinkP = new Pen(Brushes.Pink);
         var font = new Font("Arial", 16);
-        List<(Bitmap, Rectangle)> zones;
+        List<SnapZone> zones;
         int snapThreads;
         if (_settings.SnapMultiThreaded)
         {
-            zones = DivideSnapZones(filteredImage, filteredImageClean, rowHits, colHits);
+            zones = SnapZoneDivider.DivideSnapZones(filteredImage, filteredImageClean, rowHits, colHits);
+            // zones = DivideSnapZones(filteredImage, filteredImageClean, rowHits, colHits);
             snapThreads = 4;
         }
         else
         {
             zones =
             [
-                (filteredImageClean, new Rectangle(0, 0, filteredImageClean.Width, filteredImageClean.Height))
+                new(filteredImageClean, new Rectangle(0, 0, filteredImageClean.Width, filteredImageClean.Height))
             ];
             snapThreads = 1;
         }
 
         Task<List<Tuple<string, Rectangle>>>[] snapTasks = new Task<List<Tuple<string, Rectangle>>>[snapThreads];
+
         for (int i = 0; i < snapThreads; i++)
         {
             int tempI = i;
@@ -945,8 +817,8 @@ internal partial class OCR
                 {
                     //process images
                     List<Tuple<string, Rectangle>> currentResult =
-                        GetTextWithBoundsFromImage(_tesseractService.Engines[tempI], zones[j].Item1, zones[j].Item2.X,
-                            zones[j].Item2.Y);
+                        GetTextWithBoundsFromImage(_tesseractService.Engines[tempI], zones[j].Bitmap, zones[j].Rectangle.X,
+                            zones[j].Rectangle.Y);
                     taskResults.AddRange(currentResult);
                 }
 
