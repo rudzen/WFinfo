@@ -5,12 +5,18 @@ using Serilog;
 
 namespace WFInfo;
 
-public sealed class EncryptedDataService(IDataProtectionProvider provider) : IEncryptedDataService
+public sealed class EncryptedDataService : IEncryptedDataService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<EncryptedDataService>();
     private static readonly string FileName = Path.Combine(ApplicationConstants.AppPath, "jwt_encrypted");
 
-    private readonly IDataProtector _jwtProtector = provider.CreateProtector("WFInfo.JWT.v1");
+    private readonly IDataProtector _jwtProtector;
+
+    public EncryptedDataService(IDataProtectionProvider provider)
+    {
+        _jwtProtector = provider.CreateProtector("WFInfo.JWT.v1");
+        LoadStoredJWT();
+    }
 
     public string? JWT { get; set; }
 

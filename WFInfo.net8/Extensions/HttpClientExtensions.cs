@@ -11,8 +11,7 @@ public static class HttpClientExtensions
         string url,
         string outputFile)
     {
-        var uri = new Uri(url);
-        var response = await httpClient.GetAsync(uri);
+        var response = await httpClient.GetAsync(url);
         var input = await response.Content.ReadAsStreamAsync();
         await using var fileStream = File.OpenWrite(outputFile);
         await input.CopyToAsync(fileStream);

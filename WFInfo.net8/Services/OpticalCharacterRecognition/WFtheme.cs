@@ -1,4 +1,4 @@
-﻿namespace WFInfo.net8.Services.OpticalCharacterRecognition;
+﻿namespace WFInfo.Services.OpticalCharacterRecognition;
 
 public enum WFtheme
 {

@@ -62,6 +62,7 @@ public partial class App : Application
 
                     services.AddSingleton<IHasherService, HasherService>();
                     services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
+                    services.AddSingleton<IThemeDetector, ThemeDetector>();
                     services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
                     services.AddSingleton<IEncryptedDataService, EncryptedDataService>();
                     services.AddSingleton<ISoundPlayer, SoundPlayer>();

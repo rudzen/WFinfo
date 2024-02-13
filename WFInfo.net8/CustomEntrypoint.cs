@@ -51,14 +51,13 @@ public sealed class CustomEntrypoint
 
     private static InitialDialogue? _dialogue;
 
-    public static CancellationTokenSource stopDownloadTask { get; set; }
-    private static readonly string BuildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+    public static CancellationTokenSource stopDownloadTask { get; private set; }
 
     public static async Task Run(AppDomain currentDomain, IServiceProvider sp)
     {
         currentDomain.UnhandledException += MyHandler;
 
-        Logger.Information("Starting WFInfo V{Version}", BuildVersion);
+        Logger.Information("Starting WFInfo V{Version}", ApplicationConstants.BuildVersion);
 
         if (DetectInstance())
             return;
@@ -112,13 +111,22 @@ public sealed class CustomEntrypoint
 
     private static async Task EnsureRequiredFilesExists(IServiceProvider sp)
     {
+        var hasher = sp.GetRequiredService<IHasherService>();
+
         var filesNeeded = 0;
         for (var i = 0; i < ListOfDlls.Length; i++)
         {
-            var dll = ListOfDlls[i];
-            var path = app_data_tesseract_catalog + dll;
+            var path = $"{app_data_tesseract_catalog}{ListOfDlls[i]}";
+
+            if (!File.Exists(path))
+            {
+                filesNeeded++;
+                continue;
+            }
+
             var md5 = ListOfChecksums[i];
-            if (!File.Exists(path) || GetMD5hash(path) != md5)
+
+            if (hasher.GetMD5hash(path) != md5)
                 filesNeeded++;
         }
 
@@ -132,12 +140,15 @@ public sealed class CustomEntrypoint
         try
         {
             HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("WFInfo");
-            await RefreshTesseractDlls(httpClient, stopDownloadTask.Token);
+            await RefreshTesseractDlls(httpClient, hasher, stopDownloadTask.Token);
         }
         catch (Exception ex)
         {
             if (stopDownloadTask.IsCancellationRequested)
-                _dialogue.Dispatcher.Invoke(() => { _dialogue.Close(); });
+                _dialogue.Dispatcher.Invoke(() =>
+                {
+                    _dialogue.Close();
+                });
             else
                 Logger.Error(ex, "Error during initial load");
         }
@@ -161,9 +172,9 @@ public sealed class CustomEntrypoint
         if (Process.GetProcesses().Count(p => p.ProcessName == processName) <= 1)
             return false;
 
-        Logger.Debug("Duplicate process found - start canceled. version={Version}", BuildVersion);
+        Logger.Debug("Duplicate process found - start canceled. version={Version}", ApplicationConstants.BuildVersion);
 
-        var caption = $"WFInfo V{BuildVersion}";
+        var caption = $"WFInfo V{ApplicationConstants.BuildVersion}";
         MessageBox.Show("Another instance of WFInfo is already running, close it and try again", caption);
 
         return true;
@@ -252,15 +263,17 @@ public sealed class CustomEntrypoint
     private static void DownloadProgressCallback(object sender, DownloadProgressChangedEventArgs e)
     {
         // Displays the operation identifier, and the transfer progress.
-        _dialogue?.Dispatcher.Invoke(() => { _dialogue.UpdatePercentage(e.ProgressPercentage); });
+        _dialogue?.Dispatcher.Invoke(() =>
+        {
+            _dialogue.UpdatePercentage(e.ProgressPercentage);
+        });
     }
 
-    private static async Task RefreshTesseractDlls(HttpClient httpClient, CancellationToken token)
+    private static async Task RefreshTesseractDlls(
+        HttpClient httpClient,
+        IHasherService hasherService,
+        CancellationToken token)
     {
-        // using var webClient = CreateNewWebClient();
-        // webClient.DownloadProgressChanged += DownloadProgressCallback;
-        // token.Register(webClient.CancelAsync);
-
         for (var i = 0; i < ListOfDlls.Length; i++)
         {
             if (token.IsCancellationRequested)
@@ -268,7 +281,7 @@ public sealed class CustomEntrypoint
             var dll = ListOfDlls[i];
             var path = app_data_tesseract_catalog + dll;
             var md5 = ListOfChecksums[i];
-            if (!File.Exists(path) || GetMD5hash(path) != md5)
+            if (!File.Exists(path) || hasherService.GetMD5hash(path) != md5)
             {
                 if (File.Exists(path))
                     File.Delete(path);
@@ -319,11 +332,17 @@ public sealed class CustomEntrypoint
                     }
                 }
 
-                _dialogue?.Dispatcher.Invoke(() => { _dialogue.FileComplete(); });
+                _dialogue?.Dispatcher.Invoke(() =>
+                {
+                    _dialogue.FileComplete();
+                });
             }
         }
 
-        _dialogue?.Dispatcher.Invoke(() => { _dialogue.Close(); });
+        _dialogue?.Dispatcher.Invoke(() =>
+        {
+            _dialogue.Close();
+        });
     }
 
     private static Assembly CurrentDomain_AssemblyResolve_Tesseract(object sender, ResolveEventArgs args)

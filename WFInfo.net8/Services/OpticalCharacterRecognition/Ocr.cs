@@ -3,8 +3,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
-using System.Runtime.CompilerServices;
-using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -12,7 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using Tesseract;
-using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.HDRDetection;
 using WFInfo.Services.Screenshot;
 using WFInfo.Services.WindowInfo;
@@ -26,61 +23,21 @@ using Rect = Tesseract.Rect;
 
 namespace WFInfo.Services.OpticalCharacterRecognition;
 
-internal class OCR
+internal partial class OCR
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<OCR>();
 
     #region variabels and sizzle
 
-    // Colors for the top left "profile bar"
-    public static Color[] ThemePrimary =
-    [
-        Color.FromArgb(190, 169, 102), //VITRUVIAN		
-        Color.FromArgb(153, 31, 35),   //STALKER		
-        Color.FromArgb(238, 193, 105), //BARUUK		
-        Color.FromArgb(35, 201, 245),  //CORPUS		
-        Color.FromArgb(57, 105, 192),  //FORTUNA		
-        Color.FromArgb(255, 189, 102), //GRINEER		
-        Color.FromArgb(36, 184, 242),  //LOTUS			
-        Color.FromArgb(140, 38, 92),   //NIDUS			
-        Color.FromArgb(20, 41, 29),    //OROKIN		
-        Color.FromArgb(9, 78, 106),    //TENNO			
-        Color.FromArgb(2, 127, 217),   //HIGH_CONTRAST	
-        Color.FromArgb(255, 255, 255), //LEGACY		
-        Color.FromArgb(158, 159, 167), //EQUINOX		
-        Color.FromArgb(140, 119, 147), //DARK_LOTUS
-        Color.FromArgb(253, 132, 2)
-    ]; //ZEPHER
-
-//highlight colors from selected items
-    public static Color[] ThemeSecondary =
-    [
-        Color.FromArgb(245, 227, 173), //VITRUVIAN		
-        Color.FromArgb(255, 61, 51),   //STALKER		
-        Color.FromArgb(236, 211, 162), //BARUUK		
-        Color.FromArgb(111, 229, 253), //CORPUS		
-        Color.FromArgb(255, 115, 230), //FORTUNA		
-        Color.FromArgb(255, 224, 153), //GRINEER		
-        Color.FromArgb(255, 241, 191), //LOTUS			
-        Color.FromArgb(245, 73, 93),   //NIDUS			
-        Color.FromArgb(178, 125, 5),   //OROKIN		
-        Color.FromArgb(6, 106, 74),    //TENNO			
-        Color.FromArgb(255, 255, 0),   //HIGH_CONTRAST	
-        Color.FromArgb(232, 213, 93),  //LEGACY		
-        Color.FromArgb(232, 227, 227), //EQUINOX		
-        Color.FromArgb(189, 169, 237), //DARK_LOTUS	
-        Color.FromArgb(255, 53, 0)
-    ]; //ZEPHER	
-
     private static int numberOfRewardsDisplayed;
 
-    private const NumberStyles styles = NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands |
+    private const NumberStyles Styles = NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands |
                                         NumberStyles.AllowExponent;
 
     // UI - Scaling used in Warframe
-    public static double uiScaling;
+    private static double uiScaling;
 
-    public static Regex RE = new Regex("[^a-z가-힣]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex RE = WordTrimRegEx();
 
     // Pixel measurements for reward screen @ 1920 x 1080 with 100% scale https://docs.google.com/drawings/d/1Qgs7FU2w1qzezMK-G1u9gMTsQZnDKYTEU36UPakNRJQ/edit
     public const int pixleRewardWidth = 968;
@@ -110,6 +67,7 @@ internal class OCR
     private static ApplicationSettings _settings;
     private static IWindowInfoService _window;
     private static IHDRDetectorService _hdrDetector;
+    private static IThemeDetector ThemeDetector;
 
     private static Overlay[] _overlays;
 
@@ -122,6 +80,7 @@ internal class OCR
         var soundPlayer = sp.GetRequiredService<ISoundPlayer>();
         var settings = sp.GetRequiredService<ApplicationSettings>();
         var window = sp.GetRequiredService<IWindowInfoService>();
+        var themeDetector = sp.GetRequiredService<IThemeDetector>();
         var hdrDetector = sp.GetRequiredService<IHDRDetectorService>();
         var gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
         var windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
@@ -130,6 +89,7 @@ internal class OCR
             soundPlayer: soundPlayer,
             settings: settings,
             window: window,
+            themeDetector: themeDetector,
             hdrDetector: hdrDetector,
             overlays: overlays,
             gdiScreenshot: gdiScreenshot,
@@ -145,6 +105,7 @@ internal class OCR
         ITesseractService tesseractService,
         ISoundPlayer soundPlayer,
         ApplicationSettings settings,
+        IThemeDetector themeDetector,
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
         Overlay[] overlays,
@@ -156,6 +117,7 @@ internal class OCR
         _tesseractService.Init();
         _soundPlayer = soundPlayer;
         _settings = settings;
+        ThemeDetector = themeDetector;
         _window = window;
         _hdrDetector = hdrDetector;
         _overlays = overlays;
@@ -188,9 +150,7 @@ internal class OCR
 
         DateTime time = DateTime.UtcNow;
         timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
-        var watch = new Stopwatch();
-        watch.Start();
-        long start = watch.ElapsedMilliseconds;
+        long start = Stopwatch.GetTimestamp();
 
         List<Bitmap> parts = new List<Bitmap>();
 
@@ -220,18 +180,23 @@ internal class OCR
         Task.WaitAll(tasks);
 
         // Remove any empty (or suspiciously short) items from the array
-        firstChecks = firstChecks.Where(s => !string.IsNullOrEmpty(s) && s.Replace(" ", string.Empty).Length > 6).ToArray();
+        firstChecks = firstChecks
+                      .Where(s => !string.IsNullOrEmpty(s) && s.Replace(" ", string.Empty).Length > 6)
+                      .ToArray();
         if (firstChecks == null || firstChecks.Length == 0 || CheckIfError())
         {
             processingActive = false;
+            var end = Stopwatch.GetElapsedTime(start);
             Logger.Debug(
-                "----  Partial Processing Time, couldn't find rewards {Time} ms  ------------------------------------------------------------------------------------------"
-                    .Substring(0, 108),
-                (watch.ElapsedMilliseconds - start));
+                "----  Partial Processing Time, couldn't find rewards {Time}  ------------------------------------------------------------------------------------------"[..108],
+                end);
             Main.StatusUpdate("Couldn't find any rewards to display", 2);
             if (firstChecks == null)
             {
-                Main.RunOnUIThread(() => { Main.SpawnErrorPopup(time); });
+                Main.RunOnUIThread(() =>
+                {
+                    Main.SpawnErrorPopup(time);
+                });
             }
         }
 
@@ -250,7 +215,7 @@ internal class OCR
             numberOfRewardsDisplayed = firstChecks.Length;
             clipboard = string.Empty;
             int width = (int)(pixleRewardWidth * _window.ScreenScaling * uiScaling) + 10;
-            int startX = _window.Center.X - width / 2                               + (int)(width * 0.004);
+            int startX = _window.Center.X - width / 2 + (int)(width * 0.004);
 
             if (firstChecks.Length % 2 == 1)
                 startX += width / 8;
@@ -287,7 +252,7 @@ internal class OCR
                     primeSetPlat = (string)primeSet["plat"];
                 }
 
-                double platinum = double.Parse(plat, styles, Main.Culture);
+                double platinum = double.Parse(plat, Styles, Main.Culture);
                 string volume = job["volume"].ToObject<string>();
                 bool vaulted = Main.DataBase.IsPartVaulted(correctName);
                 bool mastered = Main.DataBase.IsPartMastered(correctName);
@@ -316,12 +281,9 @@ internal class OCR
                     bestDucatItem = i;
                 }
 
-                if (duc > 0)
+                if (duc > 0 && !mastered && int.Parse(partsOwned, Main.Culture) < int.Parse(partsCount, Main.Culture))
                 {
-                    if (!mastered && int.Parse(partsOwned, Main.Culture) < int.Parse(partsCount, Main.Culture))
-                    {
-                        unownedItems.Add(i);
-                    }
+                    unownedItems.Add(i);
                 }
 
                 #endregion
@@ -370,10 +332,10 @@ internal class OCR
                 #endregion
             }
 
-            var end = watch.ElapsedMilliseconds;
-            Main.StatusUpdate("Completed processing (" + (end - start) + "ms)", 0);
+            var end = Stopwatch.GetElapsedTime(start);
+            Main.StatusUpdate($"Completed processing ({end})", 0);
 
-            if (Main.ListingHelper.PrimeRewards.Count                                   == 0 ||
+            if (Main.ListingHelper.PrimeRewards.Count == 0 ||
                 Main.ListingHelper.PrimeRewards[^1].Except(primeRewards).ToList().Count != 0)
             {
                 Main.ListingHelper.PrimeRewards.Add(primeRewards);
@@ -393,10 +355,7 @@ internal class OCR
                 });
             }
 
-            Logger.Debug(("----  Total Processing Time " + (end - start) +
-                          " ms  ------------------------------------------------------------------------------------------")
-                .Substring(0, 108));
-            watch.Stop();
+            Logger.Debug(("----  Total Processing Time " + end + " ------------------------------------------------------------------------------------------")[..108]);
         }
 
         #endregion
@@ -471,13 +430,13 @@ internal class OCR
         Debug.WriteLine(lastClick.ToString());
         var primeRewardIndex = 0;
         lastClick.Offset(-_window.Window.X, -_window.Window.Y);
-        var width = _window.Window.Width   * (int)_window.DpiScaling;
+        var width = _window.Window.Width * (int)_window.DpiScaling;
         var height = _window.Window.Height * (int)_window.DpiScaling;
         var mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling * uiScaling);
-        var mostLeft = (width                  / 2) - (mostWidth       / 2);
+        var mostLeft = (width / 2) - (mostWidth / 2);
         var bottom = height / 2 -
                      (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5 * uiScaling);
-        var top = height / 2 - (int)((pixleRewardYDisplay)                      * _window.ScreenScaling * uiScaling);
+        var top = height / 2 - (int)((pixleRewardYDisplay) * _window.ScreenScaling * uiScaling);
         var selectionRectangle = new Rectangle(mostLeft, top, mostWidth, bottom / 2);
         if (numberOfRewardsDisplayed == 3)
         {
@@ -613,135 +572,11 @@ internal class OCR
         return false;
     }
 
-    /// <summary>
-    /// Processes the theme, parse image to detect the theme in the image. Parse null to detect the theme from the screen.
-    /// closeestThresh is used for getting the most "Accurate" result, anything over 100 is sure to be correct.
-    /// </summary>
-    /// <param name="closestThresh"></param>
-    /// <param name="image"></param>
-    /// <returns></returns>
     public static WFtheme GetThemeWeighted(out double closestThresh, Bitmap? image = null)
     {
-        int lineHeight = (int)(pixelRewardLineHeight / 2 * _window.ScreenScaling);
-        // int width = image == null ? window.Width * (int)_window.DpiScaling : image.Width;
-        // int height = image == null ? window.Height * (int)_window.DpiScaling : image.Height;
-        int mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling);
-        // int mostLeft = (width / 2) - (mostWidth / 2);
-        // int mostTop = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) * _window.ScreenScaling);
-        // int mostBot = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5);
-
-        if (image == null)
-        {
-            // using (image = new Bitmap(mostWidth, mostBot - mostTop))
-            //     using (Graphics graphics = Graphics.FromImage(image))
-            //         graphics.CopyFromScreen(window.Left + mostLeft, window.Top + mostTop, 0, 0, new Size(image.Width, image.Height));
-            image = CaptureScreenshot();
-        }
-
-        Span<double> weights = stackalloc double[15];
-        int minWidth = mostWidth / 4;
-
-        if (image == null || image.Height == 0)
-        {
-            throw new Exception("Image height was 0");
-        }
-
-        for (int y = lineHeight; y < image.Height; y++)
-        {
-            double perc = (y                     - lineHeight) / (double)(image.Height - lineHeight);
-            int totWidth = (int)(minWidth * perc + minWidth);
-            for (int x = 0; x < totWidth; x++)
-            {
-                int match = (int)GetClosestTheme(image.GetPixel(x + (mostWidth - totWidth) / 2, y), out int thresh);
-
-                weights[match] += 1 / Math.Pow(thresh + 1, 4);
-            }
-        }
-
-        var simdMax = GetMaxWeight(weights);
-        var simdActive = (WFtheme)weights.IndexOf(simdMax);
-        
-        static double GetMaxWeight(ReadOnlySpan<double> span)
-        {
-            double result;
-            int index;
-
-            if (Vector.IsHardwareAccelerated && span.Length >= Vector<double>.Count * 2)
-            {
-                var maxes = new Vector<double>(span);
-                index = Vector<double>.Count;
-                do
-                {
-                    var right = new Vector<double>(span[index..]);
-                    maxes = Vector.Max(maxes, right);
-                    index += Vector<double>.Count;
-                } while (index + Vector<double>.Count <= span.Length);
-                
-                result = maxes[0];
-                for (var i = 1; i < Vector<double>.Count; i++)
-                {
-                    if (maxes[i] > result)
-                        result = maxes[i];
-                }
-            }
-            else
-            {
-                result = span[0];
-                index = 1;
-            }
-
-            for (var i = index; (uint)i < (uint)span.Length; i++)
-            {
-                if (span[i] > result)
-                    result = span[i];
-            }
-
-            return result;
-        }
-        
-        Logger.Debug("CLOSEST THEME ({Culture}): {Active}", simdMax.ToString("F2", Main.Culture), simdActive);
-        
-        closestThresh = simdMax;
-        if (_settings.ThemeSelection != WFtheme.AUTO)
-        {
-            Logger.Debug("Theme overwrite present, setting to: {ThemeSelection}", _settings.ThemeSelection.ToString());
-            return _settings.ThemeSelection;
-        }
-
-        return simdActive;
-    }
-#pragma warning disable IDE0044 // Add readonly modifier
-    private static short[,,] GetThemeCache = new short[256, 256, 256];
-    private static short[,,] GetThresholdCache = new short[256, 256, 256];
-#pragma warning disable IDE0044 // Add readonly modifier
-
-    private static WFtheme GetClosestTheme(Color clr, out int threshold)
-    {
-        threshold = 999;
-        WFtheme minTheme = WFtheme.CORPUS;
-        if (GetThemeCache[clr.R, clr.G, clr.B] > 0)
-        {
-            threshold = GetThresholdCache[clr.R, clr.G, clr.B];
-            return (WFtheme)(GetThemeCache[clr.R, clr.G, clr.B] - 1);
-        }
-
-        foreach (WFtheme theme in (WFtheme[])Enum.GetValues(typeof(WFtheme)))
-        {
-            if ((int)theme >= 0) //ignore special theme values
-            {
-                Color themeColor = ThemePrimary[(int)theme];
-                int tempThresh = ColorDifference(clr, themeColor);
-                if (tempThresh < threshold)
-                {
-                    threshold = tempThresh;
-                    minTheme = theme;
-                }
-            }
-        }
-
-        GetThemeCache[clr.R, clr.G, clr.B] = (byte)(minTheme + 1);
-        GetThresholdCache[clr.R, clr.G, clr.B] = (byte)threshold;
-        return minTheme;
+        image ??= CaptureScreenshot();
+        var theme = ThemeDetector.GetThemeWeighted(out closestThresh, image);
+        return theme;
     }
 
     /// <summary>
@@ -753,7 +588,7 @@ internal class OCR
     {
         if ((partName.Length < 13 && _settings.Locale == "en") ||
             (partName.Replace(" ", string.Empty).Length < 6 &&
-             _settings.Locale == "ko")) // if part name is smaller than "Bo prime handle" skip current part 
+             _settings.Locale == "ko")) // if part name is smaller than "Bo prime handle" skip current part
             //TODO: Add a min character for other locale here.
             return false;
         return true;
@@ -784,7 +619,7 @@ internal class OCR
         if (!File.Exists(ApplicationConstants.AppPath + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) +
                          ".csv") && _settings.SnapitExport)
             csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
-                   DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)      + Environment.NewLine;
+                   DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) + Environment.NewLine;
         int resultCount = foundParts.Count;
         for (int i = 0; i < foundParts.Count; i++)
         {
@@ -828,7 +663,7 @@ internal class OCR
             if (_settings.SnapitExport)
             {
                 var owned = string.IsNullOrEmpty(partsOwned) ? "0" : partsOwned;
-                csv += name  + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(Main.Culture) + "," +
+                csv += name + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(Main.Culture) + "," +
                        owned + "," + partsDetected + ", \"\"" + Environment.NewLine;
             }
 
@@ -859,7 +694,10 @@ internal class OCR
         }
 
         if (_settings.DoSnapItCount && resultCount > 0)
-            Main.RunOnUIThread(() => { VerifyCount.ShowVerifyCount(foundParts); });
+            Main.RunOnUIThread(() =>
+            {
+                VerifyCount.ShowVerifyCount(foundParts);
+            });
 
         if (Main.SnapItOverlayWindow.tempImage != null)
             Main.SnapItOverlayWindow.tempImage.Dispose();
@@ -867,7 +705,10 @@ internal class OCR
         if (resultCount == 0)
         {
             Main.StatusUpdate("Couldn't find any items to display (took " + (end - start) + "ms) ", 1);
-            Main.RunOnUIThread(() => { Main.SpawnErrorPopup(DateTime.UtcNow); });
+            Main.RunOnUIThread(() =>
+            {
+                Main.SpawnErrorPopup(DateTime.UtcNow);
+            });
         }
         else
         {
@@ -902,7 +743,7 @@ internal class OCR
             if ((double)(rowHits[i]) / filteredImage.Width > _settings.SnapRowTextDensity)
             {
                 int j = 0;
-                while (i + j                                          < filteredImage.Height &&
+                while (i + j < filteredImage.Height &&
                        (double)(rowHits[i + j]) / filteredImage.Width > _settings.SnapRowEmptyDensity)
                 {
                     j++;
@@ -933,7 +774,7 @@ internal class OCR
             {
                 while (i + 1 < rows.Count)
                 {
-                    g.DrawLine(brown, 0, rows[i].Item1      + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
+                    g.DrawLine(brown, 0, rows[i].Item1 + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
                     gClean.DrawLine(white, 0, rows[i].Item1 + rows[i].Item2, 10000, rows[i].Item1 + rows[i].Item2);
                     if (rows[i].Item1 + rows[i].Item2 + rowHeight > rows[i + 1].Item1)
                     {
@@ -959,7 +800,7 @@ internal class OCR
             if ((double)(colHits[i]) / filteredImage.Height < _settings.SnapColEmptyDensity)
             {
                 int j = 0;
-                while (i + j + 1                                      < filteredImage.Width &&
+                while (i + j + 1 < filteredImage.Width &&
                        (double)(colHits[i + j]) / filteredImage.Width < _settings.SnapColEmptyDensity)
                 {
                     j++;
@@ -993,10 +834,10 @@ internal class OCR
         {
             for (int j = 0; j < cols.Count; j++)
             {
-                int top = Math.Max(rows[i].Item1    - (rowHeight / 2), 0);
+                int top = Math.Max(rows[i].Item1 - (rowHeight / 2), 0);
                 int height = Math.Min(rows[i].Item2 + rowHeight, filteredImageClean.Height - top - 1);
-                int left = Math.Max(cols[j].Item1   - (rowHeight / 4), 0);
-                int width = Math.Min(cols[j].Item2  + (rowHeight / 2), filteredImageClean.Width - left - 1);
+                int left = Math.Max(cols[j].Item1 - (rowHeight / 4), 0);
+                int width = Math.Min(cols[j].Item2 + (rowHeight / 2), filteredImageClean.Width - left - 1);
                 Rectangle cloneRect = new Rectangle(left, top, width, height);
                 var temp = (filteredImageClean.Clone(cloneRect, filteredImageClean.PixelFormat), cloneRect);
                 zones.Add(temp);
@@ -1018,34 +859,39 @@ internal class OCR
         return zones;
     }
 
-    private static List<Tuple<string, Rectangle>> GetTextWithBoundsFromImage(TesseractEngine engine, Bitmap image,
+    private static List<Tuple<string, Rectangle>> GetTextWithBoundsFromImage(
+        TesseractEngine engine, Bitmap image,
         int rectXOffset, int rectYOffset)
     {
         List<Tuple<string, Rectangle>> data = [];
 
-        using (var page = engine.Process(image, PageSegMode.SparseText))
+        using var page = engine.Process(image, PageSegMode.SparseText);
+        using var iterator = page.GetIterator();
+        iterator.Begin();
+        do
         {
-            using (var iterator = page.GetIterator())
-            {
-                iterator.Begin();
-                do
-                {
-                    string currentWord = iterator.GetText(PageIteratorLevel.TextLine);
-                    iterator.TryGetBoundingBox(PageIteratorLevel.TextLine, out Rect tempbounds);
-                    Rectangle bounds = new Rectangle(tempbounds.X1 + rectXOffset, tempbounds.Y1 + rectYOffset,
-                        tempbounds.Width, tempbounds.Height);
-                    if (currentWord != null)
-                    {
-                        currentWord = RE.Replace(currentWord, string.Empty).Trim();
-                        if (currentWord.Length > 0)
-                        {
-                            //word is valid start comparing to others
-                            data.Add(Tuple.Create(currentWord, bounds));
-                        }
-                    }
-                } while (iterator.Next(PageIteratorLevel.TextLine));
-            }
-        }
+            var currentWord = iterator.GetText(PageIteratorLevel.TextLine);
+
+            if (string.IsNullOrEmpty(currentWord))
+                continue;
+
+            currentWord = RE.Replace(currentWord, string.Empty).Trim();
+
+            if (currentWord.Length == 0)
+                continue;
+
+            iterator.TryGetBoundingBox(PageIteratorLevel.TextLine, out var boxBounds);
+
+            var bounds = new Rectangle(
+                boxBounds.X1 + rectXOffset,
+                boxBounds.Y1 + rectYOffset,
+                boxBounds.Width,
+                boxBounds.Height
+            );
+
+            //word is valid start comparing to others
+            data.Add(Tuple.Create(currentWord, bounds));
+        } while (iterator.Next(PageIteratorLevel.TextLine));
 
         return data;
     }
@@ -1054,7 +900,8 @@ internal class OCR
     /// Filters out any group of words and addes them all into a single InventoryItem, containing the found words as well as the bounds within they reside.
     /// </summary>
     /// <returns>List of found items</returns>
-    private static List<InventoryItem> FindAllParts(Bitmap filteredImage, Bitmap unfilteredImage, int[] rowHits,
+    private static List<InventoryItem> FindAllParts(
+        Bitmap filteredImage, Bitmap unfilteredImage, int[] rowHits,
         int[] colHits)
     {
         Bitmap filteredImageClean = new Bitmap(filteredImage);
@@ -1118,14 +965,14 @@ internal class OCR
                 //word is valid start comparing to others
                 int VerticalPad = bounds.Height / 2;
                 int HorizontalPad = (int)(bounds.Height * _settings.SnapItHorizontalNameMargin);
-                var paddedBounds = new Rectangle(bounds.X - HorizontalPad, bounds.Y          - VerticalPad,
-                    bounds.Width                          + HorizontalPad * 2, bounds.Height + VerticalPad * 2);
+                var paddedBounds = new Rectangle(bounds.X - HorizontalPad, bounds.Y - VerticalPad,
+                    bounds.Width + HorizontalPad * 2, bounds.Height + VerticalPad * 2);
                 //var paddedBounds = new Rectangle(bounds.X - bounds.Height / 3, bounds.Y - bounds.Height / 3, bounds.Width + bounds.Height, bounds.Height + bounds.Height / 2);
 
                 using (Graphics g = Graphics.FromImage(filteredImage))
                 {
                     if (paddedBounds.Height > 50 * _window.ScreenScaling ||
-                        paddedBounds.Width  > 84 * _window.ScreenScaling)
+                        paddedBounds.Width > 84 * _window.ScreenScaling)
                     {
                         //Determine whether or not the box is too large, false positives in OCR can scan items (such as neuroptics, chassis or systems) as a character(s).
                         if (currentWord.Length > 3)
@@ -1196,7 +1043,7 @@ internal class OCR
             itemGroup.Item1.Sort((i1, i2) =>
             {
                 return Math.Abs(i1.Bounding.Top - i2.Bounding.Top) > i1.Bounding.Height / 8
-                    ? i1.Bounding.Top  - i2.Bounding.Top
+                    ? i1.Bounding.Top - i2.Bounding.Top
                     : i1.Bounding.Left - i2.Bounding.Left;
             });
 
@@ -1340,7 +1187,7 @@ internal class OCR
                 {
                     //edges of current area to scan
                     int Left = (j == 0 ? 0 : (columns[j - 1].Right + columns[j].X) / 2);
-                    int Top = (i  == 0 ? 0 : rows[i - 1].Bottom);
+                    int Top = (i == 0 ? 0 : rows[i - 1].Bottom);
                     int Width = Math.Min((int)((columns[j].Right - Left) * widthMultiplier),
                         filteredImage.Size.Width - Left);
                     int Height = Math.Min((rows[i].Bottom - Top) / 3, filteredImage.Size.Height - Top);
@@ -1480,7 +1327,7 @@ internal class OCR
                     yCenterNew /= sumBlack;
 
                     //Search slight bit up and down to get well within the long line of the checkmark
-                    int lowest = yCenterNew  + 1000;
+                    int lowest = yCenterNew + 1000;
                     int highest = yCenterNew - 1000;
                     for (int yOff = -5; yOff < 5; yOff++)
                     {
@@ -1554,7 +1401,7 @@ internal class OCR
                             LockedBitmapBytes[index + 3] == LockedBitmapBytes[index + 3 + 4])
                         {
                             Color color = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                                LockedBitmapBytes[index                          + 1], LockedBitmapBytes[index]);
+                                LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
                             if (!colorHits.TryAdd(color, 1))
                             {
                                 colorHits[color]++;
@@ -1594,7 +1441,7 @@ internal class OCR
                     yCenter += Top;
                     xCenterNew += Left;
                     yCenterNew += Top;
-                    Debug.WriteLine("Old Center" + xCenter    + ", " + yCenter);
+                    Debug.WriteLine("Old Center" + xCenter + ", " + yCenter);
                     Debug.WriteLine("New Center" + xCenterNew + ", " + yCenterNew);
 
                     //search diagonally (toward top-right) from second-pass center until we find the "amount label" colour
@@ -1602,20 +1449,20 @@ internal class OCR
                     y = yCenterNew;
                     index = 4 * (x + y * imgWidth);
                     Color currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                        LockedBitmapBytes[index                              + 1], LockedBitmapBytes[index]);
+                        LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
                     while (x < imgWidth && y > 0 && topColor != currColor)
                     {
                         x++;
                         y--;
                         index = 4 * (x + y * imgWidth);
                         currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                            LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]);
+                            LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
                     }
 
                     //then search for top edge
                     Top = y;
                     while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
+                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
                     {
                         Top--;
                         index = 4 * (x + Top * imgWidth);
@@ -1627,7 +1474,7 @@ internal class OCR
                     //search for left edge
                     Left = x;
                     while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
+                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
                     {
                         Left--;
                         index = 4 * (Left + Top * imgWidth);
@@ -1639,7 +1486,7 @@ internal class OCR
                     //search for height (bottom edge)
                     Height = 0;
                     while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
+                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
                     {
                         Height++;
                         index = 4 * (Left + (Top + Height) * imgWidth);
@@ -1653,7 +1500,7 @@ internal class OCR
                     //search for width
                     Width = 0;
                     while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index                        + 1], LockedBitmapBytes[index]))
+                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
                     {
                         Width++;
                         index = 4 * (Left + Width + Top * imgWidth);
@@ -1737,10 +1584,10 @@ internal class OCR
             var partName = part.Name;
             if (!PartNameValid($"{partName} Blueprint"))
                 continue;
-            
+
             // add blueprint to name to check against prime drop table
             var name = Main.DataBase.GetPartName($"{partName} Blueprint", out var proximity, true, out _);
-            
+
             // also add prime to check if that gives better match. If so, this is a non-prime
             var checkName = Main.DataBase.GetPartName($"{partName} prime Blueprint", out var primeProximity, true, out _);
 
@@ -1767,7 +1614,10 @@ internal class OCR
         }
 
         Main.DataBase.SaveAllJSONs();
-        Main.RunOnUIThread(() => { EquipmentWindow.INSTANCE.ReloadItems(); });
+        Main.RunOnUIThread(() =>
+        {
+            EquipmentWindow.INSTANCE.ReloadItems();
+        });
 
         var end = Stopwatch.GetElapsedTime(start);
         if (end < TimeSpan.FromSeconds(10))
@@ -1791,16 +1641,17 @@ internal class OCR
     /// <returns>if pixel is above threshold for "white"</returns>
     private static bool probeProfilePixel(byte[] byteArr, int width, int x, int y, bool lowSensitivity)
     {
-        int A = byteArr[(x + y * width) * 4 + 3]; //4 bytes for ARGB, in order BGRA in the array
-        int R = byteArr[(x + y * width) * 4 + 2];
-        int G = byteArr[(x + y * width) * 4 + 1];
-        int B = byteArr[(x + y * width) * 4];
+        int a = byteArr[(x + y * width) * 4 + 3]; //4 bytes for ARGB, in order BGRA in the array
+        int r = byteArr[(x + y * width) * 4 + 2];
+        int g = byteArr[(x + y * width) * 4 + 1];
+        int b = byteArr[(x + y * width) * 4];
+
         if (lowSensitivity)
         {
-            return A > 80 && R > 80 && G > 80 && B > 80;
+            return a > 80 && r > 80 && g > 80 && b > 80;
         }
 
-        return A > 240 && R > 200 && G > 200 && B > 200;
+        return a > 240 && r > 200 && g > 200 && b > 200;
     }
 
     /// <summary>
@@ -1868,7 +1719,7 @@ internal class OCR
                         //find where the line ends
                         int rightEdge = leftEdge;
                         while (rightEdge + 2 < imgWidth &&
-                               (probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge    + 1, y, false)
+                               (probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 1, y, false)
                                 || probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 2, y, false)))
                         {
                             rightEdge++;
@@ -1878,8 +1729,8 @@ internal class OCR
                         bool failed = false;
                         foreach (Tuple<int, int, int> skipZone in skipZones)
                         {
-                            if (y < skipZone.Item3 && ((leftEdge  <= skipZone.Item1 && rightEdge >= skipZone.Item1) ||
-                                                       (leftEdge  >= skipZone.Item1 && leftEdge  <= skipZone.Item2) ||
+                            if (y < skipZone.Item3 && ((leftEdge <= skipZone.Item1 && rightEdge >= skipZone.Item1) ||
+                                                       (leftEdge >= skipZone.Item1 && leftEdge <= skipZone.Item2) ||
                                                        (rightEdge >= skipZone.Item1 && rightEdge <= skipZone.Item2)))
                             {
                                 g.DrawLine(darkCyan, leftEdge, y, rightEdge, y);
@@ -1967,7 +1818,7 @@ internal class OCR
                             }
                         }
 
-                        int width = rightEdge   - leftEdge;
+                        int width = rightEdge - leftEdge;
                         int height = bottomEdge - topEdge;
 
                         if (ratioChanges != 4 || width < 2.4 * height || width > 4 * height)
@@ -2007,7 +1858,7 @@ internal class OCR
                                 if (!probeProfilePixel(LockedBitmapBytes, imgWidth, cloneRect.X + i, cloneRect.Y + j,
                                         true))
                                 {
-                                    cloneBitmap.SetPixel(i            + offset, j, Color.Black);
+                                    cloneBitmap.SetPixel(i + offset, j, Color.Black);
                                     ProfileImage.SetPixel(cloneRect.X + i, cloneRect.Y + j, Color.Red);
                                     hitSomething = true;
                                 }
@@ -2066,18 +1917,12 @@ internal class OCR
         return foundItems;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ColorDifference(Color test, Color thresh)
-    {
-        return Math.Abs(test.R - thresh.R) + Math.Abs(test.G - thresh.G) + Math.Abs(test.B - thresh.B);
-    }
-
     private static bool CustomThresholdFilter(Color test)
     {
         if (_settings.CF_usePrimaryHSL)
         {
-            if (_settings.CF_pHueMax    >= test.GetHue()        && test.GetHue()        >= _settings.CF_pHueMin &&
-                _settings.CF_pSatMax    >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_pSatMin &&
+            if (_settings.CF_pHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_pHueMin &&
+                _settings.CF_pSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_pSatMin &&
                 _settings.CF_pBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_pBrightMin)
                 return true;
         }
@@ -2092,8 +1937,8 @@ internal class OCR
 
         if (_settings.CF_useSecondaryHSL)
         {
-            if (_settings.CF_sHueMax    >= test.GetHue()        && test.GetHue()        >= _settings.CF_sHueMin &&
-                _settings.CF_sSatMax    >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_sSatMin &&
+            if (_settings.CF_sHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_sHueMin &&
+                _settings.CF_sSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_sSatMin &&
                 _settings.CF_sBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_sBrightMin)
                 return true;
         }
@@ -2115,70 +1960,70 @@ internal class OCR
         //treat unknown as custom, for safety
         if (theme is WFtheme.CUSTOM or WFtheme.UNKNOWN)
             return CustomThresholdFilter(test);
-        Color primary = ThemePrimary[(int)theme];
-        Color secondary = ThemeSecondary[(int)theme];
+        var primary = ThemeDetector.PrimaryThemeColor(theme);
+        var secondary = ThemeDetector.SecondaryThemeColor(theme);
 
         switch (theme)
         {
             case WFtheme.VITRUVIAN: // TO CHECK
                 return Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.25 &&
-                       test.GetBrightness()                       >= 0.42;
+                       test.GetBrightness() >= 0.42;
             case WFtheme.LOTUS:
-                return Math.Abs(test.GetHue()        - primary.GetHue())        < 5 && test.GetSaturation() >= 0.65 &&
+                return Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetSaturation() >= 0.65 &&
                        Math.Abs(test.GetBrightness() - primary.GetBrightness()) <= 0.1
                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetBrightness() >= 0.65);
             case WFtheme.OROKIN: // TO CHECK
                 return (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() <= 0.42 &&
-                        test.GetSaturation()                       >= 0.1)
-                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5     && test.GetBrightness() <= 0.5 &&
-                           test.GetBrightness()                         >= 0.25 && test.GetSaturation() >= 0.25);
+                        test.GetSaturation() >= 0.1)
+                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5 && test.GetBrightness() <= 0.5 &&
+                           test.GetBrightness() >= 0.25 && test.GetSaturation() >= 0.25);
             case WFtheme.STALKER:
-                return ((Math.Abs(test.GetHue()    - primary.GetHue())   < 4 && test.GetSaturation() >= 0.55)
+                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55)
                         || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) &&
                        test.GetBrightness() >= 0.25;
             case WFtheme.CORPUS:
                 return Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.42 &&
-                       test.GetSaturation()                       >= 0.35;
+                       test.GetSaturation() >= 0.35;
             case WFtheme.EQUINOX:
                 return test.GetSaturation() <= 0.2 && test.GetBrightness() >= 0.55;
             case WFtheme.DARK_LOTUS:
                 return (Math.Abs(test.GetHue() - secondary.GetHue()) < 20 && test.GetBrightness() >= 0.35 &&
                         test.GetBrightness() <= 0.55 && test.GetSaturation() <= 0.25 && test.GetSaturation() >= 0.05)
                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.50 &&
-                           test.GetSaturation()                         >= 0.20);
+                           test.GetSaturation() >= 0.20);
             case WFtheme.FORTUNA:
-                return ((Math.Abs(test.GetHue() - primary.GetHue())   < 3 && test.GetBrightness() >= 0.35) ||
+                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.35) ||
                         (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.15)) &&
                        test.GetSaturation() >= 0.20;
             case WFtheme.HIGH_CONTRAST:
-                return (Math.Abs(test.GetHue() - primary.GetHue())   < 3 ||
+                return (Math.Abs(test.GetHue() - primary.GetHue()) < 3 ||
                         Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.75 &&
                        test.GetBrightness() >= 0.35; // || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
-            case WFtheme.LEGACY: // TO CHECK
+            case WFtheme.LEGACY:                     // TO CHECK
                 return (test.GetBrightness() >= 0.65)
                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() >= 0.5 &&
-                           test.GetSaturation()                         >= 0.5);
+                           test.GetSaturation() >= 0.5);
             case WFtheme.NIDUS:
-                return (Math.Abs(test.GetHue()    - (primary.GetHue() + 6)) < 8  && test.GetSaturation() >= 0.30)
-                       || (Math.Abs(test.GetHue() - secondary.GetHue())     < 15 && test.GetSaturation() >= 0.55);
+                return (Math.Abs(test.GetHue() - (primary.GetHue() + 6)) < 8 && test.GetSaturation() >= 0.30)
+                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetSaturation() >= 0.55);
             case WFtheme.TENNO:
-                return (Math.Abs(test.GetHue() - primary.GetHue())   < 3 ||
+                return (Math.Abs(test.GetHue() - primary.GetHue()) < 3 ||
                         Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.38 &&
-                       test.GetBrightness()                                                       <= 0.55;
+                       test.GetBrightness() <= 0.55;
             case WFtheme.BARUUK:
                 return (Math.Abs(test.GetHue() - primary.GetHue()) < 2) && test.GetSaturation() > 0.25 &&
-                       test.GetBrightness()                                                     > 0.5;
+                       test.GetBrightness() > 0.5;
             case WFtheme.GRINEER:
-                return (Math.Abs(test.GetHue()    - primary.GetHue())   < 5 && test.GetBrightness() > 0.5)
+                return (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() > 0.5)
                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() > 0.55);
             case WFtheme.ZEPHYR:
-                return ((Math.Abs(test.GetHue()    - primary.GetHue())   < 4 && test.GetSaturation() >= 0.55)
+                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55)
                         || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) &&
                        test.GetBrightness() >= 0.25;
             default:
                 // This shouldn't be ran
                 //   Only for initial testing
-                return Math.Abs(test.GetHue() - primary.GetHue())   < 2 ||
+                return Math.Abs(test.GetHue() - primary.GetHue()) < 2 ||
                        Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
         }
     }
@@ -2223,7 +2068,7 @@ internal class OCR
                 LockedBitmapBytes[i + 2] = 0;
                 LockedBitmapBytes[i + 3] = 255;
                 //Black
-                int x = (i / PixelSize)     % filtered.Width;
+                int x = (i / PixelSize) % filtered.Width;
                 int y = (i / PixelSize - x) / filtered.Width;
                 rowHits[y]++;
                 colHits[x]++;
@@ -2248,7 +2093,8 @@ internal class OCR
     // we ignore the "tippy top" because it has a lot of variance, so we just look at the "bottom half of the top"
     private static readonly int[] TextSegments = [2, 4, 16, 21];
 
-    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(out double scaling, out WFtheme active,
+    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(
+        out double scaling, out WFtheme active,
         Bitmap fullScreen)
     {
         var start = Stopwatch.GetTimestamp();
@@ -2259,7 +2105,7 @@ internal class OCR
         int width = _window.Window.Width;
         int height = _window.Window.Height;
         int mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling);
-        int mostLeft = (width                  / 2) - (mostWidth / 2);
+        int mostLeft = (width / 2) - (mostWidth / 2);
         // Most Top = pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight
         //                   (316          -        235        +       44)    *    1.1    =    137
         int mostTop = height / 2 -
@@ -2338,8 +2184,8 @@ internal class OCR
             int scale = (50 + i);
             int scaleWidth = preFilter.Width * scale / 100;
 
-            int textTop = (int)(_window.ScreenScaling     * TextSegments[0] * scale / 100);
-            int textTopBot = (int)(_window.ScreenScaling  * TextSegments[1] * scale / 100);
+            int textTop = (int)(_window.ScreenScaling * TextSegments[0] * scale / 100);
+            int textTopBot = (int)(_window.ScreenScaling * TextSegments[1] * scale / 100);
             int textBothBot = (int)(_window.ScreenScaling * TextSegments[2] * scale / 100);
             int textTailBot = (int)(_window.ScreenScaling * TextSegments[3] * scale / 100);
 
@@ -2350,7 +2196,7 @@ internal class OCR
             loc++;
             for (; loc < textBothBot; loc++)
             {
-                if (rows[yFromTop                       + loc] < scaleWidth / 15)
+                if (rows[yFromTop + loc] < scaleWidth / 15)
                     midWeights[i] += (scaleWidth * 0.26 - rows[yFromTop + loc]) * 5;
                 else
                     midWeights[i] += Math.Abs(scaleWidth * 0.24 - rows[yFromTop + loc]);
@@ -2361,9 +2207,9 @@ internal class OCR
                 botWeights[i] += 10 * Math.Abs(scaleWidth * 0.007 - rows[yFromTop + loc]);
 
             topWeights[i] /= textTopBot - textTop + 1;
-            midWeights[i] /= textBothBot          - textTopBot    - 2;
-            botWeights[i] /= textTailBot          - textBothBot   - 1;
-            percWeights[i] = topWeights[i]        + midWeights[i] + botWeights[i];
+            midWeights[i] /= textBothBot - textTopBot - 2;
+            botWeights[i] /= textTailBot - textBothBot - 1;
+            percWeights[i] = topWeights[i] + midWeights[i] + botWeights[i];
 
             if (scaling == -1 || lowestWeight > percWeights[i])
             {
@@ -2417,7 +2263,7 @@ internal class OCR
 
         scaling /= 100;
         double highScaling = scaling < 1.0 ? scaling + 0.01 : scaling;
-        double lowScaling = scaling  > 0.5 ? scaling - 0.01 : scaling;
+        double lowScaling = scaling > 0.5 ? scaling - 0.01 : scaling;
 
         int cropWidth = (int)(pixleRewardWidth * _window.ScreenScaling * highScaling);
         int cropLeft = (preFilter.Width / 2) - (cropWidth / 2);
@@ -2436,16 +2282,14 @@ internal class OCR
         }
         catch (Exception ex)
         {
-            Logger.Debug(
-                "Something went wrong while trying to copy the right part of the screen into partial screenshot: " +
-                ex.ToString());
+            Logger.Error(ex, "Something went wrong while trying to copy the right part of the screen into partial screenshot");
             throw;
         }
 
         preFilter.Dispose();
 
         end = Stopwatch.GetElapsedTime(beginning);
-        Logger.Debug("Finished function "   + end);
+        Logger.Debug("Finished function " + end);
         partialScreenshot.Save(ApplicationConstants.AppPath + @"\Debug\PartialScreenshot" + timestamp + ".png");
         return FilterAndSeparatePartsFromPartBox(partialScreenshot, active);
     }
@@ -2478,7 +2322,7 @@ internal class OCR
 
             count = Math.Min(count, partBox.Height / 3);
             double sinVal = Math.Cos(8 * x * Math.PI / partBox.Width);
-            sinVal = sinVal  * sinVal * sinVal;
+            sinVal = sinVal * sinVal * sinVal;
             weight += sinVal * count;
 
             if (sinVal < 0)
@@ -2515,9 +2359,9 @@ internal class OCR
             throw new Exception("Unable to find any parts");
         }
 
-        double total = totalEven           + totalOdd;
+        double total = totalEven + totalOdd;
         Logger.Debug("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.Culture) + "%");
-        Logger.Debug("ODD DISTRIBUTION: "  + (totalOdd  / total * 100).ToString("F2", Main.Culture) + "%");
+        Logger.Debug("ODD DISTRIBUTION: " + (totalOdd / total * 100).ToString("F2", Main.Culture) + "%");
 
         int boxWidth = partBox.Width / 4;
         int boxHeight = filtered.Height;
@@ -2556,150 +2400,6 @@ internal class OCR
         }
 
         return RE.Replace(ret, string.Empty).Trim();
-    }
-
-    internal static List<string> SeparatePlayers(Bitmap image, TesseractEngine engine)
-    {
-        // Values to determine whether there's an even or odd number of players
-        int wid = image.Width  / 4;
-        int subwid = wid       / 2;
-        int subsubwid = subwid / 4;
-
-        // 3 player values
-        //  left  mid  right
-        int mid = image.Width / 2;
-        int left = mid  - wid;
-        int right = mid + wid;
-
-        // list of centers for each potential set of text
-        //   alternates between even locations and odd locations
-        int[] allLocs = [left - subwid, left, left + subwid, mid, right - subwid, right, right + subwid];
-
-        // Point system to determine if the player count is even or odd
-        //    At the end of the calc, whichever has more wins
-        int oddCount = 0;
-        int evenCount = 0;
-
-        // 2d array - words with bounds (1 dimensional)
-        /*   [
-         *     [start, end, word_ind, word_ind, ...] -- horizontal start and end position of this part and the list of words with it
-         *     ...
-         *   ]
-         */
-        List<List<int>> arr2D = [];
-        List<string> words = [];
-        using (Page page = engine.Process(image))
-        {
-            using (var iter = page.GetIterator())
-            {
-                iter.Begin();
-                do
-                {
-                    iter.TryGetBoundingBox(PageIteratorLevel.Word, out Rect outRect);
-                    string word = iter.GetText(PageIteratorLevel.Word);
-                    if (word != null)
-                    {
-                        word = RE.Replace(word, string.Empty).Trim();
-                        if (word.Length > 0)
-                        {
-                            int topOrBot = outRect.Y1 > (outRect.Height * 3 / 4) ? 0 : 1;
-                            for (int i = 0; i < allLocs.Length; i++)
-                            {
-                                int bot = allLocs[i] - subsubwid;
-                                int top = allLocs[i] + subsubwid;
-                                if (bot <= outRect.X2 && top >= outRect.X1)
-                                {
-                                    if ((i & 1) == 0)
-                                        evenCount++;
-                                    else
-                                        oddCount++;
-                                    break;
-                                }
-                            }
-
-                            List<int> temp =
-                            [
-                                outRect.X1,
-                                outRect.X2,
-                                words.Count,
-                                topOrBot
-                            ];
-                            arr2D.Add(temp);
-                            words.Add(word);
-                        }
-                    }
-
-                    // Giant blob of shit
-                    // Translates to:
-                    //   keep going while there's words left in the line
-                    //           or while there's lines left in the para
-                    //           or while there's paras left in the block
-                    //           or while there's blocks left 
-                } while (iter.Next(PageIteratorLevel.TextLine, PageIteratorLevel.Word) ||
-                         iter.Next(PageIteratorLevel.Para, PageIteratorLevel.TextLine) ||
-                         iter.Next(PageIteratorLevel.Block, PageIteratorLevel.Para)    ||
-                         iter.Next(PageIteratorLevel.Block));
-            }
-        }
-
-        arr2D.Sort(_arr2D_Compare);
-
-        List<string> ret = [];
-        // time to group text together
-        // get left side of part text area
-        //    and width of text area
-        //    group all text within
-        //    go to the next one
-        // position the left correctly based on part boxes
-        left -= oddCount > evenCount ? subwid : wid;
-
-        string currPartTop = string.Empty;
-        string currPartBot = string.Empty;
-
-        int ind = 0;
-        for (; ind < arr2D.Count && arr2D[ind][0] < left; ind++) ;
-
-
-        for (; ind < arr2D.Count; ind++)
-        {
-            if (arr2D[ind][0] >= left + wid)
-            {
-                left += wid;
-                ret.Add((currPartTop.Trim() + " " + currPartBot.Trim()).Trim());
-                currPartTop = string.Empty;
-                currPartBot = string.Empty;
-            }
-
-            if (arr2D[ind][3] == 1)
-                currPartTop += words[arr2D[ind][2]] + " ";
-            else
-                currPartBot += words[arr2D[ind][2]] + " ";
-        }
-
-        ret.Add((currPartTop.Trim() + " " + currPartBot.Trim()).Trim());
-
-
-        Logger.Debug((ret[0].Length == 0 ? ret.Count - 1 : ret.Count) + " Players Found -- Odds (" + oddCount +
-                     ") vs Evens ("                                   + evenCount                  + ")");
-
-        if ((oddCount == 0 && evenCount == 0) || oddCount == evenCount)
-        {
-            //Detected 0 rewards
-            return null;
-        }
-
-        // Remove any empty items from the array
-        return ret.Where(s => !string.IsNullOrEmpty(s)).ToList();
-    }
-
-    private static readonly Arr2D_Compare _arr2D_Compare = new();
-    
-    private sealed class Arr2D_Compare : IComparer<List<int>>
-    {
-        public int Compare(List<int>? x, List<int>? y)
-        {
-            return x![0].CompareTo(y![0]);
-        }
     }
 
     internal static Bitmap CaptureScreenshot()
@@ -2746,9 +2446,9 @@ internal class OCR
     internal static void SnapScreenshot()
     {
         Main.SnapItOverlayWindow.Populate(CaptureScreenshot());
-        Main.SnapItOverlayWindow.Left = _window.Window.Left     / _window.DpiScaling;
-        Main.SnapItOverlayWindow.Top = _window.Window.Top       / _window.DpiScaling;
-        Main.SnapItOverlayWindow.Width = _window.Window.Width   / _window.DpiScaling;
+        Main.SnapItOverlayWindow.Left = _window.Window.Left / _window.DpiScaling;
+        Main.SnapItOverlayWindow.Top = _window.Window.Top / _window.DpiScaling;
+        Main.SnapItOverlayWindow.Width = _window.Window.Width / _window.DpiScaling;
         Main.SnapItOverlayWindow.Height = _window.Window.Height / _window.DpiScaling;
         Main.SnapItOverlayWindow.Topmost = true;
         Main.SnapItOverlayWindow.Focusable = true;
@@ -2760,6 +2460,9 @@ internal class OCR
     {
         _tesseractService.ReloadEngines();
     }
+
+    [GeneratedRegex("[^a-z가-힣]", RegexOptions.IgnoreCase | RegexOptions.Compiled, "da-DK")]
+    private static partial Regex WordTrimRegEx();
 }
 
 public struct InventoryItem(string itemName, Rectangle boundingbox, bool showWarning = false)

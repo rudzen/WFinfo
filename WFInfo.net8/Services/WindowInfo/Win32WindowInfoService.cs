@@ -10,7 +10,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
     : IWindowInfoService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Win32WindowInfoService>();
-    
+
     public double DpiScaling { get; private set; }
 
     public double ScreenScaling
@@ -25,8 +25,8 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
     }
 
     public Rectangle Window { get; private set; }
-    
-    public Point Center => new Point(Window.X + Window.Width / 2, Window.Y + Window.Height / 2);
+
+    public Point Center => new(Window.X + Window.Width / 2, Window.Y + Window.Height / 2);
 
     public Screen? Screen { get; private set; } = Screen.PrimaryScreen;
 
@@ -40,7 +40,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
         }
 
         Screen = Screen.FromHandle(process.HandleRef.Handle);
-        string screenType = Screen.Primary ? "primary" : "secondary";
+        var screenType = Screen.Primary ? "primary" : "secondary";
 
         if (process.GameIsStreamed)
             Logger.Debug("GFN -- Warframe display: {DeviceName}, {ScreenType}", Screen.DeviceName, screenType);
@@ -53,8 +53,8 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
 
     public void UseImage(Bitmap? bitmap)
     {
-        int width = bitmap?.Width   ?? Screen.Bounds.Width;
-        int height = bitmap?.Height ?? Screen.Bounds.Height;
+        var width = bitmap?.Width   ?? Screen.Bounds.Width;
+        var height = bitmap?.Height ?? Screen.Bounds.Height;
 
         Window = new Rectangle(0, 0, width, height);
         DpiScaling = 1;
@@ -67,7 +67,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
 
     private void GetWindowRect()
     {
-        if (!Win32.GetWindowRect(process.HandleRef, out Win32.R osRect))
+        if (!Win32.GetWindowRect(process.HandleRef, out var osRect))
         {
             if (settings.Debug)
             {
@@ -94,13 +94,13 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             // checks if old window size is the right size if not change it
             // get Rectangle out of rect
             Window = new Rectangle(osRect.Left, osRect.Top, osRect.Right - osRect.Left, osRect.Bottom - osRect.Top);
-            
-            // Rectangle is (x, y, width, height) RECT is (x, y, x+width, y+height) 
+
+            // Rectangle is (x, y, width, height) RECT is (x, y, x+width, y+height)
             const int GWL_style = -16;
             const uint WS_BORDER = 0x00800000;
             const uint WS_POPUP = 0x80000000;
 
-            uint styles = Win32.GetWindowLongPtr(process.HandleRef, GWL_style);
+            var styles = Win32.GetWindowLongPtr(process.HandleRef, GWL_style);
             if ((styles & WS_POPUP) != 0)
             {
                 // Borderless, don't do anything
@@ -128,8 +128,8 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
 
     private void GetFullscreenRect()
     {
-        int width = Screen.Bounds.Width;
-        int height = Screen.Bounds.Height;
+        var width = Screen.Bounds.Width;
+        var height = Screen.Bounds.Height;
 
         Window = new Rectangle(0, 0, width, height);
         DpiScaling = 1;
@@ -145,7 +145,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             Win32.GetDpiForMonitor(mon, Win32.DpiType.Effective, out var dpiXEffective, out _);
 
             Logger.Debug("Effective dpi, X: {DpiXEffective} Which is %: {DpiXEffectiveDiv / 96.0}", dpiXEffective, dpiXEffective / 96.0);
-            
+
             // assuming that y and x axis dpi scaling will be uniform. So only need to check one value
             DpiScaling = dpiXEffective / 96.0;
         }

@@ -12,7 +12,6 @@ using Microsoft.Extensions.ObjectPool;
 using Serilog;
 using WebSocketSharp;
 using WFInfo.Extensions;
-using WFInfo.net8.Services.OpticalCharacterRecognition;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
@@ -109,7 +108,7 @@ public sealed class Data
         _stringBuilderPool = stringBuilderPool;
 
         Logger.Debug("Initializing Databases");
-        
+
         marketItemsPath = Path.Combine(ApplicationConstants.AppPath, "market_items.json");
         marketDataPath = Path.Combine(ApplicationConstants.AppPath, "market_data.json");
         equipmentDataPath = Path.Combine(ApplicationConstants.AppPath, "eqmt_data.json");
@@ -783,7 +782,7 @@ public sealed class Data
 
         for (i = 1; i < s.Length; i++)
             d[i, 0] = i * 9;
-        
+
         for (j = 1; j < t.Length; j++)
             d[0, j] = j * 9;
 
@@ -817,7 +816,7 @@ public sealed class Data
                     {
                         if (a[k] == b[k])
                             continue;
-                        
+
                         if (GroupEquals(korean[k], a[k], b[k]))
                             s2 += 1;
                         else
@@ -847,7 +846,7 @@ public sealed class Data
         var t = str2.ToLower(Main.Culture);
         var n = s.Length;
         var m = t.Length;
-        
+
         if (!(n == 0 || m == 0))
         {
             var d = new int[n + 1 + 1 - 1, m + 1 + 1 - 1];
@@ -1433,8 +1432,8 @@ public sealed class Data
     /// <summary>
     /// Sets the status of WFM websocket. Will try to reconnect if it is not already connected.
     /// Accepts the following values:
-    /// offline, set's player status to be hidden on the site.  
-    /// online, set's player status to be online on the site.   
+    /// offline, set's player status to be hidden on the site.
+    /// online, set's player status to be online on the site.
     /// in game, set's player status to be online and ingame on the site
     /// </summary>
     /// <param name="status">

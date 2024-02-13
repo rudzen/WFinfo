@@ -7,7 +7,7 @@
         xmlns:settings="clr-namespace:WFInfo.Settings"
         xmlns:components="clr-namespace:WFInfo.Components"
         xmlns:screenshot="clr-namespace:WFInfo.Services.Screenshot"
-        xmlns:opticalCharacterRecognition="clr-namespace:WFInfo.net8.Services.OpticalCharacterRecognition"
+        xmlns:opticalCharacterRecognition="clr-namespace:WFInfo.Services.OpticalCharacterRecognition"
         mc:Ignorable="d"
         Title="Settings"
         MaxWidth="334"

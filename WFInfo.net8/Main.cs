@@ -55,7 +55,7 @@ public class Main
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
     private DateTime _latestActive;
-    
+
     // ReSharper disable once NotAccessedField.Local
     private System.Threading.Timer _timer;
 
@@ -73,7 +73,7 @@ public class Main
 
     static Main()
     {
-        var version = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        var version = ApplicationConstants.BuildVersion;
         var splitIndex = version.LastIndexOf('.');
         BuildVersion = version[..splitIndex];
     }
@@ -112,7 +112,6 @@ public class Main
     {
         try
         {
-            // Too many dependencies?
             StatusUpdate("Initializing OCR engine...", 0);
             OCR.Init(_sp, _overlays);
 
@@ -121,7 +120,7 @@ public class Main
 
             if (_settings.Auto)
                 DataBase.EnableLogCapture();
-            
+
             var validJwt = await DataBase.IsJWTvalid();
             if (validJwt)
                 LoggedIn();
@@ -304,7 +303,7 @@ public class Main
         }
         else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
         {
-            //Searchit  
+            //Searchit
             Logger.Information("Starting search it");
             StatusUpdate("Starting search it", 0);
             SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
