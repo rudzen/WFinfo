@@ -167,7 +167,7 @@ internal partial class OCR
         catch (Exception e)
         {
             processingActive.GetAndSet(false);
-            Debug.WriteLine(e);
+            Logger.Error(e, "Error while extracting part boxes");
             return;
         }
 
@@ -432,7 +432,7 @@ internal partial class OCR
 
     internal static int GetSelectedReward(Point lastClick)
     {
-        Debug.WriteLine(lastClick.ToString());
+        Logger.Debug("Last click: {LastClick}", lastClick.ToString());
         var primeRewardIndex = 0;
         lastClick.Offset(-_window.Window.X, -_window.Window.Y);
         var width = _window.Window.Width * (int)_window.DpiScaling;
@@ -483,9 +483,9 @@ internal partial class OCR
         {
             foreach (var pnt in RewardPoints4)
             {
-                var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
-                                           (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
-                Debug.WriteLine($"current point: {pnt}, with distance: {distanceToLastClick}");
+                var distanceToLastClick = (lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
+                                          (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y);
+                Logger.Debug("current point: {Pnt}, with distance: {DistanceToLastClick}", pnt, distanceToLastClick);
 
                 if (distanceToLastClick >= lowestDistance)
                     continue;
@@ -507,9 +507,9 @@ internal partial class OCR
         {
             foreach (var pnt in RewardPoints3)
             {
-                var distanceToLastClick = ((lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
-                                           (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y));
-                Debug.WriteLine($"current point: {pnt}, with distance: {distanceToLastClick}");
+                var distanceToLastClick = (lastClick.X - pnt.X) * (lastClick.X - pnt.X) +
+                                          (lastClick.Y - pnt.Y) * (lastClick.Y - pnt.Y);
+                Logger.Debug("current point: {Pnt}, with distance: {DistanceToLastClick}", pnt, distanceToLastClick);
 
                 if (distanceToLastClick >= lowestDistance) continue;
                 lowestDistance = distanceToLastClick;
@@ -637,7 +637,7 @@ internal partial class OCR
                 continue;
             }
 
-            Debug.WriteLine($"Part  {foundParts.IndexOf(part)} out of {foundParts.Count}");
+            Logger.Debug("Processing part {Part} out of {Count}", i, foundParts.Count);
             string name = Main.DataBase.GetPartName(part.Name, out int levenDist, false, out bool multipleLowest);
             string primeSetName = Data.GetSetName(name);
             if (levenDist > Math.Min(part.Name.Length, name.Length) / 3 || multipleLowest)
@@ -1294,7 +1294,7 @@ internal partial class OCR
                         //Debug.WriteLine("Color: " + key.ToString() + ", Value: " + colorHits[key]);
                     }
 
-                    Debug.WriteLine("Top Color: " + topColor.ToString() + ", Value: " + topColorScore);
+                    Logger.Debug("Top Color: {Color}, Value: {Value}", topColor, topColorScore);
 
                     if (topColor == Color.FromArgb(255, 255, 255, 255))
                         continue; //if most common colour is our default value, ignore and move on
@@ -1314,8 +1314,8 @@ internal partial class OCR
                     yCenter += Top;
                     xCenterNew += Left;
                     yCenterNew += Top;
-                    Debug.WriteLine("Old Center" + xCenter + ", " + yCenter);
-                    Debug.WriteLine("New Center" + xCenterNew + ", " + yCenterNew);
+                    Logger.Debug("Old Center {X}, {Y}", xCenter, yCenter);
+                    Logger.Debug("New Center {X}, {Y}", xCenterNew, yCenterNew);
 
                     //search diagonally (toward top-right) from second-pass center until we find the "amount label" colour
                     x = xCenterNew;
@@ -2331,7 +2331,7 @@ internal partial class OCR
         Main.SnapItOverlayWindow.Focus();
     }
 
-    public static async Task updateEngineAsync()
+    public static async Task UpdateEngineAsync()
     {
         _tesseractService.ReloadEngines();
     }

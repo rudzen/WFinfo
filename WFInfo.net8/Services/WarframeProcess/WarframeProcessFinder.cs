@@ -57,10 +57,9 @@ public sealed class WarframeProcessFinder : IProcessFinder
                 _warframe = process;
 
                 if (Main.DataBase.GetSocketAliveStatus())
-                    Debug.WriteLine("Socket was open in verify warframe");
+                    Logger.Debug("Socket was open in verify warframe");
                 Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("in game"); });
-                Logger.Debug("Found Warframe Process: ID - " + process.Id + ", MainTitle - " + process.MainWindowTitle +
-                            ", Process Name - "             + process.ProcessName);
+                Logger.Debug("Found Warframe Process: ID - {Id}, MainTitle - {Title}, Process Name - {Name}", process.Id, process.MainWindowTitle, process.ProcessName);
 
                 //try and catch any UAC related issues
                 try

@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Serilog;
+using Serilog.Core;
 using WFInfo.Settings;
 
 namespace WFInfo;
@@ -13,6 +15,8 @@ namespace WFInfo;
 /// </summary>
 public partial class Overlay : Window
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<Overlay>();
+
     private static double window_wid = 243.0;
     private static double window_hei = 160.0;
     private static double part_line_hei = 20.0; // TBD
@@ -73,7 +77,7 @@ public partial class Overlay : Window
     private readonly DispatcherTimer hider = new DispatcherTimer();
 
     public static bool rewardsDisplaying;
-    
+
     private readonly ApplicationSettings _settings;
 
     public Overlay(ApplicationSettings applicationSettings)
@@ -131,7 +135,7 @@ public partial class Overlay : Window
 
         if (_settings.HighContrast)
         {
-            Debug.WriteLine("Turning high contrast on");
+            Logger.Debug("Turning high contrast on");
             BackgroundGrid.Background = new SolidColorBrush(Color.FromRgb(0, 0, 0));
         }
         else

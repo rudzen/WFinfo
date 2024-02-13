@@ -1574,7 +1574,7 @@ public sealed class Data
             var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
             var profile = JsonConvert.DeserializeObject<JObject>(data);
             profile["profile"]["check_code"] = "REDACTED"; // remnove the code that can compromise an account.
-            Debug.WriteLine($"JWT check response: {profile["profile"]}");
+            Logger.Debug("JWT check response: {Profile}", profile["profile"]);
             return !(bool)profile["profile"]["anonymous"];
         }
         catch (Exception exception)
@@ -1663,7 +1663,7 @@ public sealed class Data
                 request.Content = new StringContent(msg, System.Text.Encoding.UTF8, "application/json");
                 var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
                 var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
-                Debug.WriteLine($"Body: {body}, Content: {msg}");
+                Logger.Debug("Body: {Body}, Content: {Msg}", body, msg);
             }
             catch (Exception e)
             {

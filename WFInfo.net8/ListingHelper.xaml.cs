@@ -64,7 +64,7 @@ public partial class ListingHelper : Window
     public void SetScreen(int index)
     {
         Logger.Debug("Setting screen index. count={Count},index={Index}", ScreensList.Count, index);
-        
+
         if (ScreensList.Count == 0)
             Hide();
         if (ScreensList.Count < index || 0 > index)
@@ -233,8 +233,7 @@ public partial class ListingHelper : Window
     /// <param name="index">the currently selected prime item</param>
     private void SetListings(int index)
     {
-        Debug.WriteLine(
-            $"There are {ScreensList[PageIndex].Value.PrimeNames.Count} of plat values, Setting index to: {index}");
+        Logger.Debug("There are {Count} of plat values, setting index to: {Index}", ScreensList[PageIndex].Value.PrimeNames.Count, index);
 
         PlatinumTextBox.Text = ScreensList[PageIndex].Value.PlatinumValues[index].ToString(Main.Culture);
 
@@ -393,7 +392,7 @@ public partial class ListingHelper : Window
             var amount = item.Value<short>("quantity");
             var reputation = item["user"].Value<short>("reputation");
             var listing = new MarketListing(platinum, amount, reputation);
-            Debug.WriteLine($"Getting listing for {listing.ToHumanString()}");
+            Logger.Debug("Getting listing for {Listing}", listing.ToHumanString());
             listings.Add(listing);
         }
 
@@ -425,7 +424,7 @@ public partial class ListingHelper : Window
 
 /// <summary>
 /// Class to represent a single "
-/// " of the create listing screen, consisting of up to 4 possible rewards for which are unique plat, quantity and market listings 
+/// " of the create listing screen, consisting of up to 4 possible rewards for which are unique plat, quantity and market listings
 /// </summary>
 public class RewardCollection
 {

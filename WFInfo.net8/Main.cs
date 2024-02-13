@@ -194,7 +194,7 @@ public class Main
             {
                 //set users offline if afk for longer than set timer
                 LastMarketStatusB4AFK = LastMarketStatus;
-                Debug.WriteLine($"User is now away - Storing last known user status as: {LastMarketStatusB4AFK}");
+                Logger.Debug("User is now away - Storing last known user status as {Status}", LastMarketStatusB4AFK);
 
                 UserAway = true;
                 if (LastMarketStatus != "invisible")
@@ -514,7 +514,7 @@ public class Main
 
     public static void UpdateMarketStatus(string msg)
     {
-        Debug.WriteLine($"New market status received: {msg}");
+        Logger.Debug("New market status received: {Msg}", msg);
         if (!UserAway)
         {
             // AFK system only cares about a status that the user set

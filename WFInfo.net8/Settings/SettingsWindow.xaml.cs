@@ -201,7 +201,7 @@ public partial class SettingsWindow : Window
         SettingsViewModel.Locale = selectedLocale;
         Save();
 
-        _ = OCR.updateEngineAsync();
+        _ = OCR.UpdateEngineAsync();
         _ = Task.Run(async () => { await _data.ReloadItems(); });
     }
 
