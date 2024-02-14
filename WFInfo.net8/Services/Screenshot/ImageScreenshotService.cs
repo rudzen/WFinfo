@@ -1,12 +1,12 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
-using MassTransit;
+using Mediator;
 using Serilog;
 using WFInfo.Domain;
 
 namespace WFInfo.Services.Screenshot;
 
-public class ImageScreenshotService(IBus bus) : IScreenshotService
+public class ImageScreenshotService(IMediator mediator) : IScreenshotService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ImageScreenshotService>();
 
@@ -31,12 +31,12 @@ public class ImageScreenshotService(IBus bus) : IScreenshotService
             catch (Exception e)
             {
                 Logger.Error(e, "Failed to load image");
-                await bus.Publish(new UpdateStatus("Failed to load image", 1));
+                await mediator.Publish(new UpdateStatus("Failed to load image", 1));
                 return [];
             }
         }
 
-        await bus.Publish(new UpdateStatus("Failed to select image", 1));
+        await mediator.Publish(new UpdateStatus("Failed to select image", 1));
         return [];
     }
 }

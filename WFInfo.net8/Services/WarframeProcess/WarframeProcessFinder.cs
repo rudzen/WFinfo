@@ -1,13 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
-using MassTransit;
+using Mediator;
 using Serilog;
 using WFInfo.Domain;
 using WFInfo.Settings;
 
 namespace WFInfo.Services.WarframeProcess;
 
-public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublishEndpoint bus) : IProcessFinder
+public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublisher mediator) : IProcessFinder
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<WarframeProcessFinder>();
 
@@ -70,9 +70,7 @@ public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublish
 
                     Logger.Error(e, "Failed to get Warframe process");
 
-                    await bus
-                          .Publish(new UpdateStatus("Restart Warframe without admin privileges", 1))
-                          .ConfigureAwait(ConfigureAwaitOptions.None);
+                    await mediator.Publish(new UpdateStatus("Restart Warframe without admin privileges", 1));
 
                     // Substitute process for debug purposes
                     if (settings.Debug)
@@ -106,9 +104,7 @@ public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublish
                     _warframe = null;
 
                     Logger.Error(e, "Failed to get Warframe process");
-                    await bus
-                          .Publish(new UpdateStatus("Restart Warframe without admin privileges, or WFInfo with admin privileges", 1))
-                          .ConfigureAwait(ConfigureAwaitOptions.None);
+                    await mediator.Publish(new UpdateStatus("Restart Warframe without admin privileges, or WFInfo with admin privileges", 1));
 
                     // Substitute process for debug purposes
                     if (settings.Debug)
@@ -129,8 +125,7 @@ public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublish
         if (!settings.Debug)
         {
             Logger.Debug("Didn't detect Warframe process");
-            await bus.Publish(new UpdateStatus("Unable to Detect Warframe Process", 1))
-                     .ConfigureAwait(ConfigureAwaitOptions.None);
+            await mediator.Publish(new UpdateStatus("Unable to Detect Warframe Process", 1));
         }
         else
         {

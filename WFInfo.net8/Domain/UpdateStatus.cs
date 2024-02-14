@@ -1,3 +1,5 @@
-﻿namespace WFInfo.Domain;
+﻿using Mediator;
 
-public sealed record UpdateStatus(string Message, int Severity);
+namespace WFInfo.Domain;
+
+public sealed record UpdateStatus(string Message, int Severity) : INotification;

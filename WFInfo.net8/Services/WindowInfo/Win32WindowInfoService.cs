@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
-using MassTransit;
+using Mediator;
 using Serilog;
 using WFInfo.Domain;
 using WFInfo.Services.WarframeProcess;
@@ -8,7 +8,7 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services.WindowInfo;
 
-public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings, IBus bus)
+public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings, IMediator bus)
     : IWindowInfoService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Win32WindowInfoService>();
@@ -37,7 +37,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
         if (!process.IsRunning && !settings.Debug)
         {
             Logger.Debug("Failed to find warframe process for window info");
-            await bus.Publish(new UpdateStatus("Failed to find warframe process for window info", 1)).ConfigureAwait(ConfigureAwaitOptions.None);
+            await bus.Publish(new UpdateStatus("Failed to find warframe process for window info", 1));
             return;
         }
 
@@ -80,7 +80,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             else
             {
                 Logger.Debug("Failed to get window bounds");
-                await bus.Publish(new UpdateStatus("Failed to get window bounds", 1)).ConfigureAwait(ConfigureAwaitOptions.None);
+                await bus.Publish(new UpdateStatus("Failed to get window bounds", 1));
                 return;
             }
         }

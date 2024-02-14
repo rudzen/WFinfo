@@ -1,12 +1,8 @@
-﻿namespace WFInfo.Domain;
+﻿using Mediator;
 
-public enum DataUpdateType
-{
-    Drop,
-    Market
-}
+namespace WFInfo.Domain;
 
 public sealed record DataUpdatedAt(
     string Date,
-    DataUpdateType Type
-);
+    DataTypes Type
+) : INotification;

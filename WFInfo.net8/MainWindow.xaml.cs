@@ -5,11 +5,12 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using MassTransit;
+using Mediator;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Extensions;
 using WFInfo.Resources;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
@@ -21,8 +22,8 @@ namespace WFInfo;
 /// </summary>
 public partial class MainWindow
     : Window,
-        IConsumer<DataUpdatedAt>,
-        IConsumer<UpdateStatus>
+        INotificationHandler<DataUpdatedAt>,
+        INotificationHandler<UpdateStatus>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<MainWindow>();
 
@@ -475,25 +476,30 @@ public partial class MainWindow
         Application.Current.Shutdown();
     }
 
-    public Task Consume(ConsumeContext<DataUpdatedAt> context)
+    public ValueTask Handle(DataUpdatedAt dataUpdatedAt, CancellationToken cancellationToken)
     {
         Dispatcher.InvokeAsync(() =>
         {
-            if (context.Message.Type == DataUpdateType.Market)
-                MarketData.Content = context.Message.Date;
+            if (dataUpdatedAt.Type.Contains(DataTypes.MarketData))
+            {
+                DropData.Content = dataUpdatedAt.Date;
+                MarketData.Content = dataUpdatedAt.Date;
+            }
             else
-                DropData.Content = context.Message.Date;
+            {
+                DropData.Content = dataUpdatedAt.Date;
+            }
 
             ReloadDrop.IsEnabled = true;
             ReloadMarket.IsEnabled = true;
         });
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public Task Consume(ConsumeContext<UpdateStatus> context)
+    public ValueTask Handle(UpdateStatus notification, CancellationToken cancellationToken)
     {
-        Dispatcher.InvokeAsync(() => ChangeStatus(context.Message.Message, context.Message.Severity));
-        return Task.CompletedTask;
+        Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus(notification.Message, notification.Severity));
+        return ValueTask.CompletedTask;
     }
 }

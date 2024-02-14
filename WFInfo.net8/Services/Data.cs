@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
-using MassTransit;
+using Mediator;
 using Microsoft.Extensions.ObjectPool;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -116,7 +116,7 @@ public sealed class Data
     private readonly IWindowInfoService _window;
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly ObjectPool<StringBuilder> _stringBuilderPool;
-    private readonly IBus _bus;
+    private readonly IMediator _mediator;
 
     static Data()
     {
@@ -135,14 +135,14 @@ public sealed class Data
         IHttpClientFactory httpClientFactory,
         IEncryptedDataService encryptedDataService,
         ObjectPool<StringBuilder> stringBuilderPool,
-        IBus bus)
+        IMediator mediator)
     {
         _settings = settings;
         _process = process;
         _window = window;
         _encryptedDataService = encryptedDataService;
         _stringBuilderPool = stringBuilderPool;
-        _bus = bus;
+        _mediator = mediator;
 
         Logger.Debug("Initializing Databases");
 
@@ -553,10 +553,10 @@ public sealed class Data
 
         var msg = new DataUpdatedAt(
             Date: MarketData["timestamp"].ToObject<DateTime>().ToString(ApplicationConstants.DateFormat, Main.Culture),
-            Type: DataUpdateType.Market
+            Type: DataTypes.MarketData
         );
 
-        await _bus.Publish(msg).ConfigureAwait(ConfigureAwaitOptions.None);
+        await _mediator.Publish(msg);
 
         saveDatabases = await LoadEqmtData(allFiltered, saveDatabases);
 
@@ -606,9 +606,9 @@ public sealed class Data
             var date = marketData["timestamp"]
                        .ToObject<DateTime>()
                        .ToString(ApplicationConstants.DateFormat, Main.Culture);
-            var msg = new DataUpdatedAt(date, DataUpdateType.Market);
-            await _bus.Publish(msg).ConfigureAwait(ConfigureAwaitOptions.None);
-            await _bus.Publish(new UpdateStatus("Market Update Complete", 0)).ConfigureAwait(ConfigureAwaitOptions.None);
+            var msg = new DataUpdatedAt(date, DataTypes.MarketData);
+            await _mediator.Publish(msg);
+            await _mediator.Publish(new UpdateStatus("Market Update Complete", 0));
         }
         catch (Exception ex)
         {
@@ -663,11 +663,11 @@ public sealed class Data
 
             var msg = new DataUpdatedAt(
                 Date: EquipmentData["timestamp"].ToObject<DateTime>().ToString(ApplicationConstants.DateFormat, Main.Culture),
-                Type: DataUpdateType.Drop
+                Type: DataTypes.MarketItems
             );
 
-            await _bus.Publish(msg).ConfigureAwait(ConfigureAwaitOptions.None);
-            await _bus.Publish(new UpdateStatus("Prime Update Complete", 0)).ConfigureAwait(ConfigureAwaitOptions.None);
+            await _mediator.Publish(msg);
+            await _mediator.Publish(new UpdateStatus("Prime Update Complete", 0));
         }
         catch (Exception ex)
         {

@@ -16,7 +16,7 @@ public partial class SettingsWindow : Window
     private bool IsActivationFocused => Activation_key_box.IsFocused;
 
     private readonly Data _data;
-    
+
     public SettingsWindow(SettingsViewModel settingsViewModel, Data data)
     {
         InitializeComponent();
@@ -120,7 +120,7 @@ public partial class SettingsWindow : Window
                           "If you opt-in, we will be using a windows method to receive this info quicker, but it is the same info being written to EE.log, which you can check before agreeing." +
                           Environment.NewLine +
                           "If you want more information or have questions, please contact us on Discord.";
-            MessageBoxResult messageBoxResult =
+            var messageBoxResult =
                 MessageBox.Show(message, "Automation Mode Opt-In", MessageBoxButton.YesNo);
             if (messageBoxResult == MessageBoxResult.Yes)
             {
@@ -155,8 +155,8 @@ public partial class SettingsWindow : Window
     {
         if (!IsActivationFocused)
             return;
-        
-        MouseButton key = MouseButton.Left;
+
+        var key = MouseButton.Left;
 
         if (e.MiddleButton == MouseButtonState.Pressed)
             key = MouseButton.Middle;
@@ -167,7 +167,7 @@ public partial class SettingsWindow : Window
 
         if (key == MouseButton.Left)
             return;
-        
+
         e.Handled = true;
         SettingsViewModel.ActivationKey = key.ToString();
         hidden.Focus();
@@ -184,7 +184,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        Key key = e.Key != Key.System ? e.Key : e.SystemKey;
+        var key = e.Key != Key.System ? e.Key : e.SystemKey;
         SettingsViewModel.ActivationKey = key.ToString();
         hidden.Focus();
     }
@@ -196,9 +196,9 @@ public partial class SettingsWindow : Window
 
     private void localeComboboxSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        ComboBoxItem item = (ComboBoxItem)localeCombobox.SelectedItem;
+        var item = (ComboBoxItem)localeCombobox.SelectedItem;
 
-        string selectedLocale = item.Tag.ToString();
+        var selectedLocale = item.Tag.ToString();
         SettingsViewModel.Locale = selectedLocale;
         Save();
 
@@ -226,7 +226,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        Key key = e.Key != Key.System ? e.Key : e.SystemKey;
+        var key = e.Key != Key.System ? e.Key : e.SystemKey;
         SettingsViewModel.SearchItModifierKey = key;
         hidden.Focus();
     }
@@ -241,7 +241,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        Key key = e.Key != Key.System ? e.Key : e.SystemKey;
+        var key = e.Key != Key.System ? e.Key : e.SystemKey;
         SettingsViewModel.SnapitModifierKey = key;
         hidden.Focus();
     }
@@ -257,7 +257,7 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        Key key = e.Key != Key.System ? e.Key : e.SystemKey;
+        var key = e.Key != Key.System ? e.Key : e.SystemKey;
         SettingsViewModel.MasterItModifierKey = key;
         hidden.Focus();
     }
@@ -269,7 +269,7 @@ public partial class SettingsWindow : Window
 
     private void ThemeSelectionComboBox_OnDropDownClosed(object sender, EventArgs e)
     {
-        MessageBoxResult messageBoxResult = MessageBox.Show(
+        var messageBoxResult = MessageBox.Show(
             "This option will not change WFInfo screen style. It will force app to think you have selected this theme in Warframe (and will use its pixel colors for item scanning). Unless you know what you're doing, leave Auto selected.",
             "Change of target theme", System.Windows.MessageBoxButton.OK);
     }

@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using AutoUpdaterDotNET;
 using System.Windows;
 using System.Windows.Forms;
-using MassTransit;
+using Mediator;
 using WebSocketSharp;
 using WFInfo.Settings;
 using WFInfo.Services.WarframeProcess;
@@ -66,7 +66,7 @@ public class Main
     private readonly IWindowInfoService _windowInfo;
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly IRewardSelector _rewardSelector;
-    private readonly IBus _bus;
+    private readonly IMediator _mediator;
 
     private readonly Overlay[] _overlays;
 
@@ -93,7 +93,7 @@ public class Main
         _windowInfo = sp.GetRequiredService<IWindowInfoService>();
         _encryptedDataService = sp.GetRequiredService<IEncryptedDataService>();
         _rewardSelector = sp.GetRequiredService<IRewardSelector>();
-        _bus = sp.GetRequiredService<IBus>();
+        _mediator = sp.GetRequiredService<IMediator>();
 
         DataBase = sp.GetRequiredService<Data>();
         SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
@@ -270,7 +270,7 @@ public class Main
                 }
             }
 
-            await _bus.Publish(new UpdateStatus("Overlays dismissed", 1));
+            await _mediator.Publish(new UpdateStatus("Overlays dismissed", 1));
             return;
         }
 
@@ -279,7 +279,7 @@ public class Main
         {
             //snapit debug
             Logger.Information("Loading screenshot from file for snapit");
-            await _bus.Publish(new UpdateStatus("Offline testing with screenshot for snapit", 0));
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for snapit", 0));
             LoadScreenshot(ScreenshotType.SNAPIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
@@ -287,35 +287,35 @@ public class Main
         {
             //master debug
             Logger.Information("Loading screenshot from file for masterit");
-            await _bus.Publish(new UpdateStatus("Offline testing with screenshot for masterit", 0));
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for masterit", 0));
             LoadScreenshot(ScreenshotType.MASTERIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
         {
             //normal debug
             Logger.Information("Loading screenshot from file");
-            await _bus.Publish(new UpdateStatus("Offline testing with screenshot", 0));
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot", 0));
             LoadScreenshot(ScreenshotType.NORMAL);
         }
         else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
         {
             //snapit
             Logger.Information("Starting snap it");
-            await _bus.Publish(new UpdateStatus("Starting snap it", 0));
+            await _mediator.Publish(new UpdateStatus("Starting snap it", 0));
             OCR.SnapScreenshot();
         }
         else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
         {
             //Searchit
             Logger.Information("Starting search it");
-            await _bus.Publish(new UpdateStatus("Starting search it", 0));
+            await _mediator.Publish(new UpdateStatus("Starting search it", 0));
             SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {
             //masterit
             Logger.Information("Starting master it");
-            await _bus.Publish(new UpdateStatus("Starting master it", 0));
+            await _mediator.Publish(new UpdateStatus("Starting master it", 0));
             using var bigScreenshot = await OCR.CaptureScreenshot();
             OCR.ProcessProfileScreen(bigScreenshot);
         }
@@ -382,7 +382,7 @@ public class Main
         if (SnapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
         {
             SnapItOverlayWindow.CloseOverlay();
-            await _bus.Publish(new UpdateStatus("Closed snapit", 0));
+            await _mediator.Publish(new UpdateStatus("Closed snapit", 0));
             return;
         }
 
@@ -481,13 +481,13 @@ public class Main
                     catch (Exception e)
                     {
                         Logger.Error(e, "Failed to load image");
-                        _bus.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
+                        _mediator.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
                     }
                 });
         }
         else
         {
-            _bus.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
+            _mediator.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
             if (type == ScreenshotType.NORMAL)
             {
                 OCR.processingActive.GetAndSet(false);

@@ -19,9 +19,9 @@ namespace WFInfo.Settings;
 /// </summary>
 public class SettingsViewModel : INPC, INotifyDataErrorInfo
 {
-    private ApplicationSettings _settings;
-    private IProcessFinder _process;
-    private IWindowInfoService _windowInfo;
+    private readonly ApplicationSettings _settings;
+    private readonly IProcessFinder _process;
+    private readonly IWindowInfoService _windowInfo;
 
     public Display Display
     {
@@ -224,7 +224,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
         get => _settings.OverlayXOffsetValue;
         set
         {
-            int width = 2000; // presume bounding
+            var width = 2000; // presume bounding
             if (_process.IsRunning)
             {
                 if (_windowInfo.Window == null || _windowInfo.Window.Width == 0 || _windowInfo.Window.Height == 0)
@@ -236,7 +236,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
             }
 
             _settings.OverlayXOffsetValue = (value <= -1 * width / 2) ? (-1 * width / 2) :
-                (value                             >= width / 2) ? (width / 2) : value; // clamp value to valid bound
+                (value >= width / 2) ? (width / 2) : value; // clamp value to valid bound
             RaisePropertyChanged();
         }
     }
@@ -246,7 +246,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
         get => _settings.OverlayYOffsetValue;
         set
         {
-            int height = 2000; // presume bounding
+            var height = 2000; // presume bounding
             if (_process.IsRunning)
             {
                 if (_windowInfo.Window == null || _windowInfo.Window.Width == 0 || _windowInfo.Window.Height == 0)
@@ -258,7 +258,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
             }
 
             _settings.OverlayYOffsetValue = (value <= -1 * height / 2) ? (-1 * height / 2) :
-                (value                             >= height / 2) ? (height / 2) : value; // clamp value to valid bound
+                (value >= height / 2) ? (height / 2) : value; // clamp value to valid bound
             RaisePropertyChanged();
         }
     }
@@ -790,5 +790,5 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
     public bool HasErrors => _validationErrors.Count > 0;
 
     public IEnumerable GetErrors(string propertyName) =>
-        _validationErrors.TryGetValue(propertyName, out string error) ? new[] { error } : null;
+        _validationErrors.TryGetValue(propertyName, out var error) ? new[] { error } : null;
 }

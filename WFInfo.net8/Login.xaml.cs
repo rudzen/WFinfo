@@ -1,7 +1,9 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using Mediator;
 using Serilog;
+using WFInfo.Domain;
 using WFInfo.Settings;
 
 namespace WFInfo;
@@ -15,20 +17,23 @@ public partial class Login : Window
 
     private readonly SettingsWindow _settingsWindow;
     private readonly IEncryptedDataService _encryptedDataService;
-
-    #region default methods
+    private readonly IMediator _mediator;
 
     public Login(
         SettingsWindow settingsWindow,
-        IEncryptedDataService encryptedDataService)
+        IEncryptedDataService encryptedDataService,
+        IMediator mediator)
     {
         InitializeComponent();
         _settingsWindow = settingsWindow;
         _encryptedDataService = encryptedDataService;
+        _mediator = mediator;
     }
 
+    #region default methods
+
     /// <summary>
-    /// Hides the window 
+    /// Hides the window
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
@@ -63,7 +68,7 @@ public partial class Login : Window
             await Main.DataBase.GetUserLogin(Email.Text, Password.Password);
             Main.INSTANCE.LoggedIn();
             Email.Text = "Email";
-            Password.Password = "";
+            Password.Password = string.Empty;
             Main.DataBase.rememberMe = RememberMe.IsChecked.HasValue && RememberMe.IsChecked.Value;
 
             Hide(); //dispose of window once done
@@ -73,41 +78,47 @@ public partial class Login : Window
             Logger.Error(ex, "Failed to login");
             _encryptedDataService.JWT = null;
             _settingsWindow.Save();
-            string StatusMessage; //StatusMessage = text to display on StatusUpdate() AND the error box under login 
-            byte StatusSeverity;  //StatusSeverity = Severity for StatusUpdate()
+
+            //StatusMessage = text to display on StatusUpdate() AND the error box under login
+            string statusMessage;
+
+            //StatusSeverity = Severity for StatusUpdate()
+            byte statusSeverity;
+
             if (ex.Message.Contains("email"))
             {
                 if (ex.Message.Contains("app.form.invalid"))
                 {
-                    StatusMessage = "Invalid email form";
-                    StatusSeverity = 2;
+                    statusMessage = "Invalid email form";
+                    statusSeverity = 2;
                 }
                 else
                 {
-                    StatusMessage = "Unknown email";
-                    StatusSeverity = 1;
+                    statusMessage = "Unknown email";
+                    statusSeverity = 1;
                 }
             }
             else if (ex.Message.Contains("password"))
             {
-                StatusMessage = "Wrong password";
-                StatusSeverity = 1;
+                statusMessage = "Wrong password";
+                statusSeverity = 1;
             }
+
             else if (ex.Message.Contains("could not understand"))
             {
-                StatusMessage = "Severe issue, server did not understand request";
-                StatusSeverity = 1;
+                statusMessage = "Severe issue, server did not understand request";
+                statusSeverity = 1;
             }
             else
             {
-                StatusMessage = "Too many requests";
-                StatusSeverity = 1; //default to too many requests
+                statusMessage = "Too many requests";
+                statusSeverity = 1; //default to too many requests
             }
 
             Main.SignOut();
-            Main.StatusUpdate(StatusMessage, StatusSeverity); //Changing WFinfo status
+            await _mediator.Publish(new UpdateStatus(statusMessage, statusSeverity));
 
-            switch (StatusSeverity)
+            switch (statusSeverity)
             {
                 // copy/paste from Main.cs (statusChange())
                 case 1: //severe, red text
@@ -121,11 +132,10 @@ public partial class Login : Window
                     break;
             }
 
-            Error.Text = StatusMessage; //Displaying the error under the text fields
+            //Displaying the error under the text fields
+            Error.Text = statusMessage;
             if (Error.Visibility != Visibility.Visible)
-            {
                 Height += 20;
-            }
 
             Error.Visibility = Visibility.Visible;
             return;
@@ -147,7 +157,7 @@ public partial class Login : Window
     private void Email_GotFocus(object sender, RoutedEventArgs e)
     {
         if (Email.Text == "Email")
-            Email.Text = "";
+            Email.Text = string.Empty;
     }
 
     /// <summary>

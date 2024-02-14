@@ -2,13 +2,10 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Text;
-using System.Threading.Channels;
 using System.Windows;
 using Windows.Foundation.Metadata;
 using Windows.Graphics.Capture;
-using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -213,28 +210,34 @@ public partial class App : Application
 
     private static IServiceCollection AddMessageBus(IServiceCollection services)
     {
-        services.AddMassTransit(x =>
+        services.AddMediator(options =>
         {
-            x.SetKebabCaseEndpointNameFormatter();
-
-
-
-            // By default, sagas are in-memory, but should be changed to a durable
-            // saga repository.
-            x.SetInMemorySagaRepositoryProvider();
-
-            var entryAssembly = Assembly.GetEntryAssembly();
-
-            x.AddConsumers(entryAssembly);
-            x.AddSagaStateMachines(entryAssembly);
-            x.AddSagas(entryAssembly);
-            x.AddActivities(entryAssembly);
-
-            x.UsingInMemory((context, cfg) =>
-            {
-                cfg.ConfigureEndpoints(context);
-            });
+            options.Namespace = "WFInfo";
+            options.ServiceLifetime = ServiceLifetime.Singleton;
         });
+
+        // services.AddMassTransit(x =>
+        // {
+        //     x.SetKebabCaseEndpointNameFormatter();
+        //
+        //
+        //
+        //     // By default, sagas are in-memory, but should be changed to a durable
+        //     // saga repository.
+        //     x.SetInMemorySagaRepositoryProvider();
+        //
+        //     var entryAssembly = Assembly.GetEntryAssembly();
+        //
+        //     x.AddConsumers(entryAssembly);
+        //     x.AddSagaStateMachines(entryAssembly);
+        //     x.AddSagas(entryAssembly);
+        //     x.AddActivities(entryAssembly);
+        //
+        //     x.UsingInMemory((context, cfg) =>
+        //     {
+        //         cfg.ConfigureEndpoints(context);
+        //     });
+        // });
 
 //         return services.AddMassTransit(x =>
 //         {
