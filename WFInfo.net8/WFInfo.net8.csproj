@@ -161,4 +161,13 @@
       <ProjectReference Include="..\WFInfo.Models\WFInfo.Models.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Update="EquipmentWindow.cs">
+        <DependentUpon>EquipmentWindow.xaml</DependentUpon>
+      </Compile>
+      <Compile Update="RelicsWindow.cs">
+        <DependentUpon>RelicsWindow.xaml</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
 </Project>
