@@ -23,7 +23,8 @@ namespace WFInfo;
 public partial class MainWindow
     : Window,
         INotificationHandler<DataUpdatedAt>,
-        INotificationHandler<UpdateStatus>
+        INotificationHandler<UpdateStatus>,
+        INotificationHandler<LoggedIn>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<MainWindow>();
 
@@ -448,7 +449,7 @@ public partial class MainWindow
 
         Logger.Debug("Starting search it");
         Dispatcher.InvokeAsync(() => ChangeStatus("Starting search it", 0));
-        Main.SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
+        Main.SearchIt.Start(() => _encryptedDataService.IsJwtLoggedIn());
     }
 
     private void OpenAppDataFolder(object sender, MouseButtonEventArgs e)
@@ -497,9 +498,18 @@ public partial class MainWindow
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask Handle(UpdateStatus notification, CancellationToken cancellationToken)
+    public ValueTask Handle(UpdateStatus updateStatus, CancellationToken cancellationToken)
     {
-        Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus(notification.Message, notification.Severity));
+        Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus(updateStatus.Message, updateStatus.Severity));
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(LoggedIn loggedIn, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(loggedIn.Email))
+            Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus("User logged in to warframe.market", 0));
+        else
+            Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus($"User [{loggedIn.Email}] logged in to warframe.market", 0));
         return ValueTask.CompletedTask;
     }
 }

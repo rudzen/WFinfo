@@ -13,9 +13,7 @@ namespace WFInfo;
 public partial class ErrorDialogue : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ErrorDialogue>();
-
-    private static readonly string startPath = Path.Combine(ApplicationConstants.AppPath, "Debug");
-    private static readonly string zipPath = Path.Combine(ApplicationConstants.AppPath, "generatedZip");
+    private static readonly string ZipPath = Path.Combine(ApplicationConstants.AppPath, "generatedZip");
 
     private int distance;
     private DateTime closest;
@@ -32,26 +30,26 @@ public partial class ErrorDialogue : Window
 
     private void YesClick(object sender, RoutedEventArgs e)
     {
-        Directory.CreateDirectory(zipPath);
+        Directory.CreateDirectory(ZipPath);
 
-        var files = new DirectoryInfo(startPath)
+        var files = new DirectoryInfo(ApplicationConstants.AppPathDebug)
                     .GetFiles()
                     .Where(f => f.CreationTimeUtc > closest.AddSeconds(-1 * distance))
                     .Where(f => f.CreationTimeUtc < closest.AddSeconds(distance));
 
-        var staticFiles = new string[]
+        var staticFiles = new[]
         {
-            Path.Combine(startPath, "..", "eqmt_data.json"),
-            Path.Combine(startPath, "..", "market_data.json"),
-            Path.Combine(startPath, "..", "market_items.json"),
-            Path.Combine(startPath, "..", "name_data.json"),
-            Path.Combine(startPath, "..", "relic_data.json"),
-            Path.Combine(startPath, "..", "settings.json"),
-            Path.Combine(startPath, "..", "debug.json"),
+            Path.Combine(ApplicationConstants.AppPathDebug, "..", "eqmt_data.json"),
+            Path.Combine(ApplicationConstants.AppPathDebug, "..", "market_data.json"),
+            Path.Combine(ApplicationConstants.AppPathDebug, "..", "market_items.json"),
+            Path.Combine(ApplicationConstants.AppPathDebug, "..", "name_data.json"),
+            Path.Combine(ApplicationConstants.AppPathDebug, "..", "relic_data.json"),
+            Path.Combine(ApplicationConstants.AppPathDebug, "..", "settings.json"),
+            Path.Combine(ApplicationConstants.AppPathDebug, "..", "debug.json"),
         };
 
         var time = closest.ToString("yyyy-MM-dd_HH-mm-ssff");
-        var fullZipPath = Path.Combine(zipPath, $"WFInfoError_{time}");
+        var fullZipPath = Path.Combine(ZipPath, $"WFInfoError_{time}");
         try
         {
             using ZipFile zip = new ZipFile();
@@ -65,7 +63,7 @@ public partial class ErrorDialogue : Window
                 else
                     Logger.Debug("File doesn't exist. file={File}", staticFile);
             }
-    
+
             zip.Comment = $"This zip was created at {time}";
             zip.MaxOutputSegmentSize64 = 25000 * 1024; // 8m segments
             zip.Save(Path.Combine(fullZipPath, ".zip"));
@@ -78,7 +76,7 @@ public partial class ErrorDialogue : Window
 
         var processStartInfo = new ProcessStartInfo
         {
-            FileName = Path.Combine(zipPath),
+            FileName = Path.Combine(ZipPath),
             UseShellExecute = true
         };
 

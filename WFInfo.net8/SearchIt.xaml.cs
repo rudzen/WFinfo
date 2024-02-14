@@ -26,21 +26,21 @@ public partial class SearchIt : Window
     /// </summary>
     public void Start(Func<bool> isJwtLegal)
     {
-        Main.SearchBox.Show();
+        Main.SearchIt.Show();
         MainWindow.INSTANCE.Topmost = true;
-        Main.SearchBox.placeholder.Content = "Search for warframe.market Items";
+        Main.SearchIt.placeholder.Content = "Search for warframe.market Items";
         if (!isJwtLegal())
         {
-            Main.SearchBox.placeholder.Content = "Please log in first";
-            Main.Login.MoveLogin(Left, Main.SearchBox.Top - 130);
+            Main.SearchIt.placeholder.Content = "Please log in first";
+            Main.Login.MoveLogin(Left, Main.SearchIt.Top - 130);
             return;
         }
 
         MainWindow.INSTANCE.Topmost = false;
         IsInUse = true;
-        Main.SearchBox.Show();
+        Main.SearchIt.Show();
         searchField.Focusable = true;
-        Main.SearchBox.Topmost = true;
+        Main.SearchIt.Topmost = true;
         Win32.BringToFront(Process.GetCurrentProcess());
     }
 

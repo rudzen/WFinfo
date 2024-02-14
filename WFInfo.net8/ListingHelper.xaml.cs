@@ -346,8 +346,8 @@ public partial class ListingHelper : Window
             {
                 Main.RunOnUIThread(() =>
                 {
-                    Main.SearchBox.placeholder.Content = $"Could not find {primeItem}";
-                    Main.SearchBox.searchField.Text = string.Empty;
+                    Main.SearchIt.placeholder.Content = $"Could not find {primeItem}";
+                    Main.SearchIt.searchField.Text = string.Empty;
                 });
             }
         }

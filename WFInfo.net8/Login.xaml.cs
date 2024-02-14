@@ -39,7 +39,7 @@ public partial class Login : Window
     /// <param name="e"></param>
     private void HideExternal(object sender, MouseButtonEventArgs e)
     {
-        Main.SearchBox.Hide(); //hide search it if the user minimizes the window even though not yet logged in
+        Main.SearchIt.Hide(); //hide search it if the user minimizes the window even though not yet logged in
         Hide();
     }
 
@@ -66,7 +66,7 @@ public partial class Login : Window
         try
         {
             await Main.DataBase.GetUserLogin(Email.Text, Password.Password);
-            Main.INSTANCE.LoggedIn();
+            await _mediator.Publish(new StartLoggedInTimer(Email.Text));
             Email.Text = "Email";
             Password.Password = string.Empty;
             Main.DataBase.rememberMe = RememberMe.IsChecked.HasValue && RememberMe.IsChecked.Value;
@@ -141,11 +141,11 @@ public partial class Login : Window
             return;
         }
 
-        if (Main.SearchBox.IsActive)
+        if (Main.SearchIt.IsActive)
         {
-            Main.SearchBox.placeholder.Content = "Logged in";
-            Main.SearchBox.IsInUse = true;
-            Main.SearchBox.searchField.Focusable = true;
+            Main.SearchIt.placeholder.Content = "Logged in";
+            Main.SearchIt.IsInUse = true;
+            Main.SearchIt.searchField.Focusable = true;
         }
     }
 

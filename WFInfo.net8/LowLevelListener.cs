@@ -72,15 +72,15 @@ public class LowLevelListener : IDisposable
 
     private static IntPtr SetHookKB(LowLevelKeyboardProc proc)
     {
-        using Process curProcess = Process.GetCurrentProcess();
-        using ProcessModule curModule = curProcess.MainModule;
+        using var curProcess = Process.GetCurrentProcess();
+        using var curModule = curProcess.MainModule;
         return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
     }
 
     private static IntPtr SetHookM(LowLevelMouseProc proc)
     {
-        using Process curProcess = Process.GetCurrentProcess();
-        using ProcessModule curModule = curProcess.MainModule;
+        using var curProcess = Process.GetCurrentProcess();
+        using var curModule = curProcess.MainModule;
         return SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
     }
 
@@ -92,11 +92,18 @@ public class LowLevelListener : IDisposable
 
     public static event mouseActionHandler MouseEvent;
 
-    private static IntPtr HookCallbackKB(int nCode, IntPtr wParam, IntPtr lParam) //handels keyboard input
+    /// <summary>
+    /// Handles keyboard input
+    /// </summary>
+    /// <param name="nCode"></param>
+    /// <param name="wParam"></param>
+    /// <param name="lParam"></param>
+    /// <returns></returns>
+    private static IntPtr HookCallbackKB(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
         {
-            int vkCode = Marshal.ReadInt32(lParam);
+            var vkCode = Marshal.ReadInt32(lParam);
             OnKeyAction(KeyInterop.KeyFromVirtualKey(vkCode));
         }
 
@@ -115,35 +122,33 @@ public class LowLevelListener : IDisposable
 
     private static IntPtr HookCallbackM(int nCode, IntPtr wParam, IntPtr lParam) //handels mouse input
     {
-        if (nCode >= 0)
+        if (nCode < 0)
+            return CallNextHookEx(_hookIDMouse, nCode, wParam, lParam);
+
+        var hookStruct = (msslHookStructure)Marshal.PtrToStructure(lParam, typeof(msslHookStructure));
+        switch ((mouseMessages)wParam)
         {
-            msslHookStructure hookStruct = (msslHookStructure)Marshal.PtrToStructure(lParam, typeof(msslHookStructure));
-            switch ((mouseMessages)wParam)
-            {
-                case mouseMessages.WM_MOUSEMOVE:
-                    break;
-                case mouseMessages.WM_LBUTTONDOWN:
-                    OnMouseAction(MouseButton.Left);
-                    break;
-                case mouseMessages.WM_RBUTTONDOWN:
-                    OnMouseAction(MouseButton.Right);
-                    break;
-                case mouseMessages.WM_MBUTTONDOWN:
-                    OnMouseAction(MouseButton.Middle);
-                    break;
-                case mouseMessages.WM_MOUSEWHEEL:
-                    //Should this stay implemented?
-                    break;
-                case mouseMessages.WM_XBUTTONDOWN
-                    : //https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-xbuttondown
-                    if (hookStruct.pt.y == 1)
-                        OnMouseAction(MouseButton.XButton1);
-                    else
-                        OnMouseAction(MouseButton.XButton2);
-                    break;
-                default:
-                    break;
-            }
+            case mouseMessages.WM_MOUSEMOVE:
+                break;
+            case mouseMessages.WM_LBUTTONDOWN:
+                OnMouseAction(MouseButton.Left);
+                break;
+            case mouseMessages.WM_RBUTTONDOWN:
+                OnMouseAction(MouseButton.Right);
+                break;
+            case mouseMessages.WM_MBUTTONDOWN:
+                OnMouseAction(MouseButton.Middle);
+                break;
+            case mouseMessages.WM_MOUSEWHEEL:
+                //Should this stay implemented?
+                break;
+            case mouseMessages.WM_XBUTTONDOWN
+                : //https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-xbuttondown
+                var button = hookStruct.pt.y == 1 ? MouseButton.XButton1 : MouseButton.XButton2;
+                OnMouseAction(button);
+                break;
+            default:
+                break;
         }
 
         return CallNextHookEx(_hookIDMouse, nCode, wParam, lParam);

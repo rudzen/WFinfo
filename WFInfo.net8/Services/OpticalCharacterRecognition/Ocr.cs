@@ -318,7 +318,8 @@ internal partial class OCR
                     }
                     else if (!_settings.IsLightSelected)
                     {
-                        Main.Window.loadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered,
+                        // TODO (rudzen) : Add event
+                        Main.RewardWindow.loadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered,
                             $"{partsOwned} / {partsCount}", partNumber, true, hideRewardInfo);
                     }
                     //else
@@ -365,8 +366,7 @@ internal partial class OCR
         if (_settings.IsLightSelected && clipboard.Length > 3)
             _soundPlayer.Play();
 
-        var path = Path.Combine(ApplicationConstants.AppPath, "Debug");
-        var directory = new DirectoryInfo(path);
+        var directory = new DirectoryInfo(ApplicationConstants.AppPathDebug);
         var fileCreationTimeThreshold = DateTime.Now.AddHours(-1 * _settings.ImageRetentionTime);
         var filesToDelete = directory
                             .GetFiles()
@@ -377,7 +377,7 @@ internal partial class OCR
 
         if (partialScreenshot is not null)
         {
-            path = Path.Combine(path, $"PartBox {timestamp}.png");
+            var path = Path.Combine(ApplicationConstants.AppPathDebug, $"PartBox {timestamp}.png");
             partialScreenshot.Save(path);
             partialScreenshot.Dispose();
             partialScreenshot = null;

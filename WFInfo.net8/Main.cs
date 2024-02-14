@@ -2,10 +2,10 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Windows.Input;
-using System.Text.RegularExpressions;
 using AutoUpdaterDotNET;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Threading;
 using Mediator;
 using WebSocketSharp;
 using WFInfo.Settings;
@@ -14,12 +14,14 @@ using WFInfo.Services.WindowInfo;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Extensions;
 using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
+using Application = System.Windows.Application;
 
 namespace WFInfo;
 
-public class Main
+public class Main : INotificationHandler<StartLoggedInTimer>
 {
     private enum ScreenshotType
     {
@@ -35,15 +37,15 @@ public class Main
     public static Main INSTANCE { get; private set; }
 
     public static Data DataBase { get; private set; }
-    public static RewardWindow Window { get; set; } = new RewardWindow();
+    public static RewardWindow RewardWindow { get; set; }
     public static SettingsWindow SettingsWindow { get; private set; }
-    public static AutoCount AutoCount { get; set; } = new AutoCount();
+    public static AutoCount AutoCount { get; set; }
     public static ErrorDialogue ErrorDialogue { get; set; }
     public static FullscreenReminder FullscreenReminder { get; set; }
     public static GFNWarning GfnWarning { get; set; }
     public static UpdateDialogue Update { get; set; }
     public static SnapItOverlay SnapItOverlayWindow { get; private set; }
-    public static SearchIt SearchBox { get; set; } = new SearchIt();
+    public static SearchIt SearchIt { get; set; }
     public static Login Login { get; set; }
     public static ListingHelper ListingHelper { get; set; } = new ListingHelper();
     public static string BuildVersion { get; }
@@ -68,7 +70,7 @@ public class Main
     private readonly IRewardSelector _rewardSelector;
     private readonly IMediator _mediator;
 
-    private readonly Overlay[] _overlays;
+    private Overlay[] _overlays;
 
     // hack, should not be here, but stuff is too intertwined for now
     // also, the auto updater needs this to allow for event to be used
@@ -86,7 +88,6 @@ public class Main
         _sp = sp;
         INSTANCE = this;
         Login = sp.GetRequiredService<Login>();
-        SettingsWindow = sp.GetRequiredService<SettingsWindow>();
 
         _settings = sp.GetRequiredService<ApplicationSettings>();
         _process = sp.GetRequiredService<IProcessFinder>();
@@ -96,14 +97,21 @@ public class Main
         _mediator = sp.GetRequiredService<IMediator>();
 
         DataBase = sp.GetRequiredService<Data>();
-        SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
+        RewardWindow = sp.GetRequiredService<RewardWindow>();
+        SettingsWindow = sp.GetRequiredService<SettingsWindow>();
+        AutoCount = sp.GetRequiredService<AutoCount>();
+        SearchIt = sp.GetRequiredService<SearchIt>();
 
-        _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
+            _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
+
+            AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
+            AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
+        });
 
         StartMessage();
-
-        AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
-        AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
 
         Task.Factory.StartNew(ThreadedDataLoad);
     }
@@ -128,7 +136,7 @@ public class Main
 
             var validJwt = await DataBase.IsJWTvalid();
             if (validJwt)
-                LoggedIn();
+                await Handle(new StartLoggedInTimer(string.Empty), CancellationToken.None);
 
             StatusUpdate("WFInfo Initialization Complete", 0);
             Logger.Debug("WFInfo has launched successfully");
@@ -231,7 +239,7 @@ public class Main
     private static void StartMessage()
     {
         Directory.CreateDirectory(ApplicationConstants.AppPath);
-        Directory.CreateDirectory(Path.Combine(ApplicationConstants.AppPath, "debug"));
+        Directory.CreateDirectory(ApplicationConstants.AppPathDebug);
         Logger.Debug("   STARTING WFINFO {BuildVersion} at {DateTime}", BuildVersion, DateTime.UtcNow);
     }
 
@@ -280,7 +288,7 @@ public class Main
             //snapit debug
             Logger.Information("Loading screenshot from file for snapit");
             await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for snapit", 0));
-            LoadScreenshot(ScreenshotType.SNAPIT);
+            await LoadScreenshot(ScreenshotType.SNAPIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
                  Keyboard.IsKeyDown(_settings.MasterItModifierKey))
@@ -288,7 +296,7 @@ public class Main
             //master debug
             Logger.Information("Loading screenshot from file for masterit");
             await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for masterit", 0));
-            LoadScreenshot(ScreenshotType.MASTERIT);
+            await LoadScreenshot(ScreenshotType.MASTERIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
         {
@@ -309,7 +317,7 @@ public class Main
             //Searchit
             Logger.Information("Starting search it");
             await _mediator.Publish(new UpdateStatus("Starting search it", 0));
-            SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
+            SearchIt.Start(() => _encryptedDataService.IsJwtLoggedIn());
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {
@@ -332,17 +340,17 @@ public class Main
         if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
         {
             //check if user pressed activation key
-            if (SearchBox.IsInUse)
+            if (SearchIt.IsInUse)
             {
                 //if key is pressed and searchbox is active then rederect keystokes to it.
                 if (Keyboard.IsKeyDown(Key.Escape))
                 {
                     // close it if esc is used.
-                    SearchBox.Finish();
+                    SearchIt.Finish();
                     return;
                 }
 
-                SearchBox.searchField.Focus();
+                SearchIt.searchField.Focus();
                 return;
             }
 
@@ -386,17 +394,17 @@ public class Main
             return;
         }
 
-        if (SearchBox.IsInUse)
+        if (SearchIt.IsInUse)
         {
             //if key is pressed and searchbox is active then rederect keystokes to it.
             if (key == Key.Escape)
             {
                 // close it if esc is used.
-                SearchBox.Finish();
+                SearchIt.Finish();
                 return;
             }
 
-            SearchBox.searchField.Focus();
+            SearchIt.searchField.Focus();
             return;
         }
 
@@ -481,32 +489,18 @@ public class Main
                     catch (Exception e)
                     {
                         Logger.Error(e, "Failed to load image");
-                        _mediator.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
+                        await _mediator.Publish(new UpdateStatus("Failed to load image", 1));
                     }
                 });
         }
         else
         {
-            _mediator.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
+            await _mediator.Publish(new UpdateStatus("Failed to load image", 1));
             if (type == ScreenshotType.NORMAL)
             {
                 OCR.processingActive.GetAndSet(false);
             }
         }
-    }
-
-    // Switch to logged in mode for warfrane.market systems
-    public void LoggedIn()
-    {
-        //this is bullshit, but I couldn't call it in login.xaml.cs because it doesn't properly get to the main window
-        MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.LoggedIn(); });
-
-        // start the AFK timer
-        _latestActive = DateTime.UtcNow.AddMinutes(1);
-        var startTimeSpan = TimeSpan.Zero;
-        var periodTimeSpan = TimeSpan.FromMinutes(1);
-
-        _timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, startTimeSpan, periodTimeSpan);
     }
 
     private static void FinishedLoading()
@@ -527,23 +521,27 @@ public class Main
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.UpdateMarketStatus(msg); });
     }
 
-    public static int VersionToInteger(string vers)
-    {
-        var ret = 0;
-        string[] versParts = Regex.Replace(vers, "[^0-9.]+", string.Empty).Split('.');
-        if (versParts.Length == 3)
-            for (var i = 0; i < versParts.Length; i++)
-            {
-                if (versParts[i].Length == 0)
-                    return -1;
-                ret += Convert.ToInt32(int.Parse(versParts[i], Main.Culture) * Math.Pow(100, 2 - i));
-            }
-
-        return ret;
-    }
-
     public static void SignOut()
     {
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.SignOut(); });
+    }
+
+    /// <summary>
+    /// Switch to logged in mode for warfrane.market systems
+    /// </summary>
+    /// <param name="startLoggedInTimer"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async ValueTask Handle(StartLoggedInTimer startLoggedInTimer, CancellationToken cancellationToken)
+    {
+        //this is bullshit, but I couldn't call it in login.xaml.cs because it doesn't properly get to the main window
+        // MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.LoggedIn(); });
+
+        // (rudzen). yes, it was bullshit. this should be fine however
+        await _mediator.Publish(new LoggedIn(startLoggedInTimer.Email), cancellationToken);
+
+        // start the AFK timer
+        _latestActive = DateTime.UtcNow.AddMinutes(1);
+        _timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
     }
 }
