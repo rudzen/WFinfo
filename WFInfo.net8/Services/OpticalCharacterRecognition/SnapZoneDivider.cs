@@ -6,22 +6,16 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services.OpticalCharacterRecognition;
 
-public sealed class SnapZoneDivider : ISnapZoneDivider
+public sealed class SnapZoneDivider(ApplicationSettings settings) : ISnapZoneDivider
 {
     private sealed record Row(int Width, int Height);
 
     private sealed record Column(int Start, int Width);
 
     private static readonly ILogger Logger = Log.Logger.ForContext<SnapZoneDivider>();
-    private static Pen brown = new Pen(Brushes.Brown);
-    private static Pen white = new Pen(Brushes.White);
 
-    private readonly ApplicationSettings _settings;
-
-    public SnapZoneDivider(ApplicationSettings settings)
-    {
-        _settings = settings;
-    }
+    private static readonly Pen Brown = new(Brushes.Brown);
+    private static readonly Pen White = new(Brushes.White);
 
     public List<SnapZone> DivideSnapZones(
         Bitmap filteredImage,
@@ -78,11 +72,11 @@ public sealed class SnapZoneDivider : ISnapZoneDivider
 
         while (i < filteredImageHeight)
         {
-            if ((double)(rowHits[i]) / filteredImageWidth > _settings.SnapRowTextDensity)
+            if ((double)(rowHits[i]) / filteredImageWidth > settings.SnapRowTextDensity)
             {
                 var j = 0;
                 while (i + j < filteredImageHeight &&
-                       (double)(rowHits[i + j]) / filteredImageWidth > _settings.SnapRowEmptyDensity)
+                       (double)(rowHits[i + j]) / filteredImageWidth > settings.SnapRowEmptyDensity)
                 {
                     j++;
                 }
@@ -90,7 +84,7 @@ public sealed class SnapZoneDivider : ISnapZoneDivider
                 //only add "rows" of reasonable height
                 if (j > 3)
                 {
-                    rows.Add(new(i, j));
+                    rows.Add(new Row(i, j));
                     height += j;
                 }
 
@@ -109,7 +103,7 @@ public sealed class SnapZoneDivider : ISnapZoneDivider
         return rows;
     }
 
-    private void CombineRows(
+    private static void CombineRows(
         Image filteredImage,
         Image filteredImageClean,
         List<Row> rows,
@@ -117,15 +111,20 @@ public sealed class SnapZoneDivider : ISnapZoneDivider
     {
         var i = 0;
 
+        var rowSpan = CollectionsMarshal.AsSpan(rows);
+        ref var rowRef = ref MemoryMarshal.GetReference(rowSpan);
+
         using var g = Graphics.FromImage(filteredImage);
         using var gClean = Graphics.FromImage(filteredImageClean);
         while (i + 1 < rows.Count)
         {
-            g.DrawLine(brown, 0, rows[i].Width + rows[i].Height, 10000, rows[i].Width + rows[i].Height);
-            gClean.DrawLine(white, 0, rows[i].Width + rows[i].Height, 10000, rows[i].Width + rows[i].Height);
-            if (rows[i].Width + rows[i].Height + rowHeight > rows[i + 1].Width)
+            ref var row = ref Unsafe.Add(ref rowRef, i);
+            ref var nextRow = ref Unsafe.Add(ref rowRef, i + 1);
+            g.DrawLine(Brown, 0, row.Width + row.Height, 10000, row.Width + row.Height);
+            gClean.DrawLine(White, 0, row.Width + row.Height, 10000, row.Width + row.Height);
+            if (row.Width + row.Height + rowHeight > nextRow.Width)
             {
-                rows[i + 1] = new(rows[i].Width, rows[i + 1].Width - rows[i].Width + rows[i + 1].Height);
+                rows[i + 1] = row with { Height = nextRow.Width - row.Width + nextRow.Height };
                 rows.RemoveAt(i);
             }
             else
@@ -142,26 +141,21 @@ public sealed class SnapZoneDivider : ISnapZoneDivider
         int rowHeight)
     {
         List<Column> cols = [];
-
         var colStart = 0;
         var i = 0;
+
         while (i + 1 < filteredImageWidth)
         {
-            if ((double)(colHits[i]) / filteredImageHeight < _settings.SnapColEmptyDensity)
+            if ((double)(colHits[i]) / filteredImageHeight < settings.SnapColEmptyDensity)
             {
                 var j = 0;
-                while (i + j + 1 < filteredImageWidth &&
-                       (double)(colHits[i + j]) / filteredImageWidth < _settings.SnapColEmptyDensity)
-                {
+                while (i + j + 1 < filteredImageWidth && (double)colHits[i + j] / filteredImageWidth < settings.SnapColEmptyDensity)
                     j++;
-                }
 
                 if (j > rowHeight / 2)
                 {
                     if (i != 0)
-                    {
-                        cols.Add(new(colStart, i - colStart));
-                    }
+                        cols.Add(new Column(colStart, i - colStart));
 
                     colStart = i + j + 1;
                 }
@@ -173,12 +167,12 @@ public sealed class SnapZoneDivider : ISnapZoneDivider
         }
 
         if (i != colStart)
-            cols.Add(new(colStart, i - colStart));
+            cols.Add(new Column(colStart, i - colStart));
 
         return cols;
     }
 
-    private List<SnapZone> DivideToTextBlocks(
+    private static List<SnapZone> DivideToTextBlocks(
         Bitmap filteredImageClean,
         List<Row> rows,
         List<Column> cols,
@@ -224,9 +218,9 @@ public sealed class SnapZoneDivider : ISnapZoneDivider
         for (var i = 0; i < zoneSpan.Length; i++)
         {
             ref var zone = ref Unsafe.Add(ref zoneRef, i);
-            g.DrawRectangle(brown, zone.Rectangle);
+            g.DrawRectangle(Brown, zone.Rectangle);
         }
 
-        g.DrawRectangle(brown, 0, 0, rowHeight / 2, rowHeight);
+        g.DrawRectangle(Brown, 0, 0, rowHeight / 2, rowHeight);
     }
 }

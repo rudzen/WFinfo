@@ -9,4 +9,6 @@ public static class ApplicationConstants
     public static string AppPathDebug => Path.Combine(AppPath, "Debug");
 
     public static readonly string BuildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+
 }

@@ -64,6 +64,7 @@ public partial class App : Application
                     services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
                     services.AddSingleton<IThemeDetector, ThemeDetector>();
                     services.AddSingleton<ISnapZoneDivider, SnapZoneDivider>();
+                    services.AddSingleton<IRewardSelector, RewardSelector>();
                     services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
                     services.AddSingleton<IEncryptedDataService, EncryptedDataService>();
                     services.AddSingleton<ISoundPlayer, SoundPlayer>();
@@ -82,6 +83,7 @@ public partial class App : Application
                     services.AddSingleton<ThemeAdjuster>();
                     services.AddSingleton<PlusOne>();
                     services.AddSingleton<RelicsWindow>();
+                    services.AddSingleton<RelicsViewModel>();
                     services.AddSingleton<EquipmentWindow>();
 
                     services.AddSingleton<SettingsViewModel>();

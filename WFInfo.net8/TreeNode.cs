@@ -12,7 +12,7 @@ public class INPC : INotifyPropertyChanged
 {
     protected bool SetField<T>(ref T backingField, T value, [CallerMemberName] string propName = null)
     {
-        bool valueChanged = false;
+        var valueChanged = false;
 
         // Can't use equality operator on generic types
         if (!EqualityComparer<T>.Default.Equals(backingField, value))
@@ -56,7 +56,7 @@ public class SimpleCommand(Action? action) : ICommand
     }
 }
 
-public class TreeNode : INPC
+public partial class TreeNode : INPC
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<TreeNode>();
 
@@ -122,13 +122,13 @@ public class TreeNode : INPC
 
     public string Name
     {
-        get => topLevel ? _era + " " + _name : _name;
+        get => topLevel ? $"{_era} {_name}" : _name;
         set => SetField(ref _name, value);
     }
 
     public string Name_Sort
     {
-        get => current != null ? current.SortNum + _era + " " + _name : SortNum + _name;
+        get => current != null ? $"{current.SortNum}{_era} {_name}" : SortNum + _name;
         set => SetField(ref _name, value);
     }
 
@@ -211,14 +211,14 @@ public class TreeNode : INPC
     {
         Grid_Shown = "Visible";
 
-        Col1_Text1 = "";
-        Col1_Text2 = "";
+        Col1_Text1 = string.Empty;
+        Col1_Text2 = string.Empty;
         Col1_Img1 = null;
         Col1_Img1_Shown = "Hidden";
 
-        Col2_Text1 = "";
-        Col2_Text2 = "";
-        Col2_Text3 = "";
+        Col2_Text1 = string.Empty;
+        Col2_Text2 = string.Empty;
+        Col2_Text3 = string.Empty;
         Col2_Img1 = null;
         Col2_Img1_Shown = "Hidden";
     }
@@ -228,9 +228,10 @@ public class TreeNode : INPC
         _intact = 0;
         _radiant = 0;
 
-        foreach (TreeNode node in Children)
+        foreach (var node in Children)
         {
-            if (node.IsVaulted()) // IsVaulted is true if its not vaulted
+            // IsVaulted is true if its not vaulted
+            if (node.IsVaulted())
             {
                 _intact += node._intact;
                 _radiant += node._radiant;
@@ -247,11 +248,11 @@ public class TreeNode : INPC
 
         Col2_Text1 = "RAD:";
         Col2_Text2 = _radiant.ToString("F1");
-        int tempBonus = (int)(_bonus * 10);
+        var tempBonus = (int)(_bonus * 10);
         Col2_Text3 = "(";
         if (tempBonus >= 0)
             Col2_Text3 += "+";
-        Col2_Text3 += (tempBonus / 10.0).ToString("F1") + ")";
+        Col2_Text3 += $"{(tempBonus / 10.0):F1})";
 
         Col2_Img1 = PLAT_SRC;
         Col2_Img1_Shown = "Visible";
@@ -262,7 +263,7 @@ public class TreeNode : INPC
         _intact = 0;
         _radiant = 0;
 
-        foreach (TreeNode node in Children)
+        foreach (var node in Children)
         {
             if (node.NameColor == RARE_COLOR)
             {
@@ -292,7 +293,7 @@ public class TreeNode : INPC
 
         Col2_Text1 = "RAD:";
         Col2_Text2 = _radiant.ToString("F1");
-        int tempBonus = (int)(_bonus * 10);
+        var tempBonus = (int)(_bonus * 10);
         Col2_Text3 = "(";
         if (tempBonus >= 0)
             Col2_Text3 += "+";
@@ -304,15 +305,15 @@ public class TreeNode : INPC
 
     public bool GetSetInfo()
     {
-        string primeSetName = Data.GetSetName(Name);
-        if (!Main.DataBase.MarketData.TryGetValue(primeSetName, out JToken primeSetJToken))
+        var primeSetName = Data.GetSetName(Name);
+        if (!Main.DataBase.MarketData.TryGetValue(primeSetName, out var primeSetJToken))
         {
             return false; // This is not a set
         }
 
-        JObject primeSet = (JObject)primeSetJToken;
+        var primeSet = (JObject)primeSetJToken;
 
-        string primeSetPlat = primeSet["plat"].ToObject<string>();
+        var primeSetPlat = primeSet["plat"].ToObject<string>();
 
         Grid_Shown = "Visible";
         Plat_Val = double.Parse(primeSetPlat, Main.Culture);
@@ -322,7 +323,7 @@ public class TreeNode : INPC
         Owned_Val = 0;
         Count_Val = 0;
         Mastered = Main.DataBase.EquipmentData[this.dataRef]["mastered"].ToObject<bool>();
-        foreach (TreeNode kid in Children)
+        foreach (var kid in Children)
         {
             Owned_Capped_Val += kid.Owned_Capped_Val;
             Owned_Plat_Val += kid.Owned_Plat_Val;
@@ -354,9 +355,9 @@ public class TreeNode : INPC
         Col1_Img1 = PLAT_SRC;
         Col1_Img1_Shown = "Visible";
 
-        Col2_Text1 = "";
-        Col2_Text2 = "";
-        Col2_Text3 = "";
+        Col2_Text1 = string.Empty;
+        Col2_Text2 = string.Empty;
+        Col2_Text3 = string.Empty;
         Col2_Img1 = null;
         Col2_Img1_Shown = "Hidden";
     }
@@ -364,7 +365,7 @@ public class TreeNode : INPC
     internal void ChangeExpandedTo(bool expand)
     {
         IsExpanded = expand;
-        foreach (TreeNode kid in Children)
+        foreach (var kid in Children)
             kid.ChangeExpandedTo(expand);
     }
 
@@ -401,7 +402,7 @@ public class TreeNode : INPC
             _plat = plat;
             _ducat = ducat;
 
-            Col1_Text1 = "";
+            Col1_Text1 = string.Empty;
             Col1_Text2 = _plat.ToString("F1");
 
             Col1_Img1 = PLAT_SRC;
@@ -409,8 +410,8 @@ public class TreeNode : INPC
             Col1_Margin1 = new Thickness(0, 0, 38, 0);
             Col1_Margin2 = new Thickness(0, 0, 20, 0);
 
-            Col2_Text1 = "";
-            Col2_Text2 = "";
+            Col2_Text1 = string.Empty;
+            Col2_Text2 = string.Empty;
             Col2_Text3 = ducat.ToString();
             Col2_Img1 = DUCAT_SRC;
             Col2_Img1_Shown = "Visible";
@@ -420,18 +421,18 @@ public class TreeNode : INPC
         else
         {
             Col1_Img1 = null;
-            Col1_Text1 = "";
-            Col1_Text2 = "";
+            Col1_Text1 = string.Empty;
+            Col1_Text2 = string.Empty;
 
             Col2_Img1 = null;
-            Col2_Text1 = "";
-            Col2_Text2 = "";
+            Col2_Text1 = string.Empty;
+            Col2_Text2 = string.Empty;
         }
     }
 
     public void ResetFilter()
     {
-        foreach (TreeNode node in Children)
+        foreach (var node in Children)
             node.ResetFilter();
 
         // This doesn't work, maybe i made mistake
@@ -443,14 +444,14 @@ public class TreeNode : INPC
 
     public void FilterOutVaulted(bool additionalFilter = false)
     {
-        List<TreeNode> filterList = additionalFilter ? ChildrenFiltered : Children;
+        var filterList = additionalFilter ? ChildrenFiltered : Children;
         ChildrenFiltered = filterList.AsParallel().Where(node => node.IsVaulted()).ToList();
     }
 
     public void RecolorChildren()
     {
-        bool i = false;
-        foreach (TreeNode child in ChildrenFiltered)
+        var i = false;
+        foreach (var child in ChildrenFiltered)
         {
             i = !i;
             var brush = i ? BACK_D_BRUSH : BACK_U_BRUSH;
@@ -460,8 +461,8 @@ public class TreeNode : INPC
 
     public string GetFullName()
     {
-        string prnt = Name;
-        TreeNode temp = current;
+        var prnt = Name;
+        var temp = current;
         while (temp != null)
         {
             prnt = temp.Name + "/" + prnt;
@@ -473,15 +474,15 @@ public class TreeNode : INPC
 
     private void PrintItemToConsole(Dictionary<string, bool> matchedText)
     {
-        string prnt = Name + ": ";
-        TreeNode temp = current;
+        var prnt = $"{Name}: ";
+        var temp = current;
         while (temp != null)
         {
             prnt = temp.Name + "/" + prnt;
             temp = temp.current;
         }
 
-        foreach (KeyValuePair<string, bool> kvp in matchedText)
+        foreach (var kvp in matchedText)
         {
             prnt += kvp.Key + "(" + kvp.Value + ") ";
         }
@@ -495,12 +496,12 @@ public class TreeNode : INPC
         bool additionalFilter = false,
         Dictionary<string, bool> matchedText = null)
     {
-        Dictionary<string, bool> matchedTextCopy = new Dictionary<string, bool>();
+        var matchedTextCopy = new Dictionary<string, bool>();
 
-        bool done = true;
-        foreach (string text in searchText)
+        var done = true;
+        foreach (var text in searchText)
         {
-            bool tempVal = (matchedText != null && matchedText[text]) || Name.ToLower().Contains(text.ToLower());
+            var tempVal = (matchedText != null && matchedText[text]) || Name.Contains(text, StringComparison.CurrentCultureIgnoreCase);
             matchedTextCopy[text] = tempVal;
             done = done && tempVal;
         }
@@ -517,12 +518,12 @@ public class TreeNode : INPC
         }
 
         List<TreeNode> temp = [];
-        foreach (TreeNode node in filterList)
+        foreach (var node in filterList)
             if (node.FilterSearchText(searchText, removeLeaves, additionalFilter, matchedTextCopy))
                 temp.Add(node);
 
         if (temp.Count == Children.Count)
-            foreach (TreeNode node in filterList)
+            foreach (var node in filterList)
                 node.ForceVisibility = false;
 
         ChildrenFiltered = (filterList.Count > 0 && filterList[0].ChildrenFiltered.Count > 0) || removeLeaves
@@ -533,7 +534,7 @@ public class TreeNode : INPC
 
     internal void Sort(int index, bool isRelics = true, int depth = 0)
     {
-        foreach (TreeNode node in Children)
+        foreach (var node in Children)
             node.Sort(index, isRelics, depth + 1);
         if (Children.Count > 0)
         {
@@ -586,9 +587,11 @@ public class TreeNode : INPC
                         ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Plat_Val).ToList();
                         break;
                     case 2:
-                        Children = Children.OrderBy(p => p.Owned_Capped_Val).OrderBy(p => p.Diff_Val).ToList();
-                        ChildrenFiltered = ChildrenFiltered.OrderBy(p => p.Owned_Capped_Val).OrderBy(p => p.Diff_Val)
-                                                           .ToList();
+                        Children = Children.OrderBy(p => p.Owned_Capped_Val).ThenBy(p => p.Diff_Val).ToList();
+                        ChildrenFiltered = ChildrenFiltered
+                                           .OrderBy(p => p.Owned_Capped_Val)
+                                           .ThenBy(p => p.Diff_Val)
+                                           .ToList();
                         break;
                     case 3:
                         Children = Children.OrderByDescending(p => p.Owned_Val).ToList();
@@ -613,9 +616,8 @@ public class TreeNode : INPC
 
     public static string PadNumbers(string input)
     {
-        return System.Text.RegularExpressions.Regex.Replace(input, "[0-9]+", match => match.Value.PadLeft(5, '0'));
+        return NumberRegEx().Replace(input, match => match.Value.PadLeft(5, '0'));
     }
-
 
     private string _col1_text1 = "INT:";
 
@@ -633,7 +635,7 @@ public class TreeNode : INPC
         private set => SetField(ref _col1_text2, value);
     }
 
-    private ImageSource _col1_img1 = null;
+    private ImageSource _col1_img1;
 
     public ImageSource Col1_Img1
     {
@@ -681,7 +683,7 @@ public class TreeNode : INPC
         private set => SetField(ref _col2_text3, value);
     }
 
-    private ImageSource _col2_img1 = null;
+    private ImageSource _col2_img1;
 
     public ImageSource Col2_Img1
     {
@@ -697,7 +699,7 @@ public class TreeNode : INPC
         private set => SetField(ref _col2_img1_shown, value);
     }
 
-    private double _plat = 0;
+    private double _plat;
 
     public double Plat_Val
     {
@@ -705,7 +707,7 @@ public class TreeNode : INPC
         set => SetField(ref _plat, value);
     }
 
-    private int _ducat = 0;
+    private int _ducat;
 
     public int Ducat_Val
     {
@@ -713,7 +715,7 @@ public class TreeNode : INPC
         set => SetField(ref _ducat, value);
     }
 
-    private int _owned = 0;
+    private int _owned;
 
     public int Owned_Val
     {
@@ -721,7 +723,7 @@ public class TreeNode : INPC
         set => SetField(ref _owned, value);
     }
 
-    private int _owned_capped = 0;
+    private int _owned_capped;
 
     public int Owned_Capped_Val
     {
@@ -729,7 +731,7 @@ public class TreeNode : INPC
         set => SetField(ref _owned_capped, value);
     }
 
-    private double _owned_plat = 0;
+    private double _owned_plat;
 
     public double Owned_Plat_Val
     {
@@ -737,7 +739,7 @@ public class TreeNode : INPC
         set => SetField(ref _owned_plat, value);
     }
 
-    private double _owned_ducat = 0;
+    private double _owned_ducat;
 
     public double Owned_Ducat_Val
     {
@@ -745,7 +747,7 @@ public class TreeNode : INPC
         set => SetField(ref _owned_ducat, value);
     }
 
-    private int _count = 0;
+    private int _count;
 
     public int Count_Val
     {
@@ -753,7 +755,7 @@ public class TreeNode : INPC
         set => SetField(ref _count, value);
     }
 
-    private double _diff = 0;
+    private double _diff;
 
     public double Diff_Val
     {
@@ -761,7 +763,7 @@ public class TreeNode : INPC
         set => SetField(ref _diff, value);
     }
 
-    private double _intact = 0;
+    private double _intact;
 
     public double Intact_Val
     {
@@ -769,7 +771,7 @@ public class TreeNode : INPC
         set => SetField(ref _intact, value);
     }
 
-    private double _radiant = 0;
+    private double _radiant;
 
     public double Radiant_Val
     {
@@ -777,7 +779,7 @@ public class TreeNode : INPC
         set => SetField(ref _radiant, value);
     }
 
-    private double _bonus = 0;
+    private double _bonus;
 
     public double Bonus_Val
     {
@@ -790,7 +792,7 @@ public class TreeNode : INPC
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-    private bool _forceVisibility = false;
+    private bool _forceVisibility;
 
     public bool ForceVisibility
     {
@@ -802,7 +804,7 @@ public class TreeNode : INPC
         }
     }
 
-    private bool _isExpanded = false;
+    private bool _isExpanded;
 
     public bool IsExpanded
     {
@@ -810,7 +812,7 @@ public class TreeNode : INPC
         set
         {
             SetField(ref _isExpanded, value);
-            foreach (TreeNode kid in Children)
+            foreach (var kid in Children)
                 kid.RaisePropertyChanged("IsVisible");
         }
     }
@@ -831,7 +833,7 @@ public class TreeNode : INPC
         private set => SetField(ref _children, value);
     }
 
-    private bool _mastered = false;
+    private bool _mastered;
 
     public bool Mastered
     {
@@ -917,7 +919,7 @@ public class TreeNode : INPC
     public void ReloadPartOwned(TreeNode Parent)
     {
         //DOES NOT UPDATE PARENT
-        JObject job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        var job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
         Owned_Val = job["owned"].ToObject<int>();
         Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
         Owned_Plat_Val = Owned_Val  * Plat_Val;
@@ -927,8 +929,8 @@ public class TreeNode : INPC
 
     private void DecrementPartThreaded(TreeNode Parent)
     {
-        JObject job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
-        int owned = Owned_Val;
+        var job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        var owned = Owned_Val;
         if (owned > 0)
         {
             job["owned"] = owned - 1;
@@ -938,7 +940,7 @@ public class TreeNode : INPC
             Owned_Plat_Val = Owned_Val  * Plat_Val;
             Owned_Ducat_Val = Owned_Val * Ducat_Val;
             PrimeUpdateDiff(false);
-            int count = Count_Val;
+            var count = Count_Val;
             Parent.Owned_Val--;
             Parent.Owned_Plat_Val -= Plat_Val;
             Parent.Owned_Ducat_Val -= Ducat_Val;
@@ -952,9 +954,9 @@ public class TreeNode : INPC
 
     private void IncrementPartThreaded(TreeNode Parent)
     {
-        JObject job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
-        int count = Count_Val;
-        int owned = Owned_Val;
+        var job = Main.DataBase.EquipmentData[Parent.dataRef]["parts"][dataRef] as JObject;
+        var count = Count_Val;
+        var owned = Owned_Val;
         job["owned"] = owned + 1;
         Main.DataBase.SaveAllJSONs();
         Owned_Val++;
@@ -986,4 +988,7 @@ public class TreeNode : INPC
         Diff_Val = owned / (double)Count_Val - 0.01 * Count_Val;
         Col1_Text1 = $"{owned}/{Count_Val}";
     }
+
+    [System.Text.RegularExpressions.GeneratedRegex("[0-9]+")]
+    private static partial System.Text.RegularExpressions.Regex NumberRegEx();
 }

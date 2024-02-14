@@ -9,10 +9,13 @@ namespace WFInfo;
 /// </summary>
 public partial class RelicsWindow : Window
 {
-    public RelicsWindow()
+    private readonly RelicsViewModel _viewModel;
+
+    public RelicsWindow(RelicsViewModel viewModel)
     {
         InitializeComponent();
-        DataContext = RelicsViewModel.Instance;
+        _viewModel = viewModel;
+        DataContext = viewModel;
     }
 
     private void Hide(object sender, RoutedEventArgs e)
@@ -29,9 +32,8 @@ public partial class RelicsWindow : Window
 
     private void SingleClickExpand(object sender, RoutedEventArgs e)
     {
-        TreeViewItem tvi = e.OriginalSource as TreeViewItem;
-
-        if (tvi == null || e.Handled) return;
+        if (e.OriginalSource is not TreeViewItem tvi || e.Handled)
+            return;
 
         tvi.IsExpanded = !tvi.IsExpanded;
         tvi.IsSelected = false;
@@ -41,6 +43,6 @@ public partial class RelicsWindow : Window
     private void WindowLoaded(object sender, RoutedEventArgs e)
     {
         // triggers when the window is first loaded, populates all the listviews once.
-        RelicsViewModel.Instance.InitializeTree();
+        _viewModel.InitializeTree();
     }
 }

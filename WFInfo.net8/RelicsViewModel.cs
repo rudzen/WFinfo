@@ -1,14 +1,14 @@
 using System.ComponentModel;
+using System.Drawing;
 using System.Windows.Data;
 using Newtonsoft.Json.Linq;
 using WebSocketSharp;
+using WFInfo.Extensions;
 
 namespace WFInfo;
 
 public class RelicsViewModel : INPC
 {
-    public static RelicsViewModel Instance { get; } = new RelicsViewModel();
-
     public RelicsViewModel()
     {
         RelicsItemsView = new ListCollectionView(_relicTreeItems);
@@ -16,14 +16,14 @@ public class RelicsViewModel : INPC
         CollapseAllCommand = new SimpleCommand(() => ExpandOrCollapseAll(false));
     }
 
-    private bool _initialized = false;
-    private string _filterText = "";
+    private bool _initialized;
+    private string _filterText = string.Empty;
     private int searchTimerDurationMS = 500;
     private bool _showAllRelics;
-    private readonly List<TreeNode> _relicTreeItems = new();
+    private readonly List<TreeNode> _relicTreeItems = [];
     private int _sortBoxSelectedIndex;
     private bool _hideVaulted = true;
-    private readonly List<TreeNode> _rawRelicNodes = new();
+    private readonly List<TreeNode> _rawRelicNodes = [];
 
     private static System.Windows.Forms.Timer searchTimer = new();
 
@@ -62,7 +62,7 @@ public class RelicsViewModel : INPC
 
     private void ExpandOrCollapseAll(bool expand)
     {
-        foreach (TreeNode era in _rawRelicNodes)
+        foreach (var era in _rawRelicNodes)
             era.ChangeExpandedTo(expand);
     }
 
@@ -71,9 +71,12 @@ public class RelicsViewModel : INPC
         get => _showAllRelics;
         set
         {
-            foreach (TreeNode era in _rawRelicNodes)
-            foreach (TreeNode relic in era.Children)
-                relic.topLevel = value;
+            foreach (var era in _rawRelicNodes)
+            {
+                foreach (var relic in era.Children)
+                    relic.topLevel = value;
+            }
+
             SetField(ref _showAllRelics, value);
 
             _relicTreeItems.Clear();
@@ -113,7 +116,7 @@ public class RelicsViewModel : INPC
         // 2 - Average radiant plat
         // 3 - Difference (radiant-intact)
 
-        foreach (TreeNode era in _rawRelicNodes)
+        foreach (var era in _rawRelicNodes)
         {
             era.Sort(SortBoxSelectedIndex);
             era.RecolorChildren();
@@ -127,51 +130,50 @@ public class RelicsViewModel : INPC
             switch (SortBoxSelectedIndex)
             {
                 case 1:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Intact_Val",
-                        System.ComponentModel.ListSortDirection.Descending));
+                    RelicsItemsView.SortDescriptions.Add(new SortDescription("Intact_Val", ListSortDirection.Descending));
                     break;
                 case 2:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Radiant_Val",
-                        System.ComponentModel.ListSortDirection.Descending));
+                    RelicsItemsView.SortDescriptions.Add(new SortDescription("Radiant_Val", ListSortDirection.Descending));
                     break;
                 case 3:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Bonus_Val",
-                        System.ComponentModel.ListSortDirection.Descending));
+                    RelicsItemsView.SortDescriptions.Add(new SortDescription("Bonus_Val", ListSortDirection.Descending));
                     break;
                 default:
-                    RelicsItemsView.SortDescriptions.Add(new System.ComponentModel.SortDescription("Name_Sort",
-                        System.ComponentModel.ListSortDirection.Ascending));
+                    RelicsItemsView.SortDescriptions.Add(new SortDescription("Name_Sort", ListSortDirection.Ascending));
                     break;
             }
 
-            bool i = false;
-            foreach (TreeNode relic in _relicTreeItems)
+            var backgrounds = new[]
+            {
+                TreeNode.BACK_U_BRUSH,
+                TreeNode.BACK_D_BRUSH
+            };
+
+            var i = false;
+            foreach (var relic in _relicTreeItems)
             {
                 i = !i;
-                if (i)
-                    relic.Background_Color = TreeNode.BACK_D_BRUSH;
-                else
-                    relic.Background_Color = TreeNode.BACK_U_BRUSH;
+                relic.Background_Color = backgrounds[i.AsByte()];
             }
         }
     }
 
-    public void RefreshVisibleRelics()
+    private void RefreshVisibleRelics()
     {
-        int index = 0;
+        var index = 0;
         if (ShowAllRelics)
         {
-            List<TreeNode> activeNodes = new List<TreeNode>();
-            foreach (TreeNode era in _rawRelicNodes)
-            foreach (TreeNode relic in era.ChildrenFiltered)
-                activeNodes.Add(relic);
+            List<TreeNode> activeNodes = [];
+            foreach (var era in _rawRelicNodes)
+                activeNodes.AddRange(era.ChildrenFiltered);
 
-
-            for (index = 0; index < _relicTreeItems.Count;)
+            while (index < _relicTreeItems.Count)
             {
-                TreeNode relic = (TreeNode)_relicTreeItems.ElementAt(index);
+                var relic = (TreeNode)_relicTreeItems[index];
                 if (!activeNodes.Contains(relic))
+                {
                     _relicTreeItems.RemoveAt(index);
+                }
                 else
                 {
                     activeNodes.Remove(relic);
@@ -179,16 +181,16 @@ public class RelicsViewModel : INPC
                 }
             }
 
-            foreach (TreeNode relic in activeNodes)
+            foreach (var relic in activeNodes)
                 _relicTreeItems.Add(relic);
 
             SortBoxChanged();
         }
         else
         {
-            foreach (TreeNode era in _rawRelicNodes)
+            foreach (var era in _rawRelicNodes)
             {
-                int curr = _relicTreeItems.IndexOf(era);
+                var curr = _relicTreeItems.IndexOf(era);
                 if (era.ChildrenFiltered.Count == 0)
                 {
                     if (curr != -1)
@@ -211,7 +213,7 @@ public class RelicsViewModel : INPC
 
     public void ReapplyFilters()
     {
-        foreach (TreeNode era in _rawRelicNodes)
+        foreach (var era in _rawRelicNodes)
         {
             era.ResetFilter();
             if (HideVaulted)
@@ -233,13 +235,13 @@ public class RelicsViewModel : INPC
             return;
         }
 
-        TreeNode lith = new TreeNode("Lith", "", false, 0);
-        TreeNode meso = new TreeNode("Meso", "", false, 0);
-        TreeNode neo = new TreeNode("Neo", "", false, 0);
-        TreeNode axi = new TreeNode("Axi", "", false, 0);
+        var lith = new TreeNode("Lith", "", false, 0);
+        var meso = new TreeNode("Meso", "", false, 0);
+        var neo = new TreeNode("Neo", "", false, 0);
+        var axi = new TreeNode("Axi", "", false, 0);
         _rawRelicNodes.AddRange(new[] { lith, meso, neo, axi });
-        int eraNum = 0;
-        foreach (TreeNode head in _rawRelicNodes)
+        var eraNum = 0;
+        foreach (var head in _rawRelicNodes)
         {
             double sumIntact = 0;
             double sumRad = 0;
@@ -247,16 +249,16 @@ public class RelicsViewModel : INPC
             head.SortNum = eraNum++;
             foreach (JProperty prop in Main.DataBase.RelicData[head.Name])
             {
-                JObject primeItems = (JObject)Main.DataBase.RelicData[head.Name][prop.Name];
-                string vaulted = primeItems["vaulted"].ToObject<bool>() ? "vaulted" : "";
-                TreeNode relic = new TreeNode(prop.Name, vaulted, false, 0);
+                var primeItems = (JObject)Main.DataBase.RelicData[head.Name][prop.Name];
+                var vaulted = primeItems["vaulted"].ToObject<bool>() ? "vaulted" : "";
+                var relic = new TreeNode(prop.Name, vaulted, false, 0);
                 relic.Era = head.Name;
                 foreach (KeyValuePair<string, JToken> kvp in primeItems)
                 {
                     if (kvp.Key != "vaulted" &&
-                        Main.DataBase.MarketData.TryGetValue(kvp.Value.ToString(), out JToken marketValues))
+                        Main.DataBase.MarketData.TryGetValue(kvp.Value.ToString(), out var marketValues))
                     {
-                        TreeNode part = new TreeNode(kvp.Value.ToString(), "", false, 0);
+                        var part = new TreeNode(kvp.Value.ToString(), "", false, 0);
                         part.SetPartText(marketValues["plat"].ToObject<double>(),
                             marketValues["ducats"].ToObject<int>(), kvp.Key);
                         relic.AddChild(part);

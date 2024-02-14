@@ -64,6 +64,7 @@ public class Main
     private readonly IProcessFinder _process;
     private readonly IWindowInfoService _windowInfo;
     private readonly IEncryptedDataService _encryptedDataService;
+    private readonly IRewardSelector _rewardSelector;
 
     private readonly Overlay[] _overlays;
 
@@ -89,6 +90,7 @@ public class Main
         _process = sp.GetRequiredService<IProcessFinder>();
         _windowInfo = sp.GetRequiredService<IWindowInfoService>();
         _encryptedDataService = sp.GetRequiredService<IEncryptedDataService>();
+        _rewardSelector = sp.GetRequiredService<IRewardSelector>();
 
         DataBase = sp.GetRequiredService<Data>();
         SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
@@ -363,9 +365,11 @@ public class Main
             Task.Run(() =>
             {
                 var lastClick = System.Windows.Forms.Cursor.Position;
-                var index = OCR.GetSelectedReward(lastClick);
+                var uiScaling = OCR.UiScaling;
+                var displayed = OCR.NumberOfRewardsDisplayed;
+                var index = _rewardSelector.GetSelectedReward(ref lastClick, in uiScaling, displayed);
                 Logger.Debug("Reward chosen. index={Index}", index);
-                if (index < 0)
+                if (index == -1)
                     return;
                 ListingHelper.SelectedRewardIndex = (short)index;
             });
