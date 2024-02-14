@@ -80,7 +80,7 @@
                         Value="{StaticResource Roboto}" />
                 <Setter Property="components:SelectTextOnFocus.Active"
                         Value="True" />
-                <Setter Property="wfInfo:FocusAdvancement.AdvancesByEnterKey"
+                <Setter Property="components:FocusAdvancement.AdvancesByEnterKey"
                         Value="True" />
             </Style>
 

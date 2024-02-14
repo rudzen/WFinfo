@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 
-namespace WFInfo;
+namespace WFInfo.Components;
 
 public static class FocusAdvancement
 {
