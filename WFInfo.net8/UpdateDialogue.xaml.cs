@@ -16,7 +16,7 @@ namespace WFInfo;
 public partial class UpdateDialogue : Window
 {
     private readonly UpdateInfoEventArgs _updateInfo;
-    
+
     private readonly SettingsViewModel _settings;
 
     public UpdateDialogue(UpdateInfoEventArgs args, IServiceProvider sp)
@@ -26,10 +26,10 @@ public partial class UpdateDialogue : Window
         _updateInfo = args;
 
         var version = args.CurrentVersion;
-        
+
         if (!args.IsUpdateAvailable || _settings.Ignored == version)
             return;
-        
+
         version = version[..version.LastIndexOf('.')];
 
         NewVersionText.Text = "WFInfo version "   + version           + " has been released!";
@@ -37,27 +37,27 @@ public partial class UpdateDialogue : Window
 
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
         var client = httpFactory.CreateClient();
-        
+
         var response = client.GetAsync("https://api.github.com/repos/WFCD/WFInfo/releases").GetAwaiter().GetResult();
         var data = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
-        
+
         var releases = JsonConvert.DeserializeObject<JArray>(data);
         foreach (JObject prop in releases)
         {
             if (prop["prerelease"].ToObject<bool>())
                 continue;
-            
+
             var tagName = prop["tag_name"].ToString();
-            
+
             if (tagName[1..] == Main.BuildVersion)
                 break;
-            
+
             var tag = new TextBlock
             {
                 Text = tagName,
                 FontWeight = FontWeights.Bold
             };
-            
+
             ReleaseNotes.Children.Add(tag);
             var body = new TextBlock
             {
@@ -78,7 +78,7 @@ public partial class UpdateDialogue : Window
         {
             e.Handled = true;
             if (AutoUpdater.DownloadUpdate(_updateInfo))
-                WFInfo.MainWindow.INSTANCE.Exit(null, null);
+                WFInfo.MainWindow.INSTANCE.Close();
         }
         catch (Exception exception)
         {

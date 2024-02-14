@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using Serilog;
+using WFInfo.Domain;
 using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
@@ -13,7 +14,7 @@ namespace WFInfo;
 public partial class VerifyCount : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<VerifyCount>();
-    
+
     private static string itemPath = ApplicationConstants.AppPath   + @"\eqmt_data.json";
     private static string backupPath = ApplicationConstants.AppPath + @"\eqmt_data.json.bak";
 
@@ -62,13 +63,11 @@ public partial class VerifyCount : Window
             catch (Exception ex)
             {
                 Logger.Error(ex, "Failed to save count. count={Count},name={Name},primeName={PrimeName},partName={PartName}", item.Count, item.Name, primeName, partName);
-                // Main.AddLog("FAILED to save count. Count: " + item.Count + ", Name: "     + item.Name +
-                //             ", primeName: "                 + primeName  + ", partName: " + partName);
                 saveFailed = true;
             }
         }
 
-        Main.DataBase.SaveAllJSONs();
+        Main.DataBase.SaveAll(DataTypes.All);
         EquipmentWindow.INSTANCE.ReloadItems();
         if (saveFailed)
         {
@@ -103,7 +102,7 @@ public partial class VerifyCount : Window
         }
 
         BackupButton.Visibility = Visibility.Hidden;
-        Main.DataBase.SaveAllJSONs();
+        Main.DataBase.SaveAll(DataTypes.All);
         EquipmentWindow.INSTANCE.ReloadItems();
     }
 

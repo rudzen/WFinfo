@@ -5,9 +5,11 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using MassTransit;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Serilog;
+using WFInfo.Domain;
 using WFInfo.Resources;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
@@ -17,7 +19,10 @@ namespace WFInfo;
 /// <summary>
 /// Interaction logic for MainWindow.xaml
 /// </summary>
-public partial class MainWindow : Window
+public partial class MainWindow
+    : Window,
+        IConsumer<DataUpdatedAt>,
+        IConsumer<UpdateStatus>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<MainWindow>();
 
@@ -43,7 +48,7 @@ public partial class MainWindow : Window
     private readonly EquipmentWindow _equipmentWindow;
 
     private readonly IEncryptedDataService _encryptedDataService;
-    
+
     public MainWindow(
         ApplicationSettings applicationSettings,
         SettingsViewModel settingsViewModel,
@@ -65,8 +70,10 @@ public partial class MainWindow : Window
         _equipmentWindow = equipmentWindow;
 
         _encryptedDataService = encryptedDataService;
-        
-        listener = new LowLevelListener(); //publisher
+
+        // publisher
+        listener = new LowLevelListener();
+
         try
         {
             InitializeSettings();
@@ -80,11 +87,11 @@ public partial class MainWindow : Window
             Left = 300;
             Top = 300;
 
-            System.Drawing.Rectangle winBounds = new System.Drawing.Rectangle(
+            var winBounds = new System.Drawing.Rectangle(
                 Convert.ToInt32(_settingsViewModel.MainWindowLocation.X),
                 Convert.ToInt32(_settingsViewModel.MainWindowLocation.Y), Convert.ToInt32(Width),
                 Convert.ToInt32(Height));
-            foreach (System.Windows.Forms.Screen scr in System.Windows.Forms.Screen.AllScreens)
+            foreach (var scr in System.Windows.Forms.Screen.AllScreens)
             {
                 if (scr.Bounds.Contains(winBounds))
                 {
@@ -155,7 +162,7 @@ public partial class MainWindow : Window
     {
         if (welcomeDialogue != null)
         {
-            welcomeDialogue.Left = Left            + Width + 30;
+            welcomeDialogue.Left = Left + Width + 30;
             welcomeDialogue.Top = Top + Height / 2 - welcomeDialogue.Height / 2;
             welcomeDialogue.Show();
         }
@@ -177,18 +184,6 @@ public partial class MainWindow : Window
         Status.Foreground = severity is >= 0 and <= 2
             ? StatusBrushes[severity]
             : Brushes.Yellow;
-    }
-
-    public void Exit(object sender, RoutedEventArgs e)
-    {
-        NotifyIcon.Dispose();
-        if (Main.DataBase.rememberMe)
-        {
-            // if rememberme was checked then save it
-            _encryptedDataService.PersistJWT();
-        }
-
-        Application.Current.Shutdown();
     }
 
     private void Minimise(object sender, RoutedEventArgs e)
@@ -243,7 +238,7 @@ public partial class MainWindow : Window
         ReloadDrop.IsEnabled = false;
         ReloadMarket.IsEnabled = false;
         MarketData.Content = "Loading...";
-        Main.StatusUpdate("Forcing Market Update", 0);
+        Dispatcher.InvokeAsync(() => ChangeStatus("Forcing Market Update", 0));
         Main.DataBase.ForceMarketUpdate();
     }
 
@@ -252,8 +247,8 @@ public partial class MainWindow : Window
         ReloadDrop.IsEnabled = false;
         ReloadMarket.IsEnabled = false;
         DropData.Content = "Loading...";
-        Main.StatusUpdate("Forcing Prime Update", 0);
-        Task.Run(async () => { await Main.DataBase.ForceEquipmentUpdate(); });
+        Dispatcher.InvokeAsync(() => ChangeStatus("Forcing Prime Update", 0));
+        Task.Run(async () => await Main.DataBase.ForceEquipmentUpdate());
     }
 
     // Allows the draging of the window
@@ -353,13 +348,22 @@ public partial class MainWindow : Window
         switch (ComboBox.SelectedIndex)
         {
             case 0: //Online in game
-                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("in game"); });
+                Task.Run(async () =>
+                {
+                    await Main.DataBase.SetWebsocketStatus("in game");
+                });
                 break;
             case 1: //Online
-                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("online"); });
+                Task.Run(async () =>
+                {
+                    await Main.DataBase.SetWebsocketStatus("online");
+                });
                 break;
             case 2: //Invisible
-                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("offline"); });
+                Task.Run(async () =>
+                {
+                    await Main.DataBase.SetWebsocketStatus("offline");
+                });
                 break;
             case 3: //Sign out
                 LoggOut(null, null);
@@ -378,7 +382,10 @@ public partial class MainWindow : Window
         ComboBox.Visibility = Visibility.Hidden;
         PlusOneButton.Visibility = Visibility.Hidden;
         CreateListing.Visibility = Visibility.Hidden;
-        Task.Factory.StartNew(() => { Main.DataBase.Disconnect(); });
+        Task.Factory.StartNew(() =>
+        {
+            Main.DataBase.Disconnect();
+        });
     }
 
     internal void FinishedLoading()
@@ -390,13 +397,13 @@ public partial class MainWindow : Window
     {
         if (OCR.processingActive)
         {
-            Main.StatusUpdate("Still Processing Reward Screen", 2);
+            Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", 2));
             return;
         }
 
         if (Main.ListingHelper.PrimeRewards == null || Main.ListingHelper.PrimeRewards.Count == 0)
         {
-            ChangeStatus("No recorded rewards found", 2);
+            Dispatcher.InvokeAsync(() => ChangeStatus("No recorded rewards found", 2));
             return;
         }
 
@@ -434,12 +441,12 @@ public partial class MainWindow : Window
     {
         if (OCR.processingActive)
         {
-            Main.StatusUpdate("Still Processing Reward Screen", 2);
+            Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", 2));
             return;
         }
 
         Logger.Debug("Starting search it");
-        Main.StatusUpdate("Starting search it", 0);
+        Dispatcher.InvokeAsync(() => ChangeStatus("Starting search it", 0));
         Main.SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
     }
 
@@ -452,5 +459,41 @@ public partial class MainWindow : Window
         };
 
         Process.Start(processInfo);
+    }
+
+    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    {
+        NotifyIcon.Dispose();
+        listener.Dispose();
+
+        if (Main.DataBase.rememberMe)
+        {
+            // if rememberme was checked then save it
+            _encryptedDataService.PersistJWT();
+        }
+
+        Application.Current.Shutdown();
+    }
+
+    public Task Consume(ConsumeContext<DataUpdatedAt> context)
+    {
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (context.Message.Type == DataUpdateType.Market)
+                MarketData.Content = context.Message.Date;
+            else
+                DropData.Content = context.Message.Date;
+
+            ReloadDrop.IsEnabled = true;
+            ReloadMarket.IsEnabled = true;
+        });
+
+        return Task.CompletedTask;
+    }
+
+    public Task Consume(ConsumeContext<UpdateStatus> context)
+    {
+        Dispatcher.InvokeAsync(() => ChangeStatus(context.Message.Message, context.Message.Severity));
+        return Task.CompletedTask;
     }
 }

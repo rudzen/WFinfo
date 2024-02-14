@@ -1,17 +1,19 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
+using MassTransit;
 using Serilog;
+using WFInfo.Domain;
 
 namespace WFInfo.Services.Screenshot;
 
-public class ImageScreenshotService : IScreenshotService
+public class ImageScreenshotService(IBus bus) : IScreenshotService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ImageScreenshotService>();
 
     public async Task<List<Bitmap>> CaptureScreenshot()
     {
         // Using WinForms for the openFileDialog because it's simpler and much easier
-        using OpenFileDialog openFileDialog = new OpenFileDialog();
+        using var openFileDialog = new OpenFileDialog();
         openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
         openFileDialog.Filter = "image files (*.png)|*.png|All files (*.*)|*.*";
         openFileDialog.FilterIndex = 2;
@@ -29,13 +31,12 @@ public class ImageScreenshotService : IScreenshotService
             catch (Exception e)
             {
                 Logger.Error(e, "Failed to load image");
-                Main.StatusUpdate("Failed to load image", 1);
-
+                await bus.Publish(new UpdateStatus("Failed to load image", 1));
                 return [];
             }
         }
 
-        Main.StatusUpdate("Failed to select image", 1);
+        await bus.Publish(new UpdateStatus("Failed to select image", 1));
         return [];
     }
 }

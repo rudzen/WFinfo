@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using WFInfo.Domain;
 
 namespace WFInfo;
 
@@ -70,7 +71,7 @@ public partial class AutoCount : Window
             viewModel.ItemList.FirstOrDefault().AddCount(false);
         }
 
-        Main.DataBase.SaveAllJSONs();
+        Main.DataBase.SaveAll(DataTypes.All);
         EquipmentWindow.INSTANCE.ReloadItems();
     }
 

@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using Tesseract;
+using WFInfo.Domain;
 using WFInfo.Services.HDRDetection;
 using WFInfo.Services.Screenshot;
 using WFInfo.Services.WindowInfo;
@@ -131,12 +132,7 @@ internal partial class OCR
         _windowsScreenshot = windowsScreenshot;
     }
 
-    public static void DisposeTesseract()
-    {
-        _tesseractService?.Dispose();
-    }
-
-    internal static void ProcessRewardScreen(Bitmap? file = null)
+    internal static async Task ProcessRewardScreen(Bitmap? file = null)
     {
         #region initializers
 
@@ -159,7 +155,7 @@ internal partial class OCR
 
         var parts = new List<Bitmap>();
 
-        bigScreenshot = file ?? CaptureScreenshot();
+        bigScreenshot = file ?? await CaptureScreenshot();
         try
         {
             parts.AddRange(ExtractPartBoxAutomatically(out var _, bigScreenshot));
@@ -450,7 +446,7 @@ internal partial class OCR
 
     public static WFtheme GetThemeWeighted(out double closestThresh, Bitmap? image = null)
     {
-        image ??= CaptureScreenshot();
+        image ??= CaptureScreenshot().GetAwaiter().GetResult();
         var theme = ThemeDetector.GetThemeWeighted(out closestThresh, image);
         return theme;
     }
@@ -1355,7 +1351,7 @@ internal partial class OCR
             }
         }
 
-        Main.DataBase.SaveAllJSONs();
+        Main.DataBase.SaveAll(DataTypes.All);
         Main.RunOnUIThread(() =>
         {
             EquipmentWindow.INSTANCE.ReloadItems();
@@ -2106,8 +2102,8 @@ internal partial class OCR
         }
 
         var total = totalEven + totalOdd;
-        Logger.Debug("EVEN DISTRIBUTION: " + (totalEven / total * 100).ToString("F2", Main.Culture) + "%");
-        Logger.Debug("ODD DISTRIBUTION: " + (totalOdd / total * 100).ToString("F2", Main.Culture) + "%");
+        Logger.Debug("EVEN DISTRIBUTION: {Dist}%", (totalEven / total * 100).ToString("F2", Main.Culture));
+        Logger.Debug("ODD DISTRIBUTION: {Dist}%", (totalOdd / total * 100).ToString("F2", Main.Culture));
 
         var boxWidth = partBox.Width / 4;
         var boxHeight = filtered.Height;
@@ -2154,12 +2150,13 @@ internal partial class OCR
         return RE.Replace(ret, string.Empty).Trim();
     }
 
-    internal static Bitmap CaptureScreenshot()
+    internal static async Task<Bitmap> CaptureScreenshot()
     {
-        _window.UpdateWindow();
+        await _window.UpdateWindow();
 
         var screenshot = GetScreenshotService();
-        var image = screenshot.CaptureScreenshot().GetAwaiter().GetResult()[0];
+        var screenshots = await screenshot.CaptureScreenshot();
+        var image = screenshots[0];
         var date = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
         var fileName = Path.Combine(ApplicationConstants.AppPathDebug, $"FullScreenShot {date}.png");
         image.Save(fileName);
@@ -2195,7 +2192,7 @@ internal partial class OCR
 
     internal static void SnapScreenshot()
     {
-        Main.SnapItOverlayWindow.Populate(CaptureScreenshot());
+        Main.SnapItOverlayWindow.Populate(CaptureScreenshot().GetAwaiter().GetResult());
         Main.SnapItOverlayWindow.Left = _window.Window.Left / _window.DpiScaling;
         Main.SnapItOverlayWindow.Top = _window.Window.Top / _window.DpiScaling;
         Main.SnapItOverlayWindow.Width = _window.Window.Width / _window.DpiScaling;

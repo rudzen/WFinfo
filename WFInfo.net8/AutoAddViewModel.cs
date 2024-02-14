@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using Serilog;
+using WFInfo.Domain;
 
 namespace WFInfo;
 
@@ -126,7 +127,7 @@ public class AutoAddSingleItem : INPC
         RemoveFromParent();
         if (save)
         {
-            Main.DataBase.SaveAllJSONs();
+            Main.DataBase.SaveAll(DataTypes.All);
             Main.RunOnUIThread(() =>
             {
                 EquipmentWindow.INSTANCE.ReloadItems();

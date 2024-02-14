@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo.Settings;

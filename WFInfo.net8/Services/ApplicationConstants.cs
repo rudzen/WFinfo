@@ -10,5 +10,5 @@ public static class ApplicationConstants
 
     public static readonly string BuildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
 
-
+    public const string DateFormat = "MMM dd - HH:mm";
 }

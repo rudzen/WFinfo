@@ -4,8 +4,6 @@ using System.Windows.Input;
 
 namespace WFInfo;
 
-public delegate void KeyboardAction();
-
 public class LowLevelListener : IDisposable
 {
     private const int WH_MOUSE_LL = 14;

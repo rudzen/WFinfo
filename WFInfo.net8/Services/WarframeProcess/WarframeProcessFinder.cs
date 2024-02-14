@@ -1,11 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
+using MassTransit;
 using Serilog;
+using WFInfo.Domain;
 using WFInfo.Settings;
 
 namespace WFInfo.Services.WarframeProcess;
 
-public sealed class WarframeProcessFinder : IProcessFinder
+public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublishEndpoint bus) : IProcessFinder
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<WarframeProcessFinder>();
 
@@ -13,7 +15,7 @@ public sealed class WarframeProcessFinder : IProcessFinder
     {
         get
         {
-            FindProcess();
+            FindProcess().GetAwaiter().GetResult(); // shit
             return _warframe;
         }
     }
@@ -25,32 +27,25 @@ public sealed class WarframeProcessFinder : IProcessFinder
 
     private Process? _warframe;
 
-    private readonly ApplicationSettings _settings;
-
-    public WarframeProcessFinder(ApplicationSettings settings)
-    {
-        _settings = settings;
-    }
-
-    private void FindProcess()
+    private async Task FindProcess()
     {
         // process already found
         if (_warframe != null)
         {
-            if (_warframe.HasExited)
-            {
-                //reset warframe process variables, and reset LogCapture so new game process gets noticed
-                Main.DataBase.DisableLogCapture();
-                _warframe.Dispose();
-                _warframe = null;
+            // Current process is still good
+            if (!_warframe.HasExited)
+                return;
 
-                if (_settings.Auto)
-                    Main.DataBase.EnableLogCapture();
-            }
-            else return; // Current process is still good
+            //reset warframe process variables, and reset LogCapture so new game process gets noticed
+            Main.DataBase.DisableLogCapture();
+            _warframe.Dispose();
+            _warframe = null;
+
+            if (settings.Auto)
+                Main.DataBase.EnableLogCapture();
         }
 
-        foreach (Process process in Process.GetProcesses())
+        foreach (var process in Process.GetProcesses())
         {
             if (process is { ProcessName: "Warframe.x64", MainWindowTitle: "Warframe" })
             {
@@ -58,7 +53,8 @@ public sealed class WarframeProcessFinder : IProcessFinder
 
                 if (Main.DataBase.GetSocketAliveStatus())
                     Logger.Debug("Socket was open in verify warframe");
-                Task.Run(async () => { await Main.DataBase.SetWebsocketStatus("in game"); });
+
+                await Main.DataBase.SetWebsocketStatus("in game");
                 Logger.Debug("Found Warframe Process: ID - {Id}, MainTitle - {Title}, Process Name - {Name}", process.Id, process.MainWindowTitle, process.ProcessName);
 
                 //try and catch any UAC related issues
@@ -73,10 +69,13 @@ public sealed class WarframeProcessFinder : IProcessFinder
                     _warframe = null;
 
                     Logger.Error(e, "Failed to get Warframe process");
-                    Main.StatusUpdate("Restart Warframe without admin privileges", 1);
+
+                    await bus
+                          .Publish(new UpdateStatus("Restart Warframe without admin privileges", 1))
+                          .ConfigureAwait(ConfigureAwaitOptions.None);
 
                     // Substitute process for debug purposes
-                    if (_settings.Debug)
+                    if (settings.Debug)
                     {
                         Logger.Debug("Substituting Warframe process with WFInfo process for debug purposes");
                         _warframe = Process.GetCurrentProcess();
@@ -98,7 +97,7 @@ public sealed class WarframeProcessFinder : IProcessFinder
                 //try and catch any UAC related issues
                 try
                 {
-                    bool _ = _warframe.HasExited;
+                    _ = _warframe.HasExited;
                     OnProcessChanged?.Invoke(_warframe);
                     return;
                 }
@@ -107,10 +106,12 @@ public sealed class WarframeProcessFinder : IProcessFinder
                     _warframe = null;
 
                     Logger.Error(e, "Failed to get Warframe process");
-                    Main.StatusUpdate("Restart Warframe without admin privileges, or WFInfo with admin privileges", 1);
+                    await bus
+                          .Publish(new UpdateStatus("Restart Warframe without admin privileges, or WFInfo with admin privileges", 1))
+                          .ConfigureAwait(ConfigureAwaitOptions.None);
 
                     // Substitute process for debug purposes
-                    if (_settings.Debug)
+                    if (settings.Debug)
                     {
                         Logger.Debug("Substituting Warframe process with WFInfo process for debug purposes");
                         _warframe = Process.GetCurrentProcess();
@@ -125,15 +126,16 @@ public sealed class WarframeProcessFinder : IProcessFinder
             }
         }
 
-        if (!_settings.Debug)
+        if (!settings.Debug)
         {
             Logger.Debug("Didn't detect Warframe process");
-            Main.StatusUpdate("Unable to Detect Warframe Process", 1);
+            await bus.Publish(new UpdateStatus("Unable to Detect Warframe Process", 1))
+                     .ConfigureAwait(ConfigureAwaitOptions.None);
         }
         else
         {
             // Substitute process for debug purposes
-            if (_settings.Debug)
+            if (settings.Debug)
             {
                 Logger.Debug("Substituting Warframe process with WFInfo process for debug purposes");
                 _warframe = Process.GetCurrentProcess();

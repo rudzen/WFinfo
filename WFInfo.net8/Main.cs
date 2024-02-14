@@ -1,19 +1,20 @@
-using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
-using System.Reflection;
 using System.Windows.Input;
 using System.Text.RegularExpressions;
 using AutoUpdaterDotNET;
 using System.Windows;
 using System.Windows.Forms;
+using MassTransit;
 using WebSocketSharp;
 using WFInfo.Settings;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using WFInfo.Domain;
+using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;
@@ -65,6 +66,7 @@ public class Main
     private readonly IWindowInfoService _windowInfo;
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly IRewardSelector _rewardSelector;
+    private readonly IBus _bus;
 
     private readonly Overlay[] _overlays;
 
@@ -91,6 +93,7 @@ public class Main
         _windowInfo = sp.GetRequiredService<IWindowInfoService>();
         _encryptedDataService = sp.GetRequiredService<IEncryptedDataService>();
         _rewardSelector = sp.GetRequiredService<IRewardSelector>();
+        _bus = sp.GetRequiredService<IBus>();
 
         DataBase = sp.GetRequiredService<Data>();
         SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
@@ -242,7 +245,7 @@ public class Main
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.ChangeStatus(message, severity); });
     }
 
-    private void ActivationKeyPressed(object key)
+    private async Task ActivationKeyPressed(object key)
     {
         Logger.Information(
             "User key press. key={Key},delete={Delete},snapit={SnapitKey}:{SnapPressed},searchit={SearchitKey}:{SearchItPressed},masterit={MasteritKey}:{MasteritPressed},debug={DebugKey}:{DebugPressed}",
@@ -259,9 +262,7 @@ public class Main
             //Close all overlays if hotkey + delete is held down
             foreach (Window overlay in App.Current.Windows)
             {
-                // TODO (rudzen) : this is a hack, we should not be checking for the type of the window
-
-                // if (overlay.GetType() == typeof(Overlay))
+                // TODO (rudzen) : this is a hack, we should not be checking for the type NAME of the window
 
                 if (overlay.GetType().ToString() == "WFInfo.Overlay")
                 {
@@ -269,7 +270,7 @@ public class Main
                 }
             }
 
-            StatusUpdate("Overlays dismissed", 1);
+            await _bus.Publish(new UpdateStatus("Overlays dismissed", 1));
             return;
         }
 
@@ -278,7 +279,7 @@ public class Main
         {
             //snapit debug
             Logger.Information("Loading screenshot from file for snapit");
-            StatusUpdate("Offline testing with screenshot for snapit", 0);
+            await _bus.Publish(new UpdateStatus("Offline testing with screenshot for snapit", 0));
             LoadScreenshot(ScreenshotType.SNAPIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
@@ -286,48 +287,45 @@ public class Main
         {
             //master debug
             Logger.Information("Loading screenshot from file for masterit");
-            StatusUpdate("Offline testing with screenshot for masterit", 0);
+            await _bus.Publish(new UpdateStatus("Offline testing with screenshot for masterit", 0));
             LoadScreenshot(ScreenshotType.MASTERIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
         {
             //normal debug
             Logger.Information("Loading screenshot from file");
-            StatusUpdate("Offline testing with screenshot", 0);
+            await _bus.Publish(new UpdateStatus("Offline testing with screenshot", 0));
             LoadScreenshot(ScreenshotType.NORMAL);
         }
         else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
         {
             //snapit
             Logger.Information("Starting snap it");
-            StatusUpdate("Starting snap it", 0);
+            await _bus.Publish(new UpdateStatus("Starting snap it", 0));
             OCR.SnapScreenshot();
         }
         else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
         {
             //Searchit
             Logger.Information("Starting search it");
-            StatusUpdate("Starting search it", 0);
+            await _bus.Publish(new UpdateStatus("Starting search it", 0));
             SearchBox.Start(() => _encryptedDataService.IsJwtLoggedIn());
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {
             //masterit
             Logger.Information("Starting master it");
-            StatusUpdate("Starting master it", 0);
-            Task.Factory.StartNew(() =>
-            {
-                using var bigScreenshot = OCR.CaptureScreenshot();
-                OCR.ProcessProfileScreen(bigScreenshot);
-            });
+            await _bus.Publish(new UpdateStatus("Starting master it", 0));
+            using var bigScreenshot = await OCR.CaptureScreenshot();
+            OCR.ProcessProfileScreen(bigScreenshot);
         }
         else if (_settings.Debug || _process.IsRunning)
         {
-            Task.Factory.StartNew(() => OCR.ProcessRewardScreen());
+            await OCR.ProcessRewardScreen();
         }
     }
 
-    public void OnMouseAction(MouseButton key)
+    public async void OnMouseAction(MouseButton key)
     {
         _latestActive = DateTime.UtcNow.Add(TimeTillAfk);
 
@@ -348,7 +346,7 @@ public class Main
                 return;
             }
 
-            ActivationKeyPressed(key);
+            await ActivationKeyPressed(key);
         }
         else if (key == MouseButton.Left
                  && _process is { Warframe.HasExited: false, GameIsStreamed: false }
@@ -362,7 +360,7 @@ public class Main
                 return;
             }
 
-            Task.Run(() =>
+            await Task.Run(() =>
             {
                 var lastClick = System.Windows.Forms.Cursor.Position;
                 var uiScaling = OCR.UiScaling;
@@ -376,7 +374,7 @@ public class Main
         }
     }
 
-    public void OnKeyAction(Key key)
+    public async void OnKeyAction(Key key)
     {
         _latestActive = DateTime.UtcNow.Add(TimeTillAfk);
 
@@ -384,7 +382,7 @@ public class Main
         if (SnapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
         {
             SnapItOverlayWindow.CloseOverlay();
-            StatusUpdate("Closed snapit", 0);
+            await _bus.Publish(new UpdateStatus("Closed snapit", 0));
             return;
         }
 
@@ -407,7 +405,7 @@ public class Main
         {
             //check if user pressed activation key
 
-            ActivationKeyPressed(key);
+            await ActivationKeyPressed(key);
         }
     }
 
@@ -427,7 +425,7 @@ public class Main
         GfnWarning = new GFNWarning();
     }
 
-    private void LoadScreenshot(ScreenshotType type)
+    private async Task LoadScreenshot(ScreenshotType type)
     {
         // Using WinForms for the openFileDialog because it's simpler and much easier
         using var openFileDialog = new OpenFileDialog();
@@ -439,7 +437,7 @@ public class Main
 
         if (openFileDialog.ShowDialog() == DialogResult.OK)
         {
-            Task.Factory.StartNew(
+            await Task.Run(async
                 () =>
                 {
                     try
@@ -456,7 +454,7 @@ public class Main
                                     //Get the path of specified file
                                     var image = new Bitmap(file);
                                     _windowInfo.UseImage(image);
-                                    OCR.ProcessRewardScreen(image);
+                                    await OCR.ProcessRewardScreen(image);
                                     break;
                                 }
                                 case ScreenshotType.SNAPIT:
@@ -483,13 +481,13 @@ public class Main
                     catch (Exception e)
                     {
                         Logger.Error(e, "Failed to load image");
-                        StatusUpdate("Failed to load image", 1);
+                        _bus.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
                     }
                 });
         }
         else
         {
-            StatusUpdate("Failed to load image", 1);
+            _bus.Publish(new UpdateStatus("Failed to load image", 1)).GetAwaiter().GetResult();
             if (type == ScreenshotType.NORMAL)
             {
                 OCR.processingActive.GetAndSet(false);

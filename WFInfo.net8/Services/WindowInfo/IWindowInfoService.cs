@@ -36,7 +36,7 @@ public interface IWindowInfoService
     /// <summary>
     /// Updates all cached info about the window.
     /// </summary>
-    void UpdateWindow();
+    Task UpdateWindow();
 
     /// <summary>
     /// Uses a bitmap to set window info. Any further <see cref="UpdateWindow"/> calls will overwrite this info.

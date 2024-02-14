@@ -1,12 +1,14 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
+using MassTransit;
 using Serilog;
+using WFInfo.Domain;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Settings;
 
 namespace WFInfo.Services.WindowInfo;
 
-public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings)
+public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings, IBus bus)
     : IWindowInfoService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Win32WindowInfoService>();
@@ -30,12 +32,12 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
 
     public Screen? Screen { get; private set; } = Screen.PrimaryScreen;
 
-    public void UpdateWindow()
+    public async Task UpdateWindow()
     {
         if (!process.IsRunning && !settings.Debug)
         {
             Logger.Debug("Failed to find warframe process for window info");
-            Main.StatusUpdate("Failed to find warframe process for window info", 1);
+            await bus.Publish(new UpdateStatus("Failed to find warframe process for window info", 1)).ConfigureAwait(ConfigureAwaitOptions.None);
             return;
         }
 
@@ -48,7 +50,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             Logger.Debug("Warframe display: {DeviceName}, {ScreenType}", Screen.DeviceName, screenType);
 
         RefreshDPIScaling();
-        GetWindowRect();
+        await GetWindowRect();
     }
 
     public void UseImage(Bitmap? bitmap)
@@ -65,7 +67,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             Logger.Debug("Couldn't Detect Warframe Process. Using Primary Screen Bounds. window={Window},named={Name}",Window, Screen.DeviceName);
     }
 
-    private void GetWindowRect()
+    private async Task GetWindowRect()
     {
         if (!Win32.GetWindowRect(process.HandleRef, out var osRect))
         {
@@ -78,7 +80,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             else
             {
                 Logger.Debug("Failed to get window bounds");
-                Main.StatusUpdate("Failed to get window bounds", 1);
+                await bus.Publish(new UpdateStatus("Failed to get window bounds", 1)).ConfigureAwait(ConfigureAwaitOptions.None);
                 return;
             }
         }

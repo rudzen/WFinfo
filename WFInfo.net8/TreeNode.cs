@@ -5,6 +5,8 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using Serilog;
+using WFInfo.Domain;
+using WFInfo.Services;
 
 namespace WFInfo;
 
@@ -934,7 +936,7 @@ public partial class TreeNode : INPC
         if (owned > 0)
         {
             job["owned"] = owned - 1;
-            Main.DataBase.SaveAllJSONs();
+            Main.DataBase.SaveAll(DataTypes.All);
             Owned_Val--;
             Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
             Owned_Plat_Val = Owned_Val  * Plat_Val;
@@ -958,7 +960,7 @@ public partial class TreeNode : INPC
         var count = Count_Val;
         var owned = Owned_Val;
         job["owned"] = owned + 1;
-        Main.DataBase.SaveAllJSONs();
+        Main.DataBase.SaveAll(DataTypes.All);
         Owned_Val++;
         Owned_Capped_Val = Math.Min(Owned_Val, Count_Val);
         Owned_Plat_Val = Owned_Val  * Plat_Val;
@@ -978,7 +980,7 @@ public partial class TreeNode : INPC
     {
         Main.DataBase.EquipmentData[this.dataRef]["mastered"] = !Mastered;
         Mastered = !Mastered;
-        Main.DataBase.SaveAllJSONs();
+        Main.DataBase.SaveAll(DataTypes.All);
     }
 
     private void PrimeUpdateDiff(bool UseCappedOwned)

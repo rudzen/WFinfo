@@ -8,7 +8,9 @@
     xmlns:tb="http://www.hardcodet.net/taskbar"
     x:Class="WFInfo.MainWindow"
     Title="WFInfo" Height="110" Width="334" ResizeMode="NoResize" Icon="Resources/WFLogo.png" WindowStyle="None"
-    BorderBrush="#FF707070" LocationChanged="OnLocationChanged" ContentRendered="OnContentRendered">
+    BorderBrush="#FF707070" LocationChanged="OnLocationChanged" ContentRendered="OnContentRendered"
+    Closed="MainWindow_OnClosed"
+    >
     <Window.Resources>
     </Window.Resources>
 
@@ -31,7 +33,7 @@
         <Label x:Name="minimise" MouseLeftButtonDown="Minimise" Content="_" Margin="0,0,21,0"
                Style="{StaticResource Label_Button}" Padding="0,0,0,3" Height="22" VerticalAlignment="Top"
                HorizontalAlignment="Right" Width="22" BorderBrush="{x:Null}" />
-        <Label x:Name="exit" MouseLeftButtonDown="Exit" Content="x" Style="{StaticResource Label_Button}" Height="22"
+        <Label x:Name="exit" MouseLeftButtonDown="MainWindow_OnClosed" Content="x" Style="{StaticResource Label_Button}" Height="22"
                VerticalAlignment="Top" HorizontalAlignment="Right" Width="22" />
         <Label x:Name="Website" ToolTip="Opens WFinfo discord" MouseLeftButtonDown="WebsiteClick" Margin="0,22,1,0"
                Padding="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
@@ -222,7 +224,7 @@
                     <MenuItem Header="Relics" Click="RelicsClick" />
                     <MenuItem Header="Equipment" Click="EquipmentClick" />
                     <Separator Style="{StaticResource WFInfo_Separator}" />
-                    <MenuItem Header="Exit" Click="Exit" />
+                    <MenuItem Header="Exit" Click="MainWindow_OnClosed" />
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>
         </tb:TaskbarIcon>
