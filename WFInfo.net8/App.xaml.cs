@@ -63,16 +63,17 @@ public partial class App : Application
 
                     services = AddMessageBus(services);
 
-                    services.AddSingleton<IHasherService, HasherService>();
-                    services.AddSingleton<IWindowInfoService, Win32WindowInfoService>();
-                    services.AddSingleton<IThemeDetector, ThemeDetector>();
-                    services.AddSingleton<ISnapZoneDivider, SnapZoneDivider>();
-                    services.AddSingleton<IRewardSelector, RewardSelector>();
-                    services.AddSingleton<IProcessFinder, WarframeProcessFinder>();
-                    services.AddSingleton<IEncryptedDataService, EncryptedDataService>();
-                    services.AddSingleton<ISoundPlayer, SoundPlayer>();
-                    services.AddSingleton<IHDRDetectorService, SchemeHDRDetector>();
-                    services.AddSingleton<IHDRDetectionScheme, GameSettingsHDRDetectionScheme>();
+                    services.TryAddSingleton<IHasherService, HasherService>();
+                    services.TryAddSingleton<IWindowInfoService, Win32WindowInfoService>();
+                    services.TryAddSingleton<IThemeDetector, ThemeDetector>();
+                    services.TryAddSingleton<ISnapZoneDivider, SnapZoneDivider>();
+                    services.TryAddSingleton<IRewardSelector, RewardSelector>();
+                    services.TryAddSingleton<IProcessFinder, WarframeProcessFinder>();
+                    services.TryAddSingleton<IEncryptedDataService, EncryptedDataService>();
+                    services.TryAddSingleton<ISoundPlayer, SoundPlayer>();
+                    services.TryAddSingleton<IHDRDetectorService, SchemeHDRDetector>();
+                    services.TryAddSingleton<IHDRDetectionScheme, GameSettingsHDRDetectionScheme>();
+                    services.TryAddSingleton<ILogCapture, LogCapture>();
 
                     services.TryAddSingleton<Data>();
                     services.TryAddSingleton<ITesseractService, TesseractService>();

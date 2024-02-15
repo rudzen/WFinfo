@@ -21,7 +21,7 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services;
 
-public sealed class Data
+public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Data>();
 
@@ -108,7 +108,6 @@ public sealed class Data
     public string inGameName { get; private set; } = string.Empty;
     private readonly HttpClient _client;
     public bool rememberMe { get; set; }
-    private LogCapture? EElogWatcher;
     private Task? autoThread;
 
     private readonly ApplicationSettings _settings;
@@ -117,6 +116,7 @@ public sealed class Data
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly ObjectPool<StringBuilder> _stringBuilderPool;
     private readonly IMediator _mediator;
+    private readonly ILogCapture _logCapture;
 
     static Data()
     {
@@ -135,7 +135,8 @@ public sealed class Data
         IHttpClientFactory httpClientFactory,
         IEncryptedDataService encryptedDataService,
         ObjectPool<StringBuilder> stringBuilderPool,
-        IMediator mediator)
+        IMediator mediator,
+        ILogCapture logCapture)
     {
         _settings = settings;
         _process = process;
@@ -143,6 +144,7 @@ public sealed class Data
         _encryptedDataService = encryptedDataService;
         _stringBuilderPool = stringBuilderPool;
         _mediator = mediator;
+        _logCapture = logCapture;
 
         Logger.Debug("Initializing Databases");
 
@@ -156,29 +158,38 @@ public sealed class Data
     //TODO (rudzen) : to async
     public void EnableLogCapture()
     {
-        if (EElogWatcher is not null)
+        if (_logCapture.IsRunning)
             return;
 
         try
         {
             Logger.Debug("Starting log capture for EE");
-            EElogWatcher = new LogCapture(_process);
-            EElogWatcher.TextChanged = LogChanged;
+            Task.Run(async () => await _mediator.Publish(new LogCaptureState(true)));
+            // EElogWatcher = new LogCapture(_process);
+            // EElogWatcher.TextChanged = LogChanged;
         }
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to start log capture");
-            Main.StatusUpdate("Failed to start capturing log", StatusSeverity.Error);
+            Task.Run(async () =>
+            {
+                await _mediator.Publish(new LogCaptureState(false));
+                await _mediator.Publish(new UpdateStatus("Failed to start capturing log", StatusSeverity.Error));
+            });
         }
     }
 
     public void DisableLogCapture()
     {
-        if (EElogWatcher is null)
+        if (!_logCapture.IsRunning)
             return;
 
-        EElogWatcher.Dispose();
-        EElogWatcher = null;
+        Task.Run(async () => await _mediator.Publish(new LogCaptureState(false)));
+        // if (EElogWatcher is null)
+        //     return;
+        //
+        // EElogWatcher.Dispose();
+        // EElogWatcher = null;
     }
 
     private static void SaveDatabase<T>(string path, T db)
@@ -1803,5 +1814,11 @@ public sealed class Data
     {
         using var streamReader = new StreamReader(file);
         return streamReader.ReadToEnd();
+    }
+
+    public ValueTask Handle(LogCapture.LogCaptureLineChange logCaptureLineChange, CancellationToken cancellationToken)
+    {
+        LogChanged(logCaptureLineChange.Line);
+        return ValueTask.CompletedTask;
     }
 }
