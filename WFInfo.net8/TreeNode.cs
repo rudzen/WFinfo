@@ -318,7 +318,7 @@ public partial class TreeNode : INPC
         var primeSetPlat = primeSet["plat"].ToObject<string>();
 
         Grid_Shown = "Visible";
-        Plat_Val = double.Parse(primeSetPlat, Main.Culture);
+        Plat_Val = double.Parse(primeSetPlat, ApplicationConstants.Culture);
         Owned_Capped_Val = 0;
         Owned_Plat_Val = 0;
         Owned_Ducat_Val = 0;

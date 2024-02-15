@@ -81,7 +81,7 @@ public sealed class RewardSelector(IWindowInfoService window) : IRewardSelector
 
         /*Debug.WriteLine($"Closest point: {lowestDistancePoint}, with distance: {lowestDistance}");
 
-        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
         var img = CaptureScreenshot();
         var pinkP = new Pen(Brushes.Pink);
         var blackP = new Pen(Brushes.Black);

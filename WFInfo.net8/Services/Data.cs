@@ -225,7 +225,7 @@ public sealed class Data
             Logger.Debug(exception, "Failed to get items from warframe.market");
         }
 
-        MarketItems["version"] = Main.BuildVersion;
+        MarketItems["version"] = ApplicationConstants.MajorBuildVersion;
         Logger.Debug("Item database has been downloaded");
     }
 
@@ -257,7 +257,7 @@ public sealed class Data
                 MarketItems ??= JsonConvert.DeserializeObject<JObject>(ReadFileContent(marketItemsPath));
                 MarketItems ??= new JObject();
 
-                if (MarketData.TryGetValue("version", out var version) && version.ToObject<string>() == Main.BuildVersion)
+                if (MarketData.TryGetValue("version", out var version) && version.ToObject<string>() == ApplicationConstants.MajorBuildVersion)
                 {
                     var now = DateTime.Now;
                     var timestamp = MarketData["timestamp"].ToObject<DateTime>();
@@ -298,12 +298,12 @@ public sealed class Data
 
             MarketData[name] = new JObject
             {
-                { "plat", double.Parse(row["custom_avg"].ToString(), Main.Culture) },
+                { "plat", double.Parse(row["custom_avg"].ToString(), ApplicationConstants.Culture) },
                 { "ducats", 0 },
                 {
                     "volume",
-                    int.Parse(row["yesterday_vol"].ToString(), Main.Culture) +
-                    int.Parse(row["today_vol"].ToString(), Main.Culture)
+                    int.Parse(row["yesterday_vol"].ToString(), ApplicationConstants.Culture) +
+                    int.Parse(row["today_vol"].ToString(), ApplicationConstants.Culture)
                 }
             };
         }
@@ -315,7 +315,7 @@ public sealed class Data
         }
 
         MarketData["timestamp"] = DateTime.Now;
-        MarketData["version"] = Main.BuildVersion;
+        MarketData["version"] = ApplicationConstants.MajorBuildVersion;
 
         Logger.Debug("Plat database has been downloaded");
 
@@ -553,7 +553,7 @@ public sealed class Data
         Logger.Debug("Sending market data timestamp update");
 
         var msg = new DataUpdatedAt(
-            Date: MarketData["timestamp"].ToObject<DateTime>().ToString(ApplicationConstants.DateFormat, Main.Culture),
+            Date: MarketData["timestamp"].ToObject<DateTime>().ToString(ApplicationConstants.DateFormat, ApplicationConstants.Culture),
             Type: DataTypes.MarketData
         );
 
@@ -606,7 +606,7 @@ public sealed class Data
 
             var date = marketData["timestamp"]
                        .ToObject<DateTime>()
-                       .ToString(ApplicationConstants.DateFormat, Main.Culture);
+                       .ToString(ApplicationConstants.DateFormat, ApplicationConstants.Culture);
             var msg = new DataUpdatedAt(date, DataTypes.MarketData);
             await _mediator.Publish(msg);
             await _mediator.Publish(new UpdateStatus("Market Update Complete", 0));
@@ -663,7 +663,7 @@ public sealed class Data
             SaveAll(DataTypes.All);
 
             var msg = new DataUpdatedAt(
-                Date: EquipmentData["timestamp"].ToObject<DateTime>().ToString(ApplicationConstants.DateFormat, Main.Culture),
+                Date: EquipmentData["timestamp"].ToObject<DateTime>().ToString(ApplicationConstants.DateFormat, ApplicationConstants.Culture),
                 Type: DataTypes.MarketItems
             );
 
@@ -776,8 +776,8 @@ public sealed class Data
         // Levenshtein Distance determines how many character changes it takes to form a known result
         // For example: Nuvo Prime is closer to Nova Prime (2) then Ash Prime (4)
         // For more info see: https://en.wikipedia.org/wiki/Levenshtein_distance
-        s = s.ToLower(Main.Culture);
-        t = t.ToLower(Main.Culture);
+        s = s.ToLower(ApplicationConstants.Culture);
+        t = t.ToLower(ApplicationConstants.Culture);
         var n = s.Length;
         var m = t.Length;
         var d = new int[n + 1, m + 1];
@@ -927,8 +927,8 @@ public sealed class Data
     private int LevenshteinDistanceSecond(string str1, string str2, int limit = -1)
     {
         int num;
-        var s = str1.ToLower(Main.Culture);
-        var t = str2.ToLower(Main.Culture);
+        var s = str1.ToLower(ApplicationConstants.Culture);
+        var t = str2.ToLower(ApplicationConstants.Culture);
         var n = s.Length;
         var m = t.Length;
 
@@ -1067,7 +1067,7 @@ public sealed class Data
 
     public static string GetSetName(string name)
     {
-        var result = name.ToLower(Main.Culture);
+        var result = name.ToLower(ApplicationConstants.Culture);
 
         if (result.Contains("kavasa"))
             return "Kavasa Prime Kubrow Collar Set";
@@ -1097,7 +1097,7 @@ public sealed class Data
         result = result.Replace("hilt", string.Empty);
         result = result.Replace("link", string.Empty);
         result = result.TrimEnd();
-        result = Main.Culture.TextInfo.ToTitleCase(result);
+        result = ApplicationConstants.Culture.TextInfo.ToTitleCase(result);
         result += " Set";
         return result;
     }
@@ -1192,7 +1192,7 @@ public sealed class Data
                             "Timestamp,ChosenIndex,Reward_0_Name,Reward_0_Plat,Reward_0_Ducats,Reward_1_Name,Reward_1_Plat,Reward_1_Ducats,Reward_2_Name,Reward_2_Plat,Reward_2_Ducats,Reward_3_Name,Reward_3_Plat,Reward_3_Ducats"
                             +
                             Environment.NewLine;
-                    csv += DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture) + "," +
+                    csv += DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture) + "," +
                            Main.ListingHelper.SelectedRewardIndex;
                     for (var i = 0; i < 4; i++)
                     {

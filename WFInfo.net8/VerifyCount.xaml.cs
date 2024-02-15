@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
 
 namespace WFInfo;

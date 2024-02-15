@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using Serilog;
 using Serilog.Core;
+using WFInfo.Services;
 using WFInfo.Settings;
 
 namespace WFInfo;
@@ -200,8 +201,8 @@ public partial class Overlay : Window
                 ownedText.Text += " (" + detected + " FOUND)";
         }
 
-        double.TryParse(plat, NumberStyles.Any, Main.Culture, out var platinum);
-        int.TryParse(ducats, NumberStyles.Any, Main.Culture, out var duc);
+        double.TryParse(plat, NumberStyles.Any, ApplicationConstants.Culture, out var platinum);
+        int.TryParse(ducats, NumberStyles.Any, ApplicationConstants.Culture, out var duc);
         var efficiency = $"{Math.Round(duc / platinum, 1)}";
         var color = Color.FromArgb(100, 174, 199, 206);
 

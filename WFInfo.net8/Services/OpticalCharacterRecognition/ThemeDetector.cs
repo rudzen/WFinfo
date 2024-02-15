@@ -131,7 +131,7 @@ public sealed class ThemeDetector : IThemeDetector
         var simdMax = GetMaxWeight(weights);
         var simdActive = (WFtheme)weights.IndexOf(simdMax);
 
-        Logger.Debug("CLOSEST THEME ({Culture}): {Active}", simdMax.ToString("F2", Main.Culture), simdActive);
+        Logger.Debug("CLOSEST THEME ({Culture}): {Active}", simdMax.ToString("F2", ApplicationConstants.Culture), simdActive);
 
         closestThresh = simdMax;
         if (_settings.ThemeSelection != WFtheme.AUTO)

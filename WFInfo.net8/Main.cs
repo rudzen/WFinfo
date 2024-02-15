@@ -47,11 +47,6 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     public static SearchIt SearchIt { get; set; }
     public static Login Login { get; set; }
     public static ListingHelper ListingHelper { get; set; } = new ListingHelper();
-    public static string BuildVersion { get; }
-
-    // Glob
-    public static CultureInfo Culture { get; } = new("en", false);
-
     private static bool UserAway { get; set; }
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
@@ -74,13 +69,6 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     // hack, should not be here, but stuff is too intertwined for now
     // also, the auto updater needs this to allow for event to be used
     private readonly IServiceProvider _sp;
-
-    static Main()
-    {
-        var version = ApplicationConstants.BuildVersion;
-        var splitIndex = version.LastIndexOf('.');
-        BuildVersion = version[..splitIndex];
-    }
 
     public Main(IServiceProvider sp)
     {
@@ -241,7 +229,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     {
         Directory.CreateDirectory(ApplicationConstants.AppPath);
         Directory.CreateDirectory(ApplicationConstants.AppPathDebug);
-        Logger.Debug("   STARTING WFINFO {BuildVersion} at {DateTime}", BuildVersion, DateTime.UtcNow);
+        Logger.Debug("   STARTING WFINFO {BuildVersion} at {DateTime}", ApplicationConstants.MajorBuildVersion, DateTime.UtcNow);
     }
 
     /// <summary>

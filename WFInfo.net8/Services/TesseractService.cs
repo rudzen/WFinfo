@@ -4,6 +4,7 @@ using System.Net.Http;
 using Serilog;
 using Tesseract;
 using WFInfo.Extensions;
+using WFInfo.Services;
 using WFInfo.Settings;
 
 namespace WFInfo;

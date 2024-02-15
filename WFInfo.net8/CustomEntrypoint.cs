@@ -12,6 +12,7 @@ using Microsoft.Win32;
 using Serilog;
 using Tesseract;
 using WFInfo.Extensions;
+using WFInfo.Services;
 using ILogger = Serilog.ILogger;
 
 namespace WFInfo;

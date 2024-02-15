@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
+using WFInfo.Services;
 using WFInfo.Settings;
 
 namespace WFInfo;
@@ -32,8 +33,8 @@ public partial class UpdateDialogue : Window
 
         version = version[..version.LastIndexOf('.')];
 
-        NewVersionText.Text = "WFInfo version "   + version           + " has been released!";
-        OldVersionText.Text = "You have version " + Main.BuildVersion + " installed.";
+        NewVersionText.Text = $"WFInfo version {version} has been released!";
+        OldVersionText.Text = $"You have version {ApplicationConstants.MajorBuildVersion} installed.";
 
         var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
         var client = httpFactory.CreateClient();
@@ -49,7 +50,7 @@ public partial class UpdateDialogue : Window
 
             var tagName = prop["tag_name"].ToString();
 
-            if (tagName[1..] == Main.BuildVersion)
+            if (tagName[1..] == ApplicationConstants.MajorBuildVersion)
                 break;
 
             var tag = new TextBlock

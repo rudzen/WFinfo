@@ -156,7 +156,7 @@ internal partial class OCR
             "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
 
         var time = DateTime.UtcNow;
-        timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
         var start = Stopwatch.GetTimestamp();
 
         var parts = new List<Bitmap>();
@@ -245,7 +245,7 @@ internal partial class OCR
                 var job = (JObject)Main.DataBase.MarketData.GetValue(correctName);
                 var primeSet = (JObject)Main.DataBase.MarketData.GetValue(primeSetName);
                 var ducats = job["ducats"].ToObject<string>();
-                if (int.Parse(ducats, Main.Culture) == 0)
+                if (int.Parse(ducats, ApplicationConstants.Culture) == 0)
                 {
                     hideRewardInfo = true;
                 }
@@ -259,13 +259,13 @@ internal partial class OCR
                     primeSetPlat = (string)primeSet["plat"];
                 }
 
-                var platinum = double.Parse(plat, Styles, Main.Culture);
+                var platinum = double.Parse(plat, Styles, ApplicationConstants.Culture);
                 var volume = job["volume"].ToObject<string>();
                 var vaulted = Main.DataBase.IsPartVaulted(correctName);
                 var mastered = Main.DataBase.IsPartMastered(correctName);
                 var partsOwned = Main.DataBase.PartsOwned(correctName);
                 var partsCount = Main.DataBase.PartsCount(correctName);
-                var duc = int.Parse(ducats, Main.Culture);
+                var duc = int.Parse(ducats, ApplicationConstants.Culture);
 
                 #endregion
 
@@ -288,7 +288,7 @@ internal partial class OCR
                     bestDucatItem = i;
                 }
 
-                if (duc > 0 && !mastered && int.Parse(partsOwned, Main.Culture) < int.Parse(partsCount, Main.Culture))
+                if (duc > 0 && !mastered && int.Parse(partsOwned, ApplicationConstants.Culture) < int.Parse(partsCount, ApplicationConstants.Culture))
                 {
                     unownedItems.Add(i);
                 }
@@ -482,8 +482,8 @@ internal partial class OCR
         watch.Start();
         var start = watch.ElapsedMilliseconds;
 
-        //timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        //timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
         var theme = GetThemeWeighted(out _, fullShot);
         snapItImage.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImage " + timestamp + ".png");
         var snapItImageFiltered = ScaleUpAndFilter(snapItImage, theme, out var rowHits, out var colHits);
@@ -494,10 +494,10 @@ internal partial class OCR
         var csv = string.Empty;
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
-        if (!File.Exists(ApplicationConstants.AppPath + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) +
+        if (!File.Exists(ApplicationConstants.AppPath + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", ApplicationConstants.Culture) +
                          ".csv") && _settings.SnapitExport)
             csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
-                   DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture) + Environment.NewLine;
+                   DateTime.UtcNow.ToString("yyyy-MM-dd", ApplicationConstants.Culture) + Environment.NewLine;
         var resultCount = foundParts.Count;
         for (var i = 0; i < foundParts.Count; i++)
         {
@@ -541,7 +541,7 @@ internal partial class OCR
             if (_settings.SnapitExport)
             {
                 var owned = string.IsNullOrEmpty(partsOwned) ? "0" : partsOwned;
-                csv += name + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(Main.Culture) + "," +
+                csv += name + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(ApplicationConstants.Culture) + "," +
                        owned + "," + partsDetected + ", \"\"" + Environment.NewLine;
             }
 
@@ -598,7 +598,7 @@ internal partial class OCR
         if (_settings.SnapitExport)
         {
             var file = Path.Combine(ApplicationConstants.AppPath,
-                $"export {DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)}.csv");
+                $"export {DateTime.UtcNow.ToString("yyyy-MM-dd", ApplicationConstants.Culture)}.csv");
             await File.AppendAllTextAsync(file, csv);
         }
     }
@@ -650,7 +650,7 @@ internal partial class OCR
     {
         var filteredImageClean = new Bitmap(filteredImage);
         var time = DateTime.UtcNow;
-        var timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        var timestamp = time.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
 
         //List containing Tuples of overlapping InventoryItems and their combined bounds
         List<FoundItem> foundItems = [];
@@ -1319,7 +1319,7 @@ internal partial class OCR
     {
         var start = Stopwatch.GetTimestamp();
 
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
         fullShot.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"ProfileImage {timestamp}.png"));
         var foundParts = FindOwnedItems(fullShot, timestamp, in start);
         var parts = CollectionsMarshal.AsSpan(foundParts);
@@ -1985,10 +1985,10 @@ internal partial class OCR
         for (var i = 0; i < 5; i++)
         {
             Logger.Debug("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
-                         percWeights[topFive[i]].ToString("F2", Main.Culture) + " -- " +
-                         topWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
-                         midWeights[topFive[i]].ToString("F2", Main.Culture) + ", " +
-                         botWeights[topFive[i]].ToString("F2", Main.Culture));
+                         percWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture) + " -- " +
+                         topWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture) + ", " +
+                         midWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture) + ", " +
+                         botWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture));
         }
 
         using (var g = Graphics.FromImage(fullScreen))
@@ -2108,8 +2108,8 @@ internal partial class OCR
         }
 
         var total = totalEven + totalOdd;
-        Logger.Debug("EVEN DISTRIBUTION: {Dist}%", (totalEven / total * 100).ToString("F2", Main.Culture));
-        Logger.Debug("ODD DISTRIBUTION: {Dist}%", (totalOdd / total * 100).ToString("F2", Main.Culture));
+        Logger.Debug("EVEN DISTRIBUTION: {Dist}%", (totalEven / total * 100).ToString("F2", ApplicationConstants.Culture));
+        Logger.Debug("ODD DISTRIBUTION: {Dist}%", (totalOdd / total * 100).ToString("F2", ApplicationConstants.Culture));
 
         var boxWidth = partBox.Width / 4;
         var boxHeight = filtered.Height;
@@ -2163,7 +2163,7 @@ internal partial class OCR
         var screenshot = GetScreenshotService();
         var screenshots = await screenshot.CaptureScreenshot();
         var image = screenshots[0];
-        var date = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", Main.Culture);
+        var date = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
         var fileName = Path.Combine(ApplicationConstants.AppPathDebug, $"FullScreenShot {date}.png");
         image.Save(fileName);
         return image;

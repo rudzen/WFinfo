@@ -12,6 +12,7 @@ using Serilog;
 using WFInfo.Domain;
 using WFInfo.Extensions;
 using WFInfo.Resources;
+using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
 
@@ -84,7 +85,7 @@ public partial class MainWindow
             LowLevelListener.MouseEvent += Main.OnMouseAction;
             listener.Hook();
             InitializeComponent();
-            Version.Content = "v" + Main.BuildVersion;
+            Version.Content = "v" + ApplicationConstants.MajorBuildVersion;
 
             Left = 300;
             Top = 300;

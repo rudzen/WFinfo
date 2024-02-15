@@ -8,6 +8,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Forms;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
 

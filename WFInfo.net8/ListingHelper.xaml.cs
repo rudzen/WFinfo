@@ -5,6 +5,7 @@ using System.Windows.Input;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using WebSocketSharp;
+using WFInfo.Services;
 
 namespace WFInfo;
 
@@ -186,7 +187,7 @@ public partial class ListingHelper : Window
         try
         {
             var primeItem = (string)ComboBox.Items[ComboBox.SelectedIndex];
-            var platinum = int.Parse(PlatinumTextBox.Text, Main.Culture);
+            var platinum = int.Parse(PlatinumTextBox.Text, ApplicationConstants.Culture);
             var success = Task.Run(async () => await PlaceListing(primeItem, platinum)).Result;
             if (success)
             {
@@ -235,7 +236,7 @@ public partial class ListingHelper : Window
     {
         Logger.Debug("There are {Count} of plat values, setting index to: {Index}", ScreensList[PageIndex].Value.PrimeNames.Count, index);
 
-        PlatinumTextBox.Text = ScreensList[PageIndex].Value.PlatinumValues[index].ToString(Main.Culture);
+        PlatinumTextBox.Text = ScreensList[PageIndex].Value.PlatinumValues[index].ToString(ApplicationConstants.Culture);
 
         ListingGrid.Visibility = Visibility.Visible;
         Height = 255;
