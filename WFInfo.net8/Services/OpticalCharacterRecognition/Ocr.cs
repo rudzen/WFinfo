@@ -48,7 +48,7 @@ internal partial class OCR
     private const int pixelRewardLineHeight = 48;
 
     private const int SCALING_LIMIT = 100;
-    public static AtomicBoolean processingActive;
+    public static AtomicBoolean processingActive = new(false);
 
     private static Bitmap bigScreenshot;
     private static Bitmap? partialScreenshot;
