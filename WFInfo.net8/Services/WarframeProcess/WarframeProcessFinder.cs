@@ -70,7 +70,7 @@ public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublish
 
                     Logger.Error(e, "Failed to get Warframe process");
 
-                    await mediator.Publish(new UpdateStatus("Restart Warframe without admin privileges", 1));
+                    await mediator.Publish(new UpdateStatus("Restart Warframe without admin privileges", StatusSeverity.Error));
 
                     // Substitute process for debug purposes
                     if (settings.Debug)
@@ -104,7 +104,7 @@ public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublish
                     _warframe = null;
 
                     Logger.Error(e, "Failed to get Warframe process");
-                    await mediator.Publish(new UpdateStatus("Restart Warframe without admin privileges, or WFInfo with admin privileges", 1));
+                    await mediator.Publish(new UpdateStatus("Restart Warframe without admin privileges, or WFInfo with admin privileges", StatusSeverity.Error));
 
                     // Substitute process for debug purposes
                     if (settings.Debug)
@@ -125,7 +125,7 @@ public sealed class WarframeProcessFinder(ApplicationSettings settings, IPublish
         if (!settings.Debug)
         {
             Logger.Debug("Didn't detect Warframe process");
-            await mediator.Publish(new UpdateStatus("Unable to Detect Warframe Process", 1));
+            await mediator.Publish(new UpdateStatus("Unable to Detect Warframe Process", StatusSeverity.Error));
         }
         else
         {

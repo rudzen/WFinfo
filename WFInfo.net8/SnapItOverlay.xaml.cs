@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Serilog;
+using WFInfo.Domain;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WindowInfo;
 
@@ -33,9 +34,9 @@ public partial class SnapItOverlay : Window
         MouseUp += canvas_MouseUp;
         MouseMove += canvas_MouseMove;
     }
-    
+
     public bool isEnabled { get; set; }
-    
+
     public Bitmap tempImage { get; set; }
 
     public void Populate(Bitmap screenshot)
@@ -64,7 +65,7 @@ public partial class SnapItOverlay : Window
         Topmost = false;
         isEnabled = false;
 
-        // THIS FUCKING RECTANGLE WOULDN'T GO AWAY 
+        // THIS FUCKING RECTANGLE WOULDN'T GO AWAY
         //    AND IT WOULD STAY FOR 1 FRAME WHEN RE-OPENNING THIS WINDOW
         //    SO I FORCED THAT FRAME TO HAPPEN BEFORE CLOSING
         //       AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHH
@@ -77,7 +78,7 @@ public partial class SnapItOverlay : Window
         });
     }
 
-    private void canvas_MouseUp(object sender, MouseButtonEventArgs e)
+    private async void canvas_MouseUp(object sender, MouseButtonEventArgs e)
     {
         //Release the mouse
         if (canvas.IsMouseCaptured)
@@ -87,9 +88,10 @@ public partial class SnapItOverlay : Window
                     " Height:"                              + rectangle.Height);
         if (rectangle.Width < 10 || rectangle.Height < 10)
         {
-            // box is smaller than 10x10 and thus will never be able to have any text. Also used as a failsave to prevent the program from crashing if the user makes a 0x0 sleection
+            // box is smaller than 10x10 and thus will never be able to have any text.
+            // Also used as a fail save to prevent the program from crashing if the user makes a 0x0 sleection
             Logger.Debug("User selected an area too small");
-            Main.StatusUpdate("Please slecet a larger area to scan", 2);
+            Main.StatusUpdate("Please slecet a larger area to scan", StatusSeverity.Warning);
             return;
         }
 
@@ -97,7 +99,8 @@ public partial class SnapItOverlay : Window
             new Rectangle((int)(topLeft.X * _window.DpiScaling), (int)(topLeft.Y        * _window.DpiScaling),
                 (int)(rectangle.Width     * _window.DpiScaling), (int)(rectangle.Height * _window.DpiScaling)),
             System.Drawing.Imaging.PixelFormat.DontCare);
-        Task.Factory.StartNew(() => OCR.ProcessSnapIt(cutout, tempImage, topLeft));
+
+        Task.Run(async () => await OCR.ProcessSnapIt(cutout, tempImage, topLeft));
 
         CloseOverlay();
     }
@@ -108,7 +111,7 @@ public partial class SnapItOverlay : Window
         {
             System.Windows.Point currentPoint = e.GetPosition(canvas);
 
-            //Calculate the top left corner of the rectangle 
+            //Calculate the top left corner of the rectangle
             //regardless of drag direction
             double x = startDrag.X < currentPoint.X ? startDrag.X : currentPoint.X;
             double y = startDrag.Y < currentPoint.Y ? startDrag.Y : currentPoint.Y;

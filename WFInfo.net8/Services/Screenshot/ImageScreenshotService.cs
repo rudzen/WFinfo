@@ -6,6 +6,7 @@ using WFInfo.Domain;
 
 namespace WFInfo.Services.Screenshot;
 
+//TODO (rudzen) : convert to be fully event driven
 public class ImageScreenshotService(IMediator mediator) : IScreenshotService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ImageScreenshotService>();
@@ -31,12 +32,12 @@ public class ImageScreenshotService(IMediator mediator) : IScreenshotService
             catch (Exception e)
             {
                 Logger.Error(e, "Failed to load image");
-                await mediator.Publish(new UpdateStatus("Failed to load image", 1));
+                await mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
                 return [];
             }
         }
 
-        await mediator.Publish(new UpdateStatus("Failed to select image", 1));
+        await mediator.Publish(new UpdateStatus("Failed to select image", StatusSeverity.Error));
         return [];
     }
 }

@@ -6,17 +6,18 @@ using WFInfo.Services.WarframeProcess;
 
 namespace WFInfo;
 
+//TODO (rudzen) : Convert to fully event driven
 public sealed class LogCapture : IDisposable
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<LogCapture>();
-    
+
     private readonly MemoryMappedFile? _memoryMappedFile;
     private readonly EventWaitHandle? _bufferReadyEvent;
     private EventWaitHandle? _dataReadyEvent;
     private readonly CancellationTokenSource _tokenSource = new();
     private readonly CancellationToken _token;
     private readonly Timer _timer;
-    
+
     public Action<string> TextChanged { get; set; }
 
     private readonly IProcessFinder _process;
@@ -44,7 +45,7 @@ public sealed class LogCapture : IDisposable
         _timer = new Timer((e) => { GetProcess(); }, null, startTimeSpan, periodTimeSpan);
     }
 
-    private void Run()
+    private async Task Run()
     {
         try
         {
@@ -57,7 +58,7 @@ public sealed class LogCapture : IDisposable
 
                 if (_process is { Warframe: not null, GameIsStreamed: false })
                 {
-                    using var stream = _memoryMappedFile.CreateViewStream();
+                    await using var stream = _memoryMappedFile.CreateViewStream();
                     using var reader = new BinaryReader(stream, Encoding.Default);
                     var processId = reader.ReadUInt32();
                     if (processId == _process.Warframe.Id)
@@ -89,7 +90,7 @@ public sealed class LogCapture : IDisposable
     {
         if (!_process.IsRunning)
             return;
-        
+
         _dataReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_DATA_READY", out var createdData);
 
         if (!createdData)

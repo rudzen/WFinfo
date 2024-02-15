@@ -153,6 +153,7 @@ public sealed class Data
         marketSocket.SslConfiguration.EnabledSslProtocols = SslProtocols.None;
     }
 
+    //TODO (rudzen) : to async
     public void EnableLogCapture()
     {
         if (EElogWatcher is not null)
@@ -167,7 +168,7 @@ public sealed class Data
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to start log capture");
-            Main.StatusUpdate("Failed to start capturing log", 1);
+            Main.StatusUpdate("Failed to start capturing log", StatusSeverity.Error);
         }
     }
 
@@ -1655,7 +1656,7 @@ public sealed class Data
     /// <returns>bool of which answers the question "Is the user JWT valid?"</returns>
     public async Task<bool> IsJWTvalid()
     {
-        if (_encryptedDataService.JWT == null)
+        if (_encryptedDataService.JWT is null)
             return false;
 
         try

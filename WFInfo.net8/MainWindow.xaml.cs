@@ -30,7 +30,7 @@ public partial class MainWindow
 
     private static readonly SolidColorBrush[] StatusBrushes =
     [
-        new(Color.FromRgb(177, 208, 217)),
+        new SolidColorBrush(Color.FromRgb(177, 208, 217)),
         Brushes.Red,
         Brushes.Orange
     ];
@@ -175,7 +175,7 @@ public partial class MainWindow
     /// </summary>
     /// <param name="status">The string to be displayed</param>
     /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
-    public void ChangeStatus(string status, int severity)
+    public void ChangeStatus(string status, StatusSeverity severity = StatusSeverity.None)
     {
         if (Status == null)
             return;
@@ -183,8 +183,8 @@ public partial class MainWindow
         Logger.Debug("Status. message={Msg}", status);
         Status.Text = status;
 
-        Status.Foreground = severity is >= 0 and <= 2
-            ? StatusBrushes[severity]
+        Status.Foreground = severity is >= StatusSeverity.None and <= StatusSeverity.Warning
+            ? StatusBrushes[(int)severity]
             : Brushes.Yellow;
     }
 
@@ -208,7 +208,7 @@ public partial class MainWindow
     {
         if (Main.DataBase.RelicData == null)
         {
-            ChangeStatus("Relic data not yet loaded in", 2);
+            ChangeStatus("Relic data not yet loaded in", StatusSeverity.Warning);
             return;
         }
 
@@ -220,7 +220,7 @@ public partial class MainWindow
     {
         if (Main.DataBase.EquipmentData == null)
         {
-            ChangeStatus("Equipment data not yet loaded in", 2);
+            ChangeStatus("Equipment data not yet loaded in", StatusSeverity.Warning);
             return;
         }
 
@@ -399,13 +399,13 @@ public partial class MainWindow
     {
         if (OCR.processingActive)
         {
-            Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", 2));
+            Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;
         }
 
         if (Main.ListingHelper.PrimeRewards == null || Main.ListingHelper.PrimeRewards.Count == 0)
         {
-            Dispatcher.InvokeAsync(() => ChangeStatus("No recorded rewards found", 2));
+            Dispatcher.InvokeAsync(() => ChangeStatus("No recorded rewards found", StatusSeverity.Warning));
             return;
         }
 
@@ -422,7 +422,7 @@ public partial class MainWindow
         t.Wait();
         if (Main.ListingHelper.ScreensList.Count == 0)
         {
-            ChangeStatus("No recorded rewards found", 2);
+            ChangeStatus("No recorded rewards found", StatusSeverity.Warning);
             return;
         }
 
@@ -443,7 +443,7 @@ public partial class MainWindow
     {
         if (OCR.processingActive)
         {
-            Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", 2));
+            Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;
         }
 
@@ -507,9 +507,9 @@ public partial class MainWindow
     public ValueTask Handle(LoggedIn loggedIn, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(loggedIn.Email))
-            Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus("User logged in to warframe.market", 0));
+            Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus("User logged in to warframe.market"));
         else
-            Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus($"User [{loggedIn.Email}] logged in to warframe.market", 0));
+            Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus($"User [{loggedIn.Email}] logged in to warframe.market"));
         return ValueTask.CompletedTask;
     }
 }

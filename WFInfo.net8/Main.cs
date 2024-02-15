@@ -5,7 +5,6 @@ using System.Windows.Input;
 using AutoUpdaterDotNET;
 using System.Windows;
 using System.Windows.Forms;
-using System.Windows.Threading;
 using Mediator;
 using WebSocketSharp;
 using WFInfo.Settings;
@@ -125,10 +124,10 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     {
         try
         {
-            StatusUpdate("Initializing OCR engine...", 0);
+            await _mediator.Publish(new UpdateStatus("Initializing OCR engine...", 0));
             OCR.Init(_sp, _overlays);
 
-            StatusUpdate("Updating Databases...", 0);
+            await _mediator.Publish(new UpdateStatus("Updating Databases...", 0));
             await DataBase.Update();
 
             if (_settings.Auto)
@@ -138,7 +137,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
             if (validJwt)
                 await Handle(new StartLoggedInTimer(string.Empty), CancellationToken.None);
 
-            StatusUpdate("WFInfo Initialization Complete", 0);
+            await _mediator.Publish(new UpdateStatus("WFInfo Initialization Complete", 0));
             Logger.Debug("WFInfo has launched successfully");
             FinishedLoading();
 
@@ -150,11 +149,11 @@ public class Main : INotificationHandler<StartLoggedInTimer>
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, "Failed to initialize WFInfo");
-            StatusUpdate(
-                ex.ToString().Contains("invalid_grant")
-                    ? "System time out of sync with server\nResync system clock in windows settings"
-                    : "Launch Failure - Please Restart", 0);
+            var message = ex.ToString().Contains("invalid_grant")
+                ? "System time out of sync with server\nResync system clock in windows settings"
+                : "Launch Failure - Please Restart";
+            Logger.Error(ex, "Failed to initialize WFInfo. Message: {Message}", message);
+            await _mediator.Publish(new UpdateStatus(message, StatusSeverity.Error));
             RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
         }
     }
@@ -182,7 +181,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
                     return;
                 //IDE0058 - computed value is never used.  Ever. Consider changing the return signature of SetWebsocketStatus to void instead
                 await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                StatusUpdate("WFM status set offline, Warframe was closed", 0);
+                await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed", 0));
             }).ConfigureAwait(false);
         }
         else switch (UserAway)
@@ -196,10 +195,12 @@ public class Main : INotificationHandler<StartLoggedInTimer>
                 {
                     await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(ConfigureAwaitOptions.None);
                     var user = DataBase.inGameName.IsNullOrEmpty() ? "user" : DataBase.inGameName;
-                    StatusUpdate($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0);
+                    await _mediator.Publish(new UpdateStatus($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0));
                 }
                 else
-                    StatusUpdate($"Welcome back user", 0);
+                {
+                    await _mediator.Publish(new UpdateStatus("Welcome back user", 0));
+                }
 
                 break;
             }
@@ -215,7 +216,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
                     await Task.Run(async () =>
                     {
                         await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                        StatusUpdate($"User has been inactive for {TimeTillAfk} minutes", 0);
+                        await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes", 0));
                     }).ConfigureAwait(ConfigureAwaitOptions.None);
                 }
 
@@ -248,7 +249,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     /// </summary>
     /// <param name="message">The string to be displayed</param>
     /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
-    public static void StatusUpdate(string message, int severity)
+    public static void StatusUpdate(string message, StatusSeverity severity)
     {
         MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.ChangeStatus(message, severity); });
     }
@@ -278,7 +279,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
                 }
             }
 
-            await _mediator.Publish(new UpdateStatus("Overlays dismissed", 1));
+            await _mediator.Publish(new UpdateStatus("Overlays dismissed", StatusSeverity.Error));
             return;
         }
 
@@ -357,8 +358,8 @@ public class Main : INotificationHandler<StartLoggedInTimer>
             await ActivationKeyPressed(key);
         }
         else if (key == MouseButton.Left
-                 && _process is { Warframe.HasExited: false, GameIsStreamed: false }
-                 && Overlay.rewardsDisplaying)
+                 && Overlay.rewardsDisplaying
+                 && _process is { Warframe.HasExited: false, GameIsStreamed: false })
         {
             if (_settings.Display != Display.Overlay
                 && _settings is { AutoList: false, AutoCSV: false, AutoCount: false })
@@ -471,7 +472,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
 
                                     var image = new Bitmap(file);
                                     _windowInfo.UseImage(image);
-                                    OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
+                                    await OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
                                     break;
                                 }
                                 case ScreenshotType.MASTERIT:
@@ -489,13 +490,13 @@ public class Main : INotificationHandler<StartLoggedInTimer>
                     catch (Exception e)
                     {
                         Logger.Error(e, "Failed to load image");
-                        await _mediator.Publish(new UpdateStatus("Failed to load image", 1));
+                        await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
                     }
                 });
         }
         else
         {
-            await _mediator.Publish(new UpdateStatus("Failed to load image", 1));
+            await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
             if (type == ScreenshotType.NORMAL)
             {
                 OCR.processingActive.GetAndSet(false);

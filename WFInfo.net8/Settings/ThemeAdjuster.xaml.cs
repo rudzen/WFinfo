@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Windows.Media.Imaging;
 using System.Windows.Forms;
 using Serilog;
+using WFInfo.Domain;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;
 
@@ -19,8 +20,8 @@ public partial class ThemeAdjuster : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ThemeAdjuster>();
 
-    private readonly Settings.SettingsViewModel _viewModel;
-    public Settings.SettingsViewModel SettingsViewModel => _viewModel;
+    private readonly SettingsViewModel _viewModel;
+    public SettingsViewModel SettingsViewModel => _viewModel;
 
     public static ThemeAdjuster INSTANCE;
     private Bitmap unfiltered;
@@ -103,7 +104,7 @@ public partial class ThemeAdjuster : Window
         catch (Exception exc)
         {
             Logger.Error(exc, "Failed to load image");
-            Main.StatusUpdate("Failed to load image", 1);
+            Main.StatusUpdate("Failed to load image", StatusSeverity.Error);
         }
 
         if (image != null)
@@ -144,7 +145,7 @@ public partial class ThemeAdjuster : Window
                         catch (Exception exc)
                         {
                             Logger.Error(exc, "Failed to load image");
-                            Main.StatusUpdate("Failed to load image", 1);
+                            Main.StatusUpdate("Failed to load image", StatusSeverity.Error);
                         }
 
                         if (image != null)
@@ -156,7 +157,7 @@ public partial class ThemeAdjuster : Window
             }
             else
             {
-                Main.StatusUpdate("Failed to load image", 1);
+                Main.StatusUpdate("Failed to load image", StatusSeverity.Error);
             }
         }
     }

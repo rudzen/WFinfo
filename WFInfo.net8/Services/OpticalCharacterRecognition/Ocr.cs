@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Akka.Util;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -70,6 +71,7 @@ internal partial class OCR
     private static IHDRDetectorService _hdrDetector;
     private static IThemeDetector ThemeDetector;
     private static ISnapZoneDivider SnapZoneDivider;
+    private static IMediator _mediator;
 
     private static Overlay[] _overlays;
 
@@ -85,6 +87,7 @@ internal partial class OCR
         var themeDetector = sp.GetRequiredService<IThemeDetector>();
         var snapZoneDivider = sp.GetRequiredService<ISnapZoneDivider>();
         var hdrDetector = sp.GetRequiredService<IHDRDetectorService>();
+        var mediator = sp.GetRequiredService<IMediator>();
         var gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
         var windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
         Init(
@@ -95,6 +98,7 @@ internal partial class OCR
             themeDetector: themeDetector,
             snapZoneDivider: snapZoneDivider,
             hdrDetector: hdrDetector,
+            mediator: mediator,
             overlays: overlays,
             gdiScreenshot: gdiScreenshot,
             windowsScreenshot: windowsScreenshot
@@ -113,6 +117,7 @@ internal partial class OCR
         ISnapZoneDivider snapZoneDivider,
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
+        IMediator mediator,
         Overlay[] overlays,
         IScreenshotService gdiScreenshot,
         IScreenshotService? windowsScreenshot = null)
@@ -126,6 +131,7 @@ internal partial class OCR
         SnapZoneDivider = snapZoneDivider;
         _window = window;
         _hdrDetector = hdrDetector;
+        _mediator = mediator;
         _overlays = overlays;
 
         _gdiScreenshot = gdiScreenshot;
@@ -138,14 +144,14 @@ internal partial class OCR
 
         if (processingActive)
         {
-            Main.StatusUpdate("Still Processing Reward Screen", 2);
+            await _mediator.Publish(new UpdateStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;
         }
 
         var primeRewards = new List<string>();
 
         processingActive.GetAndSet(true);
-        Main.StatusUpdate("Processing...", 0);
+        await _mediator.Publish(new UpdateStatus("Processing..."));
         Logger.Debug(
             "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
 
@@ -191,7 +197,7 @@ internal partial class OCR
             Logger.Debug(
                 "----  Partial Processing Time, couldn't find rewards {Time}  ------------------------------------------------------------------------------------------"[..108],
                 end);
-            Main.StatusUpdate("Couldn't find any rewards to display", 2);
+            await _mediator.Publish(new UpdateStatus("Couldn't find any rewards to display", StatusSeverity.Warning));
             if (firstChecks == null)
             {
                 Main.RunOnUIThread(() =>
@@ -335,7 +341,7 @@ internal partial class OCR
             }
 
             var end = Stopwatch.GetElapsedTime(start);
-            Main.StatusUpdate($"Completed processing ({end})", 0);
+            await _mediator.Publish(new UpdateStatus($"Completed processing ({end})"));
 
             if (Main.ListingHelper.PrimeRewards.Count == 0 ||
                 Main.ListingHelper.PrimeRewards[^1].Except(primeRewards).Any())
@@ -470,7 +476,7 @@ internal partial class OCR
     /// Processes the image the user cropped in the selection
     /// </summary>
     /// <param name="snapItImage"></param>
-    internal static void ProcessSnapIt(Bitmap snapItImage, Bitmap fullShot, Point snapItOrigin)
+    internal static async Task ProcessSnapIt(Bitmap snapItImage, Bitmap fullShot, Point snapItOrigin)
     {
         var watch = new Stopwatch();
         watch.Start();
@@ -484,7 +490,7 @@ internal partial class OCR
         snapItImageFiltered.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImageFiltered " + timestamp + ".png");
         var foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
         var end = watch.ElapsedMilliseconds;
-        Main.StatusUpdate("Completed snapit Processing(" + (end - start) + "ms)", 0);
+        await _mediator.Publish(new UpdateStatus("Completed snapit Processing(" + (end - start) + "ms)"));
         var csv = string.Empty;
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
@@ -576,7 +582,7 @@ internal partial class OCR
         end = watch.ElapsedMilliseconds;
         if (resultCount == 0)
         {
-            Main.StatusUpdate("Couldn't find any items to display (took " + (end - start) + "ms) ", 1);
+            await _mediator.Publish(new UpdateStatus("Couldn't find any items to display (took " + (end - start) + "ms) ", StatusSeverity.Error));
             Main.RunOnUIThread(() =>
             {
                 Main.SpawnErrorPopup(DateTime.UtcNow);
@@ -584,7 +590,7 @@ internal partial class OCR
         }
         else
         {
-            Main.StatusUpdate("Completed snapit Displaying(" + (end - start) + "ms)", 0);
+            await _mediator.Publish(new UpdateStatus("Completed snapit Displaying(" + (end - start) + "ms)"));
         }
 
         watch.Stop();
@@ -593,7 +599,7 @@ internal partial class OCR
         {
             var file = Path.Combine(ApplicationConstants.AppPath,
                 $"export {DateTime.UtcNow.ToString("yyyy-MM-dd", Main.Culture)}.csv");
-            File.AppendAllText(file, csv);
+            await File.AppendAllTextAsync(file, csv);
         }
     }
 
@@ -1360,11 +1366,11 @@ internal partial class OCR
         var end = Stopwatch.GetElapsedTime(start);
         if (end < TimeSpan.FromSeconds(10))
         {
-            Main.StatusUpdate($"Completed Profile Scanning({end})", 0);
+            Main.StatusUpdate($"Completed Profile Scanning({end})", StatusSeverity.None);
         }
         else
         {
-            Main.StatusUpdate($"Lower brightness may increase speed({end})", 1);
+            Main.StatusUpdate($"Lower brightness may increase speed({end})", StatusSeverity.Error);
         }
     }
 
@@ -1565,7 +1571,7 @@ internal partial class OCR
                             x = Math.Max(rightEdge, x);
                             if (Stopwatch.GetElapsedTime(start) > TimeSpan.FromSeconds(10))
                             {
-                                Main.StatusUpdate("High noise, this might be slow", 3);
+                                Main.StatusUpdate("High noise, this might be slow", StatusSeverity.Warning);
                             }
 
                             continue;
@@ -2095,7 +2101,7 @@ internal partial class OCR
             {
                 Main.StatusUpdate(
                     "Unable to detect reward from selection screen\nScanning inventory? Hold down snap-it modifier",
-                    1);
+                    StatusSeverity.Error);
             });
             processingActive.GetAndSet(false);
             throw new Exception("Unable to find any parts");

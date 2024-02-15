@@ -120,7 +120,7 @@ public class AutoAddSingleItem : INPC
             Main.RunOnUIThread(() =>
             {
                 Main.SpawnErrorPopup(DateTime.UtcNow);
-                Main.StatusUpdate("Failed to save one or more item, report to dev", 2);
+                Main.StatusUpdate("Failed to save one or more item, report to dev", StatusSeverity.Warning);
             });
         }
 

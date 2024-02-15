@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 using Serilog;
+using WFInfo.Domain;
 
 namespace WFInfo;
 
@@ -156,7 +157,7 @@ public partial class RewardWindow : Window
 
             default:
                 Logger.Error("something went wrong while displaying: {Name}", name);
-                Main.StatusUpdate("something went wrong while displaying: " + name + " in window", 1);
+                Main.StatusUpdate("something went wrong while displaying: " + name + " in window", StatusSeverity.Error);
                 break;
         }
     }

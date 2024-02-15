@@ -8,7 +8,7 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services.WindowInfo;
 
-public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings, IMediator bus)
+public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings, IMediator mediator)
     : IWindowInfoService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Win32WindowInfoService>();
@@ -37,7 +37,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
         if (!process.IsRunning && !settings.Debug)
         {
             Logger.Debug("Failed to find warframe process for window info");
-            await bus.Publish(new UpdateStatus("Failed to find warframe process for window info", 1));
+            await mediator.Publish(new UpdateStatus("Failed to find warframe process for window info",StatusSeverity.Error));
             return;
         }
 
@@ -80,7 +80,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             else
             {
                 Logger.Debug("Failed to get window bounds");
-                await bus.Publish(new UpdateStatus("Failed to get window bounds", 1));
+                await mediator.Publish(new UpdateStatus("Failed to get window bounds",StatusSeverity.Error));
                 return;
             }
         }

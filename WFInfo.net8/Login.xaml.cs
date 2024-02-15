@@ -83,54 +83,47 @@ public partial class Login : Window
             string statusMessage;
 
             //StatusSeverity = Severity for StatusUpdate()
-            byte statusSeverity;
+            StatusSeverity statusSeverity;
 
             if (ex.Message.Contains("email"))
             {
                 if (ex.Message.Contains("app.form.invalid"))
                 {
                     statusMessage = "Invalid email form";
-                    statusSeverity = 2;
+                    statusSeverity = StatusSeverity.Warning;
                 }
                 else
                 {
                     statusMessage = "Unknown email";
-                    statusSeverity = 1;
+                    statusSeverity = StatusSeverity.Error;
                 }
             }
             else if (ex.Message.Contains("password"))
             {
                 statusMessage = "Wrong password";
-                statusSeverity = 1;
+                statusSeverity = StatusSeverity.Error;
             }
-
             else if (ex.Message.Contains("could not understand"))
             {
                 statusMessage = "Severe issue, server did not understand request";
-                statusSeverity = 1;
+                statusSeverity = StatusSeverity.Error;
             }
             else
             {
+                //default to too many requests
                 statusMessage = "Too many requests";
-                statusSeverity = 1; //default to too many requests
+                statusSeverity = StatusSeverity.Error;
             }
 
             Main.SignOut();
             await _mediator.Publish(new UpdateStatus(statusMessage, statusSeverity));
 
-            switch (statusSeverity)
+            Error.Foreground = statusSeverity switch
             {
-                // copy/paste from Main.cs (statusChange())
-                case 1: //severe, red text
-                    Error.Foreground = Brushes.Red;
-                    break;
-                case 2: //warning, orange text
-                    Error.Foreground = Brushes.Orange;
-                    break;
-                default: //Uncaught, big problem
-                    Error.Foreground = Brushes.Yellow;
-                    break;
-            }
+                StatusSeverity.Error => Brushes.Red,
+                StatusSeverity.Warning => Brushes.Orange,
+                _ => Brushes.Yellow
+            };
 
             //Displaying the error under the text fields
             Error.Text = statusMessage;
