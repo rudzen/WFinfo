@@ -33,8 +33,6 @@ public class Main : INotificationHandler<StartLoggedInTimer>
 
     private static readonly TimeSpan TimeTillAfk = TimeSpan.FromMinutes(7);
 
-    public static Main INSTANCE { get; private set; }
-
     public static Data DataBase { get; private set; }
     public static RewardWindow RewardWindow { get; set; }
     public static SettingsWindow SettingsWindow { get; private set; }
@@ -73,7 +71,6 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     public Main(IServiceProvider sp)
     {
         _sp = sp;
-        INSTANCE = this;
         Login = sp.GetRequiredService<Login>();
 
         _settings = sp.GetRequiredService<ApplicationSettings>();
