@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.Globalization;
 using System.IO;
 using System.Windows.Input;
 using AutoUpdaterDotNET;
@@ -20,7 +19,10 @@ using Application = System.Windows.Application;
 
 namespace WFInfo;
 
-public class Main : INotificationHandler<StartLoggedInTimer>
+public class Main
+    : INotificationHandler<StartLoggedInTimer>,
+        INotificationHandler<OverlayUpdate>,
+        INotificationHandler<OverlayUpdateData>
 {
     private enum ScreenshotType
     {
@@ -49,6 +51,8 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
+    public static Overlay[] Overlays { get; set; }
+
     private DateTime _latestActive;
 
     // ReSharper disable once NotAccessedField.Local
@@ -61,8 +65,6 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly IRewardSelector _rewardSelector;
     private readonly IMediator _mediator;
-
-    private Overlay[] _overlays;
 
     // hack, should not be here, but stuff is too intertwined for now
     // also, the auto updater needs this to allow for event to be used
@@ -89,7 +91,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
             SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
-            _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
+            Overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
             AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
@@ -110,7 +112,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
         try
         {
             await _mediator.Publish(new UpdateStatus("Initializing OCR engine...", 0));
-            OCR.Init(_sp, _overlays);
+            OCR.Init(_sp, Overlays);
 
             await _mediator.Publish(new UpdateStatus("Updating Databases...", 0));
             await DataBase.Update();
@@ -139,7 +141,10 @@ public class Main : INotificationHandler<StartLoggedInTimer>
                 : "Launch Failure - Please Restart";
             Logger.Error(ex, "Failed to initialize WFInfo. Message: {Message}", message);
             await _mediator.Publish(new UpdateStatus(message, StatusSeverity.Error));
-            RunOnUIThread(() => { _ = new ErrorDialogue(DateTime.Now, 0); });
+            RunOnUIThread(() =>
+            {
+                _ = new ErrorDialogue(DateTime.Now, 0);
+            });
         }
     }
 
@@ -169,52 +174,53 @@ public class Main : INotificationHandler<StartLoggedInTimer>
                 await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed", 0));
             }).ConfigureAwait(false);
         }
-        else switch (UserAway)
-        {
-            case true when _latestActive > now:
+        else
+            switch (UserAway)
             {
-                Logger.Debug("User has returned. Last Status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
-
-                UserAway = false;
-                if (LastMarketStatusB4AFK != "invisible")
+                case true when _latestActive > now:
                 {
-                    await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(ConfigureAwaitOptions.None);
-                    var user = DataBase.inGameName.IsNullOrEmpty() ? "user" : DataBase.inGameName;
-                    await _mediator.Publish(new UpdateStatus($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0));
-                }
-                else
-                {
-                    await _mediator.Publish(new UpdateStatus("Welcome back user", 0));
-                }
+                    Logger.Debug("User has returned. Last Status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
 
-                break;
-            }
-            case false when _latestActive <= now:
-            {
-                //set users offline if afk for longer than set timer
-                LastMarketStatusB4AFK = LastMarketStatus;
-                Logger.Debug("User is now away - Storing last known user status as {Status}", LastMarketStatusB4AFK);
-
-                UserAway = true;
-                if (LastMarketStatus != "invisible")
-                {
-                    await Task.Run(async () =>
+                    UserAway = false;
+                    if (LastMarketStatusB4AFK != "invisible")
                     {
-                        await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                        await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes", 0));
-                    }).ConfigureAwait(ConfigureAwaitOptions.None);
-                }
+                        await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(ConfigureAwaitOptions.None);
+                        var user = DataBase.inGameName.IsNullOrEmpty() ? "user" : DataBase.inGameName;
+                        await _mediator.Publish(new UpdateStatus($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0));
+                    }
+                    else
+                    {
+                        await _mediator.Publish(new UpdateStatus("Welcome back user", 0));
+                    }
 
-                break;
+                    break;
+                }
+                case false when _latestActive <= now:
+                {
+                    //set users offline if afk for longer than set timer
+                    LastMarketStatusB4AFK = LastMarketStatus;
+                    Logger.Debug("User is now away - Storing last known user status as {Status}", LastMarketStatusB4AFK);
+
+                    UserAway = true;
+                    if (LastMarketStatus != "invisible")
+                    {
+                        await Task.Run(async () =>
+                        {
+                            await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
+                            await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes", 0));
+                        }).ConfigureAwait(ConfigureAwaitOptions.None);
+                    }
+
+                    break;
+                }
+                case true:
+                    Logger.Debug("User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}",
+                        LastMarketStatusB4AFK);
+                    break;
+                default:
+                    Logger.Debug("User is active - no status change needed");
+                    break;
             }
-            case true:
-                Logger.Debug("User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}",
-                    LastMarketStatusB4AFK);
-                break;
-            default:
-                Logger.Debug("User is active - no status change needed");
-                break;
-        }
     }
 
     public static void RunOnUIThread(Action act)
@@ -236,7 +242,10 @@ public class Main : INotificationHandler<StartLoggedInTimer>
     /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
     public static void StatusUpdate(string message, StatusSeverity severity)
     {
-        MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.ChangeStatus(message, severity); });
+        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
+        {
+            MainWindow.INSTANCE.ChangeStatus(message, severity);
+        });
     }
 
     private async Task ActivationKeyPressed(object key)
@@ -433,51 +442,51 @@ public class Main : INotificationHandler<StartLoggedInTimer>
         {
             await Task.Run(async
                 () =>
+            {
+                try
                 {
-                    try
+                    // TODO: This
+                    foreach (var file in openFileDialog.FileNames)
                     {
-                        // TODO: This
-                        foreach (var file in openFileDialog.FileNames)
+                        switch (type)
                         {
-                            switch (type)
+                            case ScreenshotType.NORMAL:
                             {
-                                case ScreenshotType.NORMAL:
-                                {
-                                    Logger.Debug("Testing file. name={File}", file);
+                                Logger.Debug("Testing file. name={File}", file);
 
-                                    //Get the path of specified file
-                                    var image = new Bitmap(file);
-                                    _windowInfo.UseImage(image);
-                                    await OCR.ProcessRewardScreen(image);
-                                    break;
-                                }
-                                case ScreenshotType.SNAPIT:
-                                {
-                                    Logger.Debug("Testing snapit on file. name={File}", file);
+                                //Get the path of specified file
+                                var image = new Bitmap(file);
+                                _windowInfo.UseImage(image);
+                                await OCR.ProcessRewardScreen(image);
+                                break;
+                            }
+                            case ScreenshotType.SNAPIT:
+                            {
+                                Logger.Debug("Testing snapit on file. name={File}", file);
 
-                                    var image = new Bitmap(file);
-                                    _windowInfo.UseImage(image);
-                                    await OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
-                                    break;
-                                }
-                                case ScreenshotType.MASTERIT:
-                                {
-                                    Logger.Debug("Testing masterit on file. name={File}", file);
+                                var image = new Bitmap(file);
+                                _windowInfo.UseImage(image);
+                                await OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
+                                break;
+                            }
+                            case ScreenshotType.MASTERIT:
+                            {
+                                Logger.Debug("Testing masterit on file. name={File}", file);
 
-                                    var image = new Bitmap(file);
-                                    _windowInfo.UseImage(image);
-                                    OCR.ProcessProfileScreen(image);
-                                    break;
-                                }
+                                var image = new Bitmap(file);
+                                _windowInfo.UseImage(image);
+                                OCR.ProcessProfileScreen(image);
+                                break;
                             }
                         }
                     }
-                    catch (Exception e)
-                    {
-                        Logger.Error(e, "Failed to load image");
-                        await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
-                    }
-                });
+                }
+                catch (Exception e)
+                {
+                    Logger.Error(e, "Failed to load image");
+                    await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
+                }
+            });
         }
         else
         {
@@ -491,7 +500,10 @@ public class Main : INotificationHandler<StartLoggedInTimer>
 
     private static void FinishedLoading()
     {
-        MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.FinishedLoading(); });
+        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
+        {
+            MainWindow.INSTANCE.FinishedLoading();
+        });
     }
 
     public static void UpdateMarketStatus(string msg)
@@ -504,12 +516,18 @@ public class Main : INotificationHandler<StartLoggedInTimer>
             Logger.Debug("User is not away. last known market status will be: {LastMarketStatus}", LastMarketStatus);
         }
 
-        MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.UpdateMarketStatus(msg); });
+        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
+        {
+            MainWindow.INSTANCE.UpdateMarketStatus(msg);
+        });
     }
 
     public static void SignOut()
     {
-        MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.SignOut(); });
+        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
+        {
+            MainWindow.INSTANCE.SignOut();
+        });
     }
 
     /// <summary>
@@ -528,6 +546,56 @@ public class Main : INotificationHandler<StartLoggedInTimer>
 
         // start the AFK timer
         _latestActive = DateTime.UtcNow.AddMinutes(1);
-        _timer = new System.Threading.Timer((e) => { TimeoutCheck(); }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        _timer = new System.Threading.Timer((e) =>
+        {
+            TimeoutCheck();
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+    }
+
+    public ValueTask Handle(OverlayUpdate overlayUpdate, CancellationToken cancellationToken)
+    {
+        Logger.Debug("Updating overlay. index={Index}, type={Type}", overlayUpdate.Index, overlayUpdate.Tyoe);
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            var overlay = Overlays[overlayUpdate.Index];
+            if (overlayUpdate.Tyoe == OverlayUpdateType.Owned)
+                overlay.BestOwnedChoice();
+            else if (overlayUpdate.Tyoe == OverlayUpdateType.Ducat)
+                overlay.BestDucatChoice();
+            else if (overlayUpdate.Tyoe == OverlayUpdateType.Plat)
+                overlay.BestPlatChoice();
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(OverlayUpdateData overlayUpdateData, CancellationToken cancellationToken)
+    {
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            Overlay.RewardsDisplaying = true;
+            var overlay = Overlays[overlayUpdateData.Index];
+            overlay.LoadTextData(
+                name: overlayUpdateData.CorrectName,
+                plat: overlayUpdateData.Plat,
+                primeSetPlat: overlayUpdateData.PrimeSetPlat,
+                ducats: overlayUpdateData.Ducats,
+                volume: overlayUpdateData.Volume,
+                vaulted: overlayUpdateData.Vaulted,
+                mastered: overlayUpdateData.Mastered,
+                owned: $"{overlayUpdateData.PartsOwned} / {overlayUpdateData.PartsCount}",
+                detected: string.Empty,
+                hideRewardInfo: overlayUpdateData.HideRewardInfo,
+                showWarningTriangle: false
+            );
+            overlay.Resize(overlayUpdateData.OverWid);
+            overlay.Display(
+                x: overlayUpdateData.Position.X,
+                y: overlayUpdateData.Position.Y,
+                wait: _settings.Delay
+            );
+        });
+
+        return ValueTask.CompletedTask;
     }
 }

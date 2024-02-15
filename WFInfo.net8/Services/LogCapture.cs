@@ -177,7 +177,8 @@ public sealed class LogCapture
         _memoryMappedFile?.Dispose();
         _bufferReadyEvent?.Dispose();
         _dataReadyEvent?.Dispose();
-        _tokenSource.Cancel();
+        if (!_tokenSource.IsCancellationRequested)
+            _tokenSource.Cancel();
         _tokenSource.Dispose();
         Logger.Debug("Stopping LogCapture");
     }
