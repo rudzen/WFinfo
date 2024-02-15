@@ -88,7 +88,7 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
         cpuTexture.Dispose();
 
         Debug.Print("Captured screenshot " + bitmap.Size);
-        
+
         var result = new List<Bitmap> { bitmap };
         return Task.FromResult(result);
     }

@@ -77,7 +77,7 @@ public partial class Overlay : Window
 
     private readonly DispatcherTimer hider = new DispatcherTimer();
 
-    public static bool rewardsDisplaying;
+    public static bool RewardsDisplaying { get; set; }
 
     private readonly ApplicationSettings _settings;
 
@@ -400,7 +400,7 @@ public partial class Overlay : Window
         hider.Stop();
         Hide();
         Main.StatusUpdate("WFinfo is ready", 0);
-        rewardsDisplaying = false;
+        RewardsDisplaying = false;
     }
 
     public void toSnapit()

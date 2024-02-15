@@ -343,14 +343,14 @@ public class Main : INotificationHandler<StartLoggedInTimer>
             await ActivationKeyPressed(key);
         }
         else if (key == MouseButton.Left
-                 && Overlay.rewardsDisplaying
+                 && Overlay.RewardsDisplaying
                  && _process is { Warframe.HasExited: false, GameIsStreamed: false })
         {
             if (_settings.Display != Display.Overlay
                 && _settings is { AutoList: false, AutoCSV: false, AutoCount: false })
             {
                 //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
-                Overlay.rewardsDisplaying = false;
+                Overlay.RewardsDisplaying = false;
                 return;
             }
 
@@ -484,7 +484,7 @@ public class Main : INotificationHandler<StartLoggedInTimer>
             await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
             if (type == ScreenshotType.NORMAL)
             {
-                OCR.processingActive.GetAndSet(false);
+                OCR.ProcessingActive.GetAndSet(false);
             }
         }
     }

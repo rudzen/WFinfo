@@ -29,6 +29,8 @@ internal partial class OCR
 {
     private static readonly ILogger Logger = Log.Logger.ForContext(typeof(OCR));
 
+    private sealed record SkipZone(int LeftEdge, int RightEdge, int BottomEdge);
+
     #region variabels and sizzle
 
     private const NumberStyles Styles = NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands |
@@ -42,22 +44,27 @@ internal partial class OCR
     private static readonly Regex RE = WordTrimRegEx();
 
     // Pixel measurements for reward screen @ 1920 x 1080 with 100% scale https://docs.google.com/drawings/d/1Qgs7FU2w1qzezMK-G1u9gMTsQZnDKYTEU36UPakNRJQ/edit
-    private const int pixleRewardWidth = 968;
-    private const int pixleRewardHeight = 235;
-    private const int pixleRewardYDisplay = 316;
-    private const int pixelRewardLineHeight = 48;
+    private const int PixelRewardWidth = 968;
+    private const int PixelRewardHeight = 235;
+    private const int PixelRewardYDisplay = 316;
+    private const int PixelRewardLineHeight = 48;
 
     private const int SCALING_LIMIT = 100;
-    public static AtomicBoolean processingActive = new(false);
+
+    private static readonly Pen OrangePen = new(Brushes.Orange);
+    private static readonly Pen PinkPen = new(Brushes.Pink);
+    private static readonly Pen DarkCyanPen = new(Brushes.DarkCyan);
+    private static readonly Pen RedPen = new(Brushes.Red);
+    private static readonly Pen CyanPen = new(Brushes.Cyan);
+
+    public static AtomicBoolean ProcessingActive { get; set; } = new(false);
 
     private static Bitmap bigScreenshot;
     private static Bitmap? partialScreenshot;
     private static Bitmap partialScreenshotExpanded;
 
     private static string[]? firstChecks;
-#pragma warning disable IDE0044 // Add readonly modifier
     private static int[]? firstProximity = [-1, -1, -1, -1];
-#pragma warning restore IDE0044 // Add readonly modifier
     private static string timestamp;
 
     private static string clipboard;
@@ -142,7 +149,7 @@ internal partial class OCR
     {
         #region initializers
 
-        if (processingActive)
+        if (ProcessingActive)
         {
             await _mediator.Publish(new UpdateStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;
@@ -150,7 +157,7 @@ internal partial class OCR
 
         var primeRewards = new List<string>();
 
-        processingActive.GetAndSet(true);
+        ProcessingActive.GetAndSet(true);
         await _mediator.Publish(new UpdateStatus("Processing..."));
         Logger.Debug(
             "----  Triggered Reward Screen Processing  ------------------------------------------------------------------");
@@ -168,7 +175,7 @@ internal partial class OCR
         }
         catch (Exception e)
         {
-            processingActive.GetAndSet(false);
+            ProcessingActive.GetAndSet(false);
             Logger.Error(e, "Error while extracting part boxes");
             return;
         }
@@ -192,7 +199,7 @@ internal partial class OCR
                       .ToArray();
         if (firstChecks == null || firstChecks.Length == 0 || CheckIfError())
         {
-            processingActive.GetAndSet(false);
+            ProcessingActive.GetAndSet(false);
             var end = Stopwatch.GetElapsedTime(start);
             Logger.Debug(
                 "----  Partial Processing Time, couldn't find rewards {Time}  ------------------------------------------------------------------------------------------"[..108],
@@ -221,7 +228,7 @@ internal partial class OCR
         {
             NumberOfRewardsDisplayed = firstChecks.Length;
             clipboard = string.Empty;
-            var width = (int)(pixleRewardWidth * _window.ScreenScaling * UiScaling) + 10;
+            var width = (int)(PixelRewardWidth * _window.ScreenScaling * UiScaling) + 10;
             var startX = _window.Center.X - width / 2 + (int)(width * 0.004);
 
             if (firstChecks.Length % 2 == 1)
@@ -309,18 +316,19 @@ internal partial class OCR
 
                 Main.RunOnUIThread(() =>
                 {
-                    Overlay.rewardsDisplaying = true;
+                    Overlay.RewardsDisplaying = true;
 
                     if (_settings.IsOverlaySelected)
                     {
-                        _overlays[partNumber].LoadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted,
-                            mastered, $"{partsOwned} / {partsCount}", "", hideRewardInfo, false);
-                        _overlays[partNumber].Resize(overWid);
-                        _overlays[partNumber]
-                            .Display(
-                                (int)((startX + width / 4 * partNumber + _settings.OverlayXOffsetValue) /
-                                      _window.DpiScaling),
-                                startY + (int)(_settings.OverlayYOffsetValue / _window.DpiScaling), _settings.Delay);
+                        var overlay = _overlays[partNumber];
+                        overlay.LoadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted,
+                            mastered, $"{partsOwned} / {partsCount}", string.Empty, hideRewardInfo, false);
+                        overlay.Resize(overWid);
+                        overlay.Display(
+                            x: (int)((startX + width / 4 * partNumber + _settings.OverlayXOffsetValue) / _window.DpiScaling),
+                            y: startY + (int)(_settings.OverlayYOffsetValue / _window.DpiScaling),
+                            wait: _settings.Delay
+                        );
                     }
                     else if (!_settings.IsLightSelected)
                     {
@@ -389,7 +397,7 @@ internal partial class OCR
             partialScreenshot = null;
         }
 
-        processingActive.GetAndSet(false);
+        ProcessingActive.GetAndSet(false);
     }
 
     #region clipboard
@@ -429,11 +437,14 @@ internal partial class OCR
             sb.Append(_settings.ClipboardTemplate);
 
         if (sb.Length > 0)
-            clipboard = sb.ToString();
+        {
+            var clip = sb.ToString();
+            clipboard = clip;
+            Logger.Debug("Clipboard msg: {Clip}", clip);
+        }
     }
 
     #endregion clipboard
-
 
     private static bool CheckIfError()
     {
@@ -464,10 +475,10 @@ internal partial class OCR
     /// <returns>If part name is close enough to valid to actually process</returns>
     private static bool PartNameValid(string partName)
     {
+        // if part name is smaller than "Bo prime handle" skip current part
+        //TODO: Add a min character for other locale here.
         if ((partName.Length < 13 && _settings.Locale == "en") ||
-            (partName.Replace(" ", string.Empty).Length < 6 &&
-             _settings.Locale == "ko")) // if part name is smaller than "Bo prime handle" skip current part
-            //TODO: Add a min character for other locale here.
+            (partName.Replace(" ", string.Empty).Length < 6 && _settings.Locale == "ko"))
             return false;
         return true;
     }
@@ -476,28 +487,30 @@ internal partial class OCR
     /// Processes the image the user cropped in the selection
     /// </summary>
     /// <param name="snapItImage"></param>
+    /// <param name="fullShot"></param>
+    /// <param name="snapItOrigin"></param>
     internal static async Task ProcessSnapIt(Bitmap snapItImage, Bitmap fullShot, Point snapItOrigin)
     {
         var watch = new Stopwatch();
         watch.Start();
         var start = watch.ElapsedMilliseconds;
 
-        //timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
-        var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
+        var now = DateTime.UtcNow;
+        var timestamp = now.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
         var theme = GetThemeWeighted(out _, fullShot);
-        snapItImage.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImage " + timestamp + ".png");
+        snapItImage.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImage {timestamp}.png"));
         var snapItImageFiltered = ScaleUpAndFilter(snapItImage, theme, out var rowHits, out var colHits);
-        snapItImageFiltered.Save(ApplicationConstants.AppPath + @"\Debug\SnapItImageFiltered " + timestamp + ".png");
+        snapItImageFiltered.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImageFiltered {timestamp}.png"));
         var foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
         var end = watch.ElapsedMilliseconds;
-        await _mediator.Publish(new UpdateStatus("Completed snapit Processing(" + (end - start) + "ms)"));
-        var csv = string.Empty;
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
-        if (!File.Exists(ApplicationConstants.AppPath + @"\export " + DateTime.UtcNow.ToString("yyyy-MM-dd", ApplicationConstants.Culture) +
-                         ".csv") && _settings.SnapitExport)
+
+        await _mediator.Publish(new UpdateStatus("Completed snapit Processing(" + (end - start) + "ms)"));
+        var csv = string.Empty;
+        if (!File.Exists(Path.Combine(ApplicationConstants.AppPath, "export " + now.ToString("yyyy-MM-dd", ApplicationConstants.Culture) + ".csv")) && _settings.SnapitExport)
             csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
-                   DateTime.UtcNow.ToString("yyyy-MM-dd", ApplicationConstants.Culture) + Environment.NewLine;
+                   now.ToString("yyyy-MM-dd", ApplicationConstants.Culture) + Environment.NewLine;
         var resultCount = foundParts.Count;
         for (var i = 0; i < foundParts.Count; i++)
         {
@@ -525,11 +538,10 @@ internal partial class OCR
             var job = Main.DataBase.MarketData.GetValue(name).ToObject<JObject>();
             var primeSet = (JObject)Main.DataBase.MarketData.GetValue(primeSetName);
             var plat = job["plat"].ToObject<string>();
+
             string primeSetPlat = null;
             if (primeSet != null)
-            {
                 primeSetPlat = (string)primeSet["plat"];
-            }
 
             var ducats = job["ducats"].ToObject<string>();
             var volume = job["volume"].ToObject<string>();
@@ -545,17 +557,7 @@ internal partial class OCR
                        owned + "," + partsDetected + ", \"\"" + Environment.NewLine;
             }
 
-            var width = (int)(part.Bounding.Width * _window.ScreenScaling);
-            if (width < _settings.MinOverlayWidth)
-            {
-                //if (width < 50)
-                //    continue;
-                width = _settings.MinOverlayWidth;
-            }
-            else if (width > _settings.MaxOverlayWidth)
-            {
-                width = _settings.MaxOverlayWidth;
-            }
+            var width = Math.Clamp((int)(part.Bounding.Width * _window.ScreenScaling), _settings.MinOverlayWidth, _settings.MaxOverlayWidth);
 
             Main.RunOnUIThread(() =>
             {
@@ -838,9 +840,6 @@ internal partial class OCR
         Font font)
     {
         Logger.Debug("Starting Item Counting");
-        var darkCyan = new Pen(Brushes.DarkCyan);
-        var red = new Pen(Brushes.Red);
-        var cyan = new Pen(Brushes.Cyan);
         using (var g = Graphics.FromImage(filteredImage))
         {
             //sort for easier processing in loop below
@@ -912,12 +911,12 @@ internal partial class OCR
             //draw debug markings for grid system
             foreach (var col in columns)
             {
-                g.DrawLine(darkCyan, col.Right, 0, col.Right, 10000);
-                g.DrawLine(darkCyan, col.X, 0, col.X, 10000);
+                g.DrawLine(DarkCyanPen, col.Right, 0, col.Right, 10000);
+                g.DrawLine(DarkCyanPen, col.X, 0, col.X, 10000);
             }
 
             foreach (var bottom in rows.Select(x => x.Bottom))
-                g.DrawLine(darkCyan, 0, bottom, 10000, bottom);
+                g.DrawLine(DarkCyanPen, 0, bottom, 10000, bottom);
 
             //set OCR to numbers only
             _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", "0123456789");
@@ -937,7 +936,7 @@ internal partial class OCR
                     var Height = Math.Min((rows[i].Bottom - Top) / 3, filteredImage.Size.Height - Top);
 
                     var cloneRect = new Rectangle(Left, Top, Width, Height);
-                    g.DrawRectangle(cyan, cloneRect);
+                    g.DrawRectangle(CyanPen, cloneRect);
                     var cloneBitmap = filteredImageClean.Clone(cloneRect, filteredImageClean.PixelFormat);
                     var cloneBitmapColoured = unfilteredImage.Clone(cloneRect, filteredImageClean.PixelFormat);
 
@@ -945,12 +944,10 @@ internal partial class OCR
                     //get cloneBitmap as array for fast access
                     var imgWidth = cloneBitmap.Width;
                     var imgHeight = cloneBitmap.Height;
-                    var lockedBitmapData = cloneBitmap.LockBits(
-                        new Rectangle(0, 0, imgWidth, cloneBitmap.Height), ImageLockMode.WriteOnly,
-                        cloneBitmap.PixelFormat);
-                    var numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
-                    var LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
-                    Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
+                    var lockedBitmapData = cloneBitmap.LockBits(new Rectangle(0, 0, imgWidth, cloneBitmap.Height), ImageLockMode.WriteOnly, cloneBitmap.PixelFormat);
+                    var numBytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
+                    var lockedBitmapBytes = new byte[numBytes]; //Format is ARGB, in order BGRA
+                    Marshal.Copy(lockedBitmapData.Scan0, lockedBitmapBytes, 0, numBytes);
                     cloneBitmap.UnlockBits(lockedBitmapData);
 
                     //find "center of mass" for black pixels in the area
@@ -960,10 +957,10 @@ internal partial class OCR
                     var xCenter = 0;
                     var yCenter = 0;
                     var sumBlack = 1;
-                    for (index = 0; index < numbytes; index += 4)
+                    for (index = 0; index < numBytes; index += 4)
                     {
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (lockedBitmapBytes[index] == 0 && lockedBitmapBytes[index + 1] == 0 &&
+                            lockedBitmapBytes[index + 2] == 0 && lockedBitmapBytes[index + 3] == 255)
                         {
                             y = (index / 4) / imgWidth;
                             x = (index / 4) % imgWidth;
@@ -991,8 +988,8 @@ internal partial class OCR
                         x = xCenter + dist;
                         y = yCenter;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (lockedBitmapBytes[index] == 0 && lockedBitmapBytes[index + 1] == 0 &&
+                            lockedBitmapBytes[index + 2] == 0 && lockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1000,8 +997,8 @@ internal partial class OCR
                         x = xCenter - dist;
                         y = yCenter;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (lockedBitmapBytes[index] == 0 && lockedBitmapBytes[index + 1] == 0 &&
+                            lockedBitmapBytes[index + 2] == 0 && lockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1009,8 +1006,8 @@ internal partial class OCR
                         x = xCenter;
                         y = yCenter + dist;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (lockedBitmapBytes[index] == 0 && lockedBitmapBytes[index + 1] == 0 &&
+                            lockedBitmapBytes[index + 2] == 0 && lockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1018,8 +1015,8 @@ internal partial class OCR
                         x = xCenter;
                         y = yCenter - dist;
                         index = 4 * (x + y * imgWidth);
-                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                        if (lockedBitmapBytes[index] == 0 && lockedBitmapBytes[index + 1] == 0 &&
+                            lockedBitmapBytes[index + 2] == 0 && lockedBitmapBytes[index + 3] == 255)
                         {
                             break;
                         }
@@ -1048,8 +1045,8 @@ internal partial class OCR
                                         p.Y + yOff < imgHeight)
                                     {
                                         index = 4 * (p.X + xOff + (p.Y + yOff) * imgWidth);
-                                        if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                                            LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                                        if (lockedBitmapBytes[index] == 0 && lockedBitmapBytes[index + 1] == 0 &&
+                                            lockedBitmapBytes[index + 2] == 0 && lockedBitmapBytes[index + 3] == 255)
                                         {
                                             searchSpace.Push(new Point(p.X + xOff, p.Y + yOff));
                                             //cloneBitmap.SetPixel(p.X + xOff, p.Y + yOff, Color.Green); //debugging markings, uncomment as needed
@@ -1079,8 +1076,8 @@ internal partial class OCR
                         if (checkY > 0 && checkY < imgHeight)
                         {
                             index = 4 * (xCenterNew + (checkY) * imgWidth);
-                            if (LockedBitmapBytes[index] == 0 && LockedBitmapBytes[index + 1] == 0 &&
-                                LockedBitmapBytes[index + 2] == 0 && LockedBitmapBytes[index + 3] == 255)
+                            if (lockedBitmapBytes[index] == 0 && lockedBitmapBytes[index + 1] == 0 &&
+                                lockedBitmapBytes[index + 2] == 0 && lockedBitmapBytes[index + 3] == 255)
                             {
                                 if (checkY > highest)
                                     highest = checkY;
@@ -1109,9 +1106,9 @@ internal partial class OCR
                     lockedBitmapData = cloneBitmapColoured.LockBits(
                         new Rectangle(0, 0, imgWidth, cloneBitmapColoured.Height), ImageLockMode.WriteOnly,
                         cloneBitmapColoured.PixelFormat);
-                    numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
-                    LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
-                    Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
+                    numBytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
+                    lockedBitmapBytes = new byte[numBytes]; //Format is ARGB, in order BGRA
+                    Marshal.Copy(lockedBitmapData.Scan0, lockedBitmapBytes, 0, numBytes);
                     cloneBitmapColoured.UnlockBits(lockedBitmapData);
 
                     //search diagonally from second-pass center for colours frequently occuring 3 pixels in a row horizontally. Most common one of these should be the "amount label background colour"
@@ -1135,17 +1132,17 @@ internal partial class OCR
                         }
 
                         index = 4 * (p.X + p.Y * imgWidth);
-                        if (LockedBitmapBytes[index] == LockedBitmapBytes[index - 4] &&
-                            LockedBitmapBytes[index] == LockedBitmapBytes[index + 4]
-                            && LockedBitmapBytes[index + 1] == LockedBitmapBytes[index + 1 - 4] &&
-                            LockedBitmapBytes[index + 1] == LockedBitmapBytes[index + 1 + 4]
-                            && LockedBitmapBytes[index + 2] == LockedBitmapBytes[index + 2 - 4] &&
-                            LockedBitmapBytes[index + 2] == LockedBitmapBytes[index + 2 + 4]
-                            && LockedBitmapBytes[index + 3] == LockedBitmapBytes[index + 3 - 4] &&
-                            LockedBitmapBytes[index + 3] == LockedBitmapBytes[index + 3 + 4])
+                        if (lockedBitmapBytes[index] == lockedBitmapBytes[index - 4] &&
+                            lockedBitmapBytes[index] == lockedBitmapBytes[index + 4]
+                            && lockedBitmapBytes[index + 1] == lockedBitmapBytes[index + 1 - 4] &&
+                            lockedBitmapBytes[index + 1] == lockedBitmapBytes[index + 1 + 4]
+                            && lockedBitmapBytes[index + 2] == lockedBitmapBytes[index + 2 - 4] &&
+                            lockedBitmapBytes[index + 2] == lockedBitmapBytes[index + 2 + 4]
+                            && lockedBitmapBytes[index + 3] == lockedBitmapBytes[index + 3 - 4] &&
+                            lockedBitmapBytes[index + 3] == lockedBitmapBytes[index + 3 + 4])
                         {
-                            var color = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                                LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
+                            var color = Color.FromArgb(lockedBitmapBytes[index + 3], lockedBitmapBytes[index + 2],
+                                lockedBitmapBytes[index + 1], lockedBitmapBytes[index]);
                             if (!colorHits.TryAdd(color, 1))
                             {
                                 colorHits[color]++;
@@ -1172,11 +1169,13 @@ internal partial class OCR
 
                     //get unfilteredImage as array for fast access
                     imgWidth = unfilteredImage.Width;
+
                     lockedBitmapData = unfilteredImage.LockBits(new Rectangle(0, 0, imgWidth, unfilteredImage.Height),
                         ImageLockMode.WriteOnly, unfilteredImage.PixelFormat);
-                    numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
-                    LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
-                    Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
+                    numBytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
+                    lockedBitmapBytes = new byte[numBytes]; //Format is ARGB, in order BGRA
+                    Marshal.Copy(lockedBitmapData.Scan0, lockedBitmapBytes, 0, numBytes);
+
                     unfilteredImage.UnlockBits(lockedBitmapData);
 
                     //recalculate centers to be relative to whole image
@@ -1192,21 +1191,21 @@ internal partial class OCR
                     x = xCenterNew;
                     y = yCenterNew;
                     index = 4 * (x + y * imgWidth);
-                    var currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                        LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
+                    var currColor = Color.FromArgb(lockedBitmapBytes[index + 3], lockedBitmapBytes[index + 2],
+                        lockedBitmapBytes[index + 1], lockedBitmapBytes[index]);
                     while (x < imgWidth && y > 0 && topColor != currColor)
                     {
                         x++;
                         y--;
                         index = 4 * (x + y * imgWidth);
-                        currColor = Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                            LockedBitmapBytes[index + 1], LockedBitmapBytes[index]);
+                        currColor = Color.FromArgb(lockedBitmapBytes[index + 3], lockedBitmapBytes[index + 2],
+                            lockedBitmapBytes[index + 1], lockedBitmapBytes[index]);
                     }
 
                     //then search for top edge
                     Top = y;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(lockedBitmapBytes[index + 3], lockedBitmapBytes[index + 2],
+                               lockedBitmapBytes[index + 1], lockedBitmapBytes[index]))
                     {
                         Top--;
                         index = 4 * (x + Top * imgWidth);
@@ -1217,8 +1216,8 @@ internal partial class OCR
 
                     //search for left edge
                     Left = x;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(lockedBitmapBytes[index + 3], lockedBitmapBytes[index + 2],
+                               lockedBitmapBytes[index + 1], lockedBitmapBytes[index]))
                     {
                         Left--;
                         index = 4 * (Left + Top * imgWidth);
@@ -1229,8 +1228,8 @@ internal partial class OCR
 
                     //search for height (bottom edge)
                     Height = 0;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(lockedBitmapBytes[index + 3], lockedBitmapBytes[index + 2],
+                               lockedBitmapBytes[index + 1], lockedBitmapBytes[index]))
                     {
                         Height++;
                         index = 4 * (Left + (Top + Height) * imgWidth);
@@ -1243,8 +1242,8 @@ internal partial class OCR
 
                     //search for width
                     Width = 0;
-                    while (topColor == Color.FromArgb(LockedBitmapBytes[index + 3], LockedBitmapBytes[index + 2],
-                               LockedBitmapBytes[index + 1], LockedBitmapBytes[index]))
+                    while (topColor == Color.FromArgb(lockedBitmapBytes[index + 3], lockedBitmapBytes[index + 2],
+                               lockedBitmapBytes[index + 1], lockedBitmapBytes[index]))
                     {
                         Width++;
                         index = 4 * (Left + Width + Top * imgWidth);
@@ -1259,7 +1258,7 @@ internal partial class OCR
                     cloneBitmap.Dispose();
                     //load up "amount label" image and draw debug markings for the area
                     cloneBitmap = filteredImageClean.Clone(cloneRect, filteredImageClean.PixelFormat);
-                    g.DrawRectangle(cyan, cloneRect);
+                    g.DrawRectangle(CyanPen, cloneRect);
 
                     //do OCR
                     using (var page = _tesseractService.FirstEngine.Process(cloneBitmap, PageSegMode.SingleLine))
@@ -1278,9 +1277,8 @@ internal partial class OCR
                             g.DrawString(rawText, font, Brushes.Cyan, new Point(cloneRect.X, cloneRect.Y));
 
                             //find what item the item belongs to
-                            var itemLabel = new Rectangle(columns[j].X, rows[i].Top, columns[j].Width,
-                                rows[i].Height);
-                            g.DrawRectangle(cyan, itemLabel);
+                            var itemLabel = new Rectangle(columns[j].X, rows[i].Top, columns[j].Width, rows[i].Height);
+                            g.DrawRectangle(CyanPen, itemLabel);
                             for (var k = 0; k < foundItems.Count; k++)
                             {
                                 var item = foundItems[k];
@@ -1305,10 +1303,6 @@ internal partial class OCR
             //return OCR to any symbols
             _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", string.Empty);
         }
-
-        darkCyan.Dispose();
-        red.Dispose();
-        cyan.Dispose();
     }
 
     /// <summary>
@@ -1377,18 +1371,18 @@ internal partial class OCR
     /// <summary>
     /// Probe pixel color to see if it's white enough for FindOwnedItems
     /// </summary>
-    /// <param name="byteArr">Byte Array of image (ARGB)</param>
+    /// <param name="byteArr">Byte Array of image (ARGB). 4 bytes for ARGB, in order BGRA</param>
     /// <param name="width">Width of image</param>
     /// <param name="x">Pixel X coordiante</param>
     /// <param name="y">Pixel Y coordinate</param>
     /// <param name="lowSensitivity">Use lower threshold, mainly for finding black pixels instead</param>
     /// <returns>if pixel is above threshold for "white"</returns>
-    private static bool probeProfilePixel(byte[] byteArr, int width, int x, int y, bool lowSensitivity)
+    private static bool ProbeProfilePixel(ReadOnlySpan<byte> byteArr, int width, int x, int y, bool lowSensitivity)
     {
-        int a = byteArr[(x + y * width) * 4 + 3]; //4 bytes for ARGB, in order BGRA in the array
-        int r = byteArr[(x + y * width) * 4 + 2];
-        int g = byteArr[(x + y * width) * 4 + 1];
-        int b = byteArr[(x + y * width) * 4];
+        var a = byteArr[(x + y * width) * 4 + 3];
+        var r = byteArr[(x + y * width) * 4 + 2];
+        var g = byteArr[(x + y * width) * 4 + 1];
+        var b = byteArr[(x + y * width) * 4];
 
         if (lowSensitivity)
         {
@@ -1401,263 +1395,245 @@ internal partial class OCR
     /// <summary>
     /// Get owned items from profile screen
     /// </summary>
-    /// <param name="ProfileImage">Image of profile screen to scan, debug markings will be drawn on this</param>
+    /// <param name="profileImage">Image of profile screen to scan, debug markings will be drawn on this</param>
     /// <param name="timestamp">Time started at, used for file name</param>
+    /// <param name="start"></param>
     /// <returns>List of found items</returns>
-    private static List<InventoryItem> FindOwnedItems(Bitmap ProfileImage, string timestamp, in long start)
+    private static unsafe List<InventoryItem> FindOwnedItems(Bitmap profileImage, string timestamp, in long start)
     {
-        var orange = new Pen(Brushes.Orange);
-        var red = new Pen(Brushes.Red);
-        var cyan = new Pen(Brushes.Cyan);
-        var pink = new Pen(Brushes.Pink);
-        var darkCyan = new Pen(Brushes.DarkCyan);
         var font = new Font("Arial", 16);
         List<InventoryItem> foundItems = [];
-        var ProfileImageClean = new Bitmap(ProfileImage);
-        var probe_interval = ProfileImage.Width / 120;
-        Logger.Debug("Using probe interval: {Interval}", probe_interval);
+        var profileImageClean = new Bitmap(profileImage);
+        var probeInterval = profileImage.Width / 120;
+        Logger.Debug("Using probe interval: {Interval}", probeInterval);
 
-        var imgWidth = ProfileImageClean.Width;
-        var lockedBitmapData = ProfileImageClean.LockBits(
-            new Rectangle(0, 0, imgWidth, ProfileImageClean.Height), ImageLockMode.WriteOnly,
-            ProfileImageClean.PixelFormat);
-        var numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
-        var LockedBitmapBytes = new byte[numbytes]; //Format is ARGB, in order BGRA
-        Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
+        var imgWidth = profileImageClean.Width;
 
-        using (var g = Graphics.FromImage(ProfileImage))
+        var lockedBitmapData = profileImageClean.LockBits(
+            rect: new Rectangle(0, 0, profileImageClean.Width, profileImageClean.Height),
+            flags: ImageLockMode.ReadWrite,
+            format: profileImageClean.PixelFormat
+        );
+        var numBytes = Math.Abs(lockedBitmapData.Stride) * profileImageClean.Height;
+        var lockedBitmapBytes = new Span<byte>((void*)lockedBitmapData.Scan0, numBytes);
+
+        using (var g = Graphics.FromImage(profileImage))
         {
             var nextY = 0;
             var nextYCounter = -1;
-            List<Tuple<int, int, int>> skipZones = []; //left edge, right edge, bottom edge
-            for (var y = 0; y < ProfileImageClean.Height - 1; y = (nextYCounter == 0 ? nextY : y + 1))
+            List<SkipZone> skipZones = []; //left edge, right edge, bottom edge
+            for (var y = 0; y < profileImageClean.Height - 1; y = nextYCounter == 0 ? nextY : y + 1)
             {
-                for (var x = 0; x < imgWidth; x += probe_interval) //probe every few pixels for performance
+                for (var x = 0; x < imgWidth; x += probeInterval) //probe every few pixels for performance
                 {
-                    if (probeProfilePixel(LockedBitmapBytes, imgWidth, x, y, false))
+                    if (!ProbeProfilePixel(lockedBitmapBytes, imgWidth, x, y, false))
+                        continue;
+
+                    //find left edge and check that the coloured area is at least as big as probe_interval
+                    var leftEdge = -1;
+                    var hits = 0;
+                    var areaWidth = 0;
+                    double hitRatio = 0;
+                    for (var tempX = Math.Max(x - probeInterval, 0);
+                         tempX < Math.Min(x + probeInterval, imgWidth);
+                         tempX++)
                     {
-                        //find left edge and check that the coloured area is at least as big as probe_interval
-                        var leftEdge = -1;
-                        var hits = 0;
-                        var areaWidth = 0;
-                        double hitRatio = 0;
-                        for (var tempX = Math.Max(x - probe_interval, 0);
-                             tempX < Math.Min(x + probe_interval, imgWidth);
-                             tempX++)
+                        areaWidth++;
+                        if (ProbeProfilePixel(lockedBitmapBytes, imgWidth, tempX, y, false))
                         {
-                            areaWidth++;
-                            if (probeProfilePixel(LockedBitmapBytes, imgWidth, tempX, y, false))
+                            hits++;
+                            leftEdge = (leftEdge == -1 ? tempX : leftEdge);
+                        }
+                    }
+
+                    hitRatio = (double)(hits) / areaWidth;
+                    if (hitRatio < 0.5) //skip if too low hit ratio
+                    {
+                        g.DrawLine(OrangePen, x - probeInterval, y, x + probeInterval, y);
+                        continue;
+                    }
+
+                    //find where the line ends
+                    var rightEdge = leftEdge;
+                    while (rightEdge + 2 < imgWidth &&
+                           (ProbeProfilePixel(lockedBitmapBytes, imgWidth, rightEdge + 1, y, false)
+                            || ProbeProfilePixel(lockedBitmapBytes, imgWidth, rightEdge + 2, y, false)))
+                    {
+                        rightEdge++;
+                    }
+
+                    //check that it isn't in an area already thoroughly searched
+                    var failed = false;
+                    foreach (var skipZone in skipZones)
+                    {
+                        if (y < skipZone.BottomEdge && ((leftEdge <= skipZone.LeftEdge && rightEdge >= skipZone.LeftEdge) ||
+                                                        (leftEdge >= skipZone.LeftEdge && leftEdge <= skipZone.RightEdge) ||
+                                                        (rightEdge >= skipZone.LeftEdge && rightEdge <= skipZone.RightEdge)))
+                        {
+                            g.DrawLine(DarkCyanPen, leftEdge, y, rightEdge, y);
+                            x = Math.Max(x, skipZone.RightEdge);
+                            failed = true;
+                            break;
+                        }
+                    }
+
+                    if (failed)
+                        continue;
+
+                    //find bottom edge and hit ratio of all rows
+                    var topEdge = y;
+                    var bottomEdge = y;
+                    List<double> hitRatios = [1];
+                    do
+                    {
+                        var rightMostHit = 0;
+                        var leftMostHit = -1;
+                        hits = 0;
+                        bottomEdge++;
+                        for (var i = leftEdge; i < rightEdge; i++)
+                        {
+                            if (ProbeProfilePixel(lockedBitmapBytes, imgWidth, i, bottomEdge, false))
                             {
                                 hits++;
-                                leftEdge = (leftEdge == -1 ? tempX : leftEdge);
-                            }
-                        }
-
-                        hitRatio = (double)(hits) / areaWidth;
-                        if (hitRatio < 0.5) //skip if too low hit ratio
-                        {
-                            g.DrawLine(orange, x - probe_interval, y, x + probe_interval, y);
-                            continue;
-                        }
-
-                        //find where the line ends
-                        var rightEdge = leftEdge;
-                        while (rightEdge + 2 < imgWidth &&
-                               (probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 1, y, false)
-                                || probeProfilePixel(LockedBitmapBytes, imgWidth, rightEdge + 2, y, false)))
-                        {
-                            rightEdge++;
-                        }
-
-                        //check that it isn't in an area already thoroughly searched
-                        var failed = false;
-                        foreach (var skipZone in skipZones)
-                        {
-                            if (y < skipZone.Item3 && ((leftEdge <= skipZone.Item1 && rightEdge >= skipZone.Item1) ||
-                                                       (leftEdge >= skipZone.Item1 && leftEdge <= skipZone.Item2) ||
-                                                       (rightEdge >= skipZone.Item1 && rightEdge <= skipZone.Item2)))
-                            {
-                                g.DrawLine(darkCyan, leftEdge, y, rightEdge, y);
-                                x = Math.Max(x, skipZone.Item2);
-                                failed = true;
-                                break;
-                            }
-                        }
-
-                        if (failed)
-                        {
-                            continue;
-                        }
-
-
-                        //find bottom edge and hit ratio of all rows
-                        var topEdge = y;
-                        var bottomEdge = y;
-                        List<double> hitRatios =
-                        [
-                            1
-                        ];
-                        do
-                        {
-                            var rightMostHit = 0;
-                            var leftMostHit = -1;
-                            hits = 0;
-                            bottomEdge++;
-                            for (var i = leftEdge; i < rightEdge; i++)
-                            {
-                                if (probeProfilePixel(LockedBitmapBytes, imgWidth, i, bottomEdge, false))
+                                rightMostHit = i;
+                                if (leftMostHit == -1)
                                 {
-                                    hits++;
-                                    rightMostHit = i;
-                                    if (leftMostHit == -1)
-                                    {
-                                        leftMostHit = i;
-                                    }
+                                    leftMostHit = i;
                                 }
                             }
-
-                            hitRatio = hits / (double)(rightEdge - leftEdge);
-                            hitRatios.Add(hitRatio);
-
-                            if (hitRatio > 0.2 && rightMostHit + 1 < rightEdge &&
-                                rightEdge - leftEdge >
-                                100) //make sure the innermost right edge is used (avoid bright part of frame overlapping with edge)
-                            {
-                                g.DrawLine(red, rightEdge, bottomEdge, rightMostHit, bottomEdge);
-                                rightEdge = rightMostHit;
-                                bottomEdge = y;
-                                hitRatios.Clear();
-                                hitRatios.Add(1);
-                            }
-
-                            if (hitRatio > 0.2 && leftMostHit > leftEdge &&
-                                rightEdge - leftEdge >
-                                100) //make sure the innermost left edge is used (avoid bright part of frame overlapping with edge)
-                            {
-                                g.DrawLine(red, leftEdge, bottomEdge, leftMostHit, bottomEdge);
-                                leftEdge = leftMostHit;
-                                bottomEdge = y;
-                                hitRatios.Clear();
-                                hitRatios.Add(1);
-                            }
-                        } while (bottomEdge + 2 < ProfileImageClean.Height && hitRatios[^1] > 0.2);
-
-                        hitRatios.RemoveAt(hitRatios.Count - 1);
-                        //find if/where it transitions from text (some misses) to no text (basically no misses) then back to text (some misses). This is proof it's an owned item and marks the bottom edge of the text
-                        var ratioChanges = 0;
-                        var prevMostlyHits = true;
-                        var lineBreak = -1;
-                        for (var i = 0; i < hitRatios.Count; i++)
-                        {
-                            if ((hitRatios[i] > 0.99) != prevMostlyHits)
-                            {
-                                if (ratioChanges == 1)
-                                {
-                                    lineBreak = i + 1;
-                                    g.DrawLine(cyan, rightEdge, topEdge + lineBreak, leftEdge, topEdge + lineBreak);
-                                }
-
-                                prevMostlyHits = !prevMostlyHits;
-                                ratioChanges++;
-                            }
                         }
 
-                        var width = rightEdge - leftEdge;
-                        var height = bottomEdge - topEdge;
+                        hitRatio = hits / (double)(rightEdge - leftEdge);
+                        hitRatios.Add(hitRatio);
 
-                        if (ratioChanges != 4 || width < 2.4 * height || width > 4 * height)
+                        if (hitRatio > 0.2 && rightMostHit + 1 < rightEdge &&
+                            rightEdge - leftEdge >
+                            100) //make sure the innermost right edge is used (avoid bright part of frame overlapping with edge)
                         {
-                            g.DrawRectangle(pink, leftEdge, topEdge, width, height);
-                            x = Math.Max(rightEdge, x);
-                            if (Stopwatch.GetElapsedTime(start) > TimeSpan.FromSeconds(10))
-                            {
-                                Main.StatusUpdate("High noise, this might be slow", StatusSeverity.Warning);
-                            }
+                            g.DrawLine(RedPen, rightEdge, bottomEdge, rightMostHit, bottomEdge);
+                            rightEdge = rightMostHit;
+                            bottomEdge = y;
+                            hitRatios.Clear();
+                            hitRatios.Add(1);
+                        }
 
+                        if (hitRatio > 0.2 && leftMostHit > leftEdge &&
+                            rightEdge - leftEdge >
+                            100) //make sure the innermost left edge is used (avoid bright part of frame overlapping with edge)
+                        {
+                            g.DrawLine(RedPen, leftEdge, bottomEdge, leftMostHit, bottomEdge);
+                            leftEdge = leftMostHit;
+                            bottomEdge = y;
+                            hitRatios.Clear();
+                            hitRatios.Add(1);
+                        }
+                    } while (bottomEdge + 2 < profileImageClean.Height && hitRatios[^1] > 0.2);
+
+                    hitRatios.RemoveAt(hitRatios.Count - 1);
+                    //find if/where it transitions from text (some misses) to no text (basically no misses) then back to text (some misses). This is proof it's an owned item and marks the bottom edge of the text
+                    var ratioChanges = 0;
+                    var prevMostlyHits = true;
+                    var lineBreak = -1;
+                    for (var i = 0; i < hitRatios.Count; i++)
+                    {
+                        if (hitRatios[i] > 0.99 == prevMostlyHits)
                             continue;
-                        }
 
-                        g.DrawRectangle(red, leftEdge, topEdge, width, height);
-                        skipZones.Add(new Tuple<int, int, int>(leftEdge, rightEdge, bottomEdge));
-                        x = rightEdge;
-                        nextY = bottomEdge + 1;
-                        nextYCounter = Math.Max(height / 8, 3);
-
-                        height = lineBreak;
-
-                        var cloneRect = new Rectangle(leftEdge, topEdge, width, height);
-                        var cloneBitmap = new Bitmap(cloneRect.Width * 3, cloneRect.Height);
-                        using (var g2 = Graphics.FromImage(cloneBitmap))
+                        if (ratioChanges == 1)
                         {
-                            g2.FillRectangle(Brushes.White, 0, 0, cloneBitmap.Width, cloneBitmap.Height);
+                            lineBreak = i + 1;
+                            g.DrawLine(CyanPen, rightEdge, topEdge + lineBreak, leftEdge, topEdge + lineBreak);
                         }
 
-                        var offset = 0;
-                        var prevHit = false;
-                        for (var i = 0; i < cloneRect.Width; i++)
-                        {
-                            var hitSomething = false;
-                            for (var j = 0; j < cloneRect.Height; j++)
-                            {
-                                if (!probeProfilePixel(LockedBitmapBytes, imgWidth, cloneRect.X + i, cloneRect.Y + j,
-                                        true))
-                                {
-                                    cloneBitmap.SetPixel(i + offset, j, Color.Black);
-                                    ProfileImage.SetPixel(cloneRect.X + i, cloneRect.Y + j, Color.Red);
-                                    hitSomething = true;
-                                }
-                            }
-
-                            if (!hitSomething && prevHit)
-                            {
-                                //add empty columns between letters for better OCR accuracy
-                                offset += 2;
-                                g.FillRectangle(Brushes.Gray, cloneRect.X + i, cloneRect.Y, 1, cloneRect.Height);
-                            }
-
-                            prevHit = hitSomething;
-                        }
-
-                        //cloneBitmap.Save(ApplicationConstants.AppPath + @"\Debug\ProfileImageClone " + foundItems.Count + " " + timestamp + ".png");
-
-
-                        //do OCR
-                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist",
-                            " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
-                        using (var page = _tesseractService.FirstEngine.Process(cloneBitmap, PageSegMode.SingleLine))
-                        {
-                            using (var iterator = page.GetIterator())
-                            {
-                                iterator.Begin();
-                                var rawText = iterator.GetText(PageIteratorLevel.TextLine);
-                                rawText = Regex.Replace(rawText, @"\s", string.Empty);
-                                foundItems.Add(new InventoryItem(rawText, cloneRect));
-
-                                g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height,
-                                    cloneRect.Width, cloneRect.Height);
-                                g.DrawString(rawText, font, Brushes.DarkBlue,
-                                    new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
-                            }
-                        }
-
-                        _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", string.Empty);
+                        prevMostlyHits = !prevMostlyHits;
+                        ratioChanges++;
                     }
+
+                    var width = rightEdge - leftEdge;
+                    var height = bottomEdge - topEdge;
+
+                    if (ratioChanges != 4 || width < 2.4 * height || width > 4 * height)
+                    {
+                        g.DrawRectangle(PinkPen, leftEdge, topEdge, width, height);
+                        x = Math.Max(rightEdge, x);
+                        if (Stopwatch.GetElapsedTime(start) > TimeSpan.FromSeconds(10))
+                        {
+                            Main.StatusUpdate("High noise, this might be slow", StatusSeverity.Warning);
+                        }
+
+                        continue;
+                    }
+
+                    g.DrawRectangle(RedPen, leftEdge, topEdge, width, height);
+                    skipZones.Add(new SkipZone(leftEdge, rightEdge, bottomEdge));
+                    x = rightEdge;
+                    nextY = bottomEdge + 1;
+                    nextYCounter = Math.Max(height / 8, 3);
+
+                    height = lineBreak;
+
+                    var cloneRect = new Rectangle(leftEdge, topEdge, width, height);
+                    var cloneBitmap = new Bitmap(cloneRect.Width * 3, cloneRect.Height);
+                    using (var g2 = Graphics.FromImage(cloneBitmap))
+                    {
+                        g2.FillRectangle(Brushes.White, 0, 0, cloneBitmap.Width, cloneBitmap.Height);
+                    }
+
+                    var offset = 0;
+                    var prevHit = false;
+                    for (var i = 0; i < cloneRect.Width; i++)
+                    {
+                        var hitSomething = false;
+                        for (var j = 0; j < cloneRect.Height; j++)
+                        {
+                            if (ProbeProfilePixel(lockedBitmapBytes, imgWidth, cloneRect.X + i, cloneRect.Y + j, true))
+                                continue;
+                            cloneBitmap.SetPixel(i + offset, j, Color.Black);
+                            profileImage.SetPixel(cloneRect.X + i, cloneRect.Y + j, Color.Red);
+                            hitSomething = true;
+                        }
+
+                        if (!hitSomething && prevHit)
+                        {
+                            //add empty columns between letters for better OCR accuracy
+                            offset += 2;
+                            g.FillRectangle(Brushes.Gray, cloneRect.X + i, cloneRect.Y, 1, cloneRect.Height);
+                        }
+
+                        prevHit = hitSomething;
+                    }
+
+                    //cloneBitmap.Save(ApplicationConstants.AppPath + @"\Debug\ProfileImageClone " + foundItems.Count + " " + timestamp + ".png");
+
+                    //do OCR
+                    _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist",
+                        " ABCDEFGHIJKLMNOPQRSTUVWXYZ&");
+                    using (var page = _tesseractService.FirstEngine.Process(cloneBitmap, PageSegMode.SingleLine))
+                    {
+                        using (var iterator = page.GetIterator())
+                        {
+                            iterator.Begin();
+                            var rawText = iterator.GetText(PageIteratorLevel.TextLine);
+                            rawText = SpaceRegEx().Replace(rawText, string.Empty);
+                            foundItems.Add(new InventoryItem(rawText, cloneRect));
+
+                            g.FillRectangle(Brushes.LightGray, cloneRect.X, cloneRect.Y + cloneRect.Height,
+                                cloneRect.Width, cloneRect.Height);
+                            g.DrawString(rawText, font, Brushes.DarkBlue,
+                                new Point(cloneRect.X, cloneRect.Y + cloneRect.Height));
+                        }
+                    }
+
+                    _tesseractService.FirstEngine.SetVariable("tessedit_char_whitelist", string.Empty);
                 }
 
                 if (nextYCounter >= 0)
-                {
                     nextYCounter--;
-                }
             }
         }
 
-        ProfileImageClean.Dispose();
-        ProfileImage.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"ProfileImageBounds {timestamp}.png"));
-        darkCyan.Dispose();
-        pink.Dispose();
-        cyan.Dispose();
-        red.Dispose();
-        orange.Dispose();
+        profileImageClean.Dispose();
+        profileImage.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"ProfileImageBounds {timestamp}.png"));
         return foundItems;
     }
 
@@ -1704,75 +1680,45 @@ internal partial class OCR
         //treat unknown as custom, for safety
         if (theme is WFtheme.CUSTOM or WFtheme.UNKNOWN)
             return CustomThresholdFilter(test);
+
         var primary = ThemeDetector.PrimaryThemeColor(theme);
         var secondary = ThemeDetector.SecondaryThemeColor(theme);
 
-        switch (theme)
+        return theme switch
         {
-            case WFtheme.VITRUVIAN: // TO CHECK
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.25 &&
-                       test.GetBrightness() >= 0.42;
-            case WFtheme.LOTUS:
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetSaturation() >= 0.65 &&
-                       Math.Abs(test.GetBrightness() - primary.GetBrightness()) <= 0.1
-                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetBrightness() >= 0.65);
-            case WFtheme.OROKIN: // TO CHECK
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() <= 0.42 &&
-                        test.GetSaturation() >= 0.1)
-                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5 && test.GetBrightness() <= 0.5 &&
-                           test.GetBrightness() >= 0.25 && test.GetSaturation() >= 0.25);
-            case WFtheme.STALKER:
-                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55)
-                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) &&
-                       test.GetBrightness() >= 0.25;
-            case WFtheme.CORPUS:
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.42 &&
-                       test.GetSaturation() >= 0.35;
-            case WFtheme.EQUINOX:
-                return test.GetSaturation() <= 0.2 && test.GetBrightness() >= 0.55;
-            case WFtheme.DARK_LOTUS:
-                return (Math.Abs(test.GetHue() - secondary.GetHue()) < 20 && test.GetBrightness() >= 0.35 &&
-                        test.GetBrightness() <= 0.55 && test.GetSaturation() <= 0.25 && test.GetSaturation() >= 0.05)
-                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.50 &&
-                           test.GetSaturation() >= 0.20);
-            case WFtheme.FORTUNA:
-                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.35) ||
-                        (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.15)) &&
-                       test.GetSaturation() >= 0.20;
-            case WFtheme.HIGH_CONTRAST:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 3 ||
-                        Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.75 &&
-                       test.GetBrightness() >= 0.35; // || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
-            case WFtheme.LEGACY:                     // TO CHECK
-                return (test.GetBrightness() >= 0.65)
-                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() >= 0.5 &&
-                           test.GetSaturation() >= 0.5);
-            case WFtheme.NIDUS:
-                return (Math.Abs(test.GetHue() - (primary.GetHue() + 6)) < 8 && test.GetSaturation() >= 0.30)
-                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetSaturation() >= 0.55);
-            case WFtheme.TENNO:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 3 ||
-                        Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.38 &&
-                       test.GetBrightness() <= 0.55;
-            case WFtheme.BARUUK:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 2) && test.GetSaturation() > 0.25 &&
-                       test.GetBrightness() > 0.5;
-            case WFtheme.GRINEER:
-                return (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() > 0.5)
-                       || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() > 0.55);
-            case WFtheme.ZEPHYR:
-                return ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55)
-                        || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66)) &&
-                       test.GetBrightness() >= 0.25;
-            default:
-                // This shouldn't be ran
-                //   Only for initial testing
-                return Math.Abs(test.GetHue() - primary.GetHue()) < 2 ||
-                       Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
-        }
+            // TO CHECK
+            WFtheme.VITRUVIAN => Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.25 && test.GetBrightness() >= 0.42,
+            WFtheme.LOTUS => Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetSaturation() >= 0.65 && Math.Abs(test.GetBrightness() - primary.GetBrightness()) <= 0.1
+                             || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetBrightness() >= 0.65),
+            // TO CHECK
+            WFtheme.OROKIN => (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() <= 0.42 && test.GetSaturation() >= 0.1) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5
+                && test.GetBrightness() <= 0.5 && test.GetBrightness() >= 0.25
+                && test.GetSaturation() >= 0.25),
+            WFtheme.STALKER => ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66))
+                               && test.GetBrightness() >= 0.25,
+            WFtheme.CORPUS  => Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.42 && test.GetSaturation() >= 0.35,
+            WFtheme.EQUINOX => test.GetSaturation() <= 0.2 && test.GetBrightness() >= 0.55,
+            WFtheme.DARK_LOTUS => (Math.Abs(test.GetHue() - secondary.GetHue()) < 20 && test.GetBrightness() >= 0.35 && test.GetBrightness() <= 0.55 && test.GetSaturation() <= 0.25
+                                   && test.GetSaturation() >= 0.05) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.50 && test.GetSaturation() >= 0.20),
+            WFtheme.FORTUNA => ((Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.35) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.15))
+                               && test.GetSaturation() >= 0.20,
+            WFtheme.HIGH_CONTRAST => (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.75
+                && test.GetBrightness() >= 0.35 // || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
+            ,
+            // TO CHECK
+            WFtheme.LEGACY => (test.GetBrightness() >= 0.65) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() >= 0.5 && test.GetSaturation() >= 0.5),
+            WFtheme.NIDUS => (Math.Abs(test.GetHue() - (primary.GetHue() + 6)) < 8 && test.GetSaturation() >= 0.30)
+                             || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetSaturation() >= 0.55),
+            WFtheme.TENNO   => (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.38 && test.GetBrightness() <= 0.55,
+            WFtheme.BARUUK  => (Math.Abs(test.GetHue() - primary.GetHue()) < 2) && test.GetSaturation() > 0.25 && test.GetBrightness() > 0.5,
+            WFtheme.GRINEER => (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() > 0.5) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() > 0.55),
+            WFtheme.ZEPHYR => ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66))
+                              && test.GetBrightness() >= 0.25,
+            var _ => Math.Abs(test.GetHue() - primary.GetHue()) < 2 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2
+        };
     }
 
-    public static Bitmap ScaleUpAndFilter(Bitmap image, WFtheme active, out int[] rowHits, out int[] colHits)
+    public static unsafe Bitmap ScaleUpAndFilter(Bitmap image, WFtheme active, out int[] rowHits, out int[] colHits)
     {
         if (image.Height <= SCALING_LIMIT)
         {
@@ -1795,39 +1741,42 @@ internal partial class OCR
 
         rowHits = new int[filtered.Height];
         colHits = new int[filtered.Width];
-        var lockedBitmapData = filtered.LockBits(new Rectangle(0, 0, filtered.Width, filtered.Height),
-            ImageLockMode.ReadWrite, filtered.PixelFormat);
-        var numbytes = Math.Abs(lockedBitmapData.Stride) * lockedBitmapData.Height;
-        var LockedBitmapBytes = new byte[numbytes];
-        Marshal.Copy(lockedBitmapData.Scan0, LockedBitmapBytes, 0, numbytes);
-        var PixelSize = 4; //ARGB, order in array is BGRA
-        for (var i = 0; i < numbytes; i += PixelSize)
+
+        var lockedBitmapData = filtered.LockBits(
+            rect: new Rectangle(0, 0, filtered.Width, filtered.Height),
+            flags: ImageLockMode.ReadWrite,
+            format: filtered.PixelFormat
+        );
+        var numBytes = Math.Abs(lockedBitmapData.Stride) * filtered.Height;
+        var lockedBitmapBytes = new Span<byte>((void*)lockedBitmapData.Scan0, numBytes);
+
+        Span<byte> alpha = stackalloc byte[] { 0, 0, 0, 255 };
+
+        const int pixelSize = 4; //ARGB, order in array is BGRA
+        for (var i = 0; i < numBytes; i += pixelSize)
         {
-            var clr = Color.FromArgb(LockedBitmapBytes[i + 3], LockedBitmapBytes[i + 2], LockedBitmapBytes[i + 1],
-                LockedBitmapBytes[i]);
+            var clr = Color.FromArgb(
+                alpha: lockedBitmapBytes[i + 3],
+                red: lockedBitmapBytes[i + 2],
+                green: lockedBitmapBytes[i + 1],
+                blue: lockedBitmapBytes[i]
+            );
+
             if (ThemeThresholdFilter(clr, active))
             {
-                LockedBitmapBytes[i] = 0;
-                LockedBitmapBytes[i + 1] = 0;
-                LockedBitmapBytes[i + 2] = 0;
-                LockedBitmapBytes[i + 3] = 255;
+                alpha.CopyTo(lockedBitmapBytes.Slice(i, pixelSize));
                 //Black
-                var x = (i / PixelSize) % filtered.Width;
-                var y = (i / PixelSize - x) / filtered.Width;
+                var x = (i / pixelSize) % filtered.Width;
+                var y = (i / pixelSize - x) / filtered.Width;
                 rowHits[y]++;
                 colHits[x]++;
             }
-            else
+            else //White
             {
-                LockedBitmapBytes[i] = 255;
-                LockedBitmapBytes[i + 1] = 255;
-                LockedBitmapBytes[i + 2] = 255;
-                LockedBitmapBytes[i + 3] = 255;
-                //White
+                lockedBitmapBytes.Slice(i, pixelSize).Fill(255);
             }
         }
 
-        Marshal.Copy(LockedBitmapBytes, 0, lockedBitmapData.Scan0, numbytes);
         filtered.UnlockBits(lockedBitmapData);
         return filtered;
     }
@@ -1837,56 +1786,59 @@ internal partial class OCR
     // we ignore the "tippy top" because it has a lot of variance, so we just look at the "bottom half of the top"
     private static readonly int[] TextSegments = [2, 4, 16, 21];
 
-    private static IEnumerable<Bitmap> ExtractPartBoxAutomatically(
+    private static unsafe IEnumerable<Bitmap> ExtractPartBoxAutomatically(
         out WFtheme active,
         Bitmap fullScreen)
     {
         var start = Stopwatch.GetTimestamp();
         var beginning = start;
 
-        var lineHeight = (int)(pixelRewardLineHeight / 2 * _window.ScreenScaling);
+        var lineHeight = (int)(PixelRewardLineHeight / 2 * _window.ScreenScaling);
 
         var width = _window.Window.Width;
         var height = _window.Window.Height;
-        var mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling);
+        var mostWidth = (int)(PixelRewardWidth * _window.ScreenScaling);
         var mostLeft = (width / 2) - (mostWidth / 2);
         // Most Top = pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight
         //                   (316          -        235        +       44)    *    1.1    =    137
-        var mostTop = height / 2 -
-                      (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) * _window.ScreenScaling);
-        var mostBot = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * 0.5);
-        //Bitmap postFilter = new Bitmap(mostWidth, mostBot - mostTop);
-        var rectangle = new Rectangle((int)(mostLeft), (int)(mostTop), mostWidth, mostBot - mostTop);
+        var mostTop = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight + PixelRewardLineHeight) * _window.ScreenScaling);
+        var mostBot = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight) * _window.ScreenScaling * 0.5);
+
+        var rectangle = new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop);
+
+        Logger.Debug("Extracting part box automatically. scaling={Scaling},rectangle={Rect}", _window.ScreenScaling, rectangle);
+
+        // TODO (rudzen) - replace the existing image manipulation with byte manipulation for performance
+        // var bitmapData = fullScreen.LockBits(new Rectangle(0, 0, fullScreen.Width, fullScreen.Height), ImageLockMode.ReadWrite, fullScreen.PixelFormat);
+        // var length = Math.Abs(bitmapData.Stride) * fullScreen.Height;
+        // var byteSpan = new Span<byte>((void*)bitmapData.Scan0, length);
+
         Bitmap preFilter;
 
         try
         {
-            Logger.Debug(
-                $"Fullscreen is {fullScreen.Size}:, trying to clone: {rectangle.Size} at {rectangle.Location}");
-            preFilter = fullScreen.Clone(new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop),
-                fullScreen.PixelFormat);
+            Logger.Debug("Fullscreen is {FullScreen}:, trying to clone: {Size} at {Location}", fullScreen.Size, rectangle.Size, rectangle.Location);
+            preFilter = fullScreen.Clone(new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop), fullScreen.PixelFormat);
         }
         catch (Exception ex)
         {
-            Logger.Debug("Something went wrong with getting the starting image: " + ex.ToString());
+            Logger.Error(ex, "Something went wrong with getting the starting image");
             throw;
         }
 
         var end = Stopwatch.GetElapsedTime(start);
-        Logger.Debug("Grabbed images " + end);
+        Logger.Debug("Grabbed image. time={Time}", end);
         start = Stopwatch.GetTimestamp();
 
         active = GetThemeWeighted(out var closest, fullScreen);
 
         end = Stopwatch.GetElapsedTime(start);
-        Logger.Debug("Got theme " + end);
+        Logger.Debug("Got theme. time={Time}", end);
         start = Stopwatch.GetTimestamp();
 
         var rows = new int[preFilter.Height];
         // 0 => 50   27 => 77   50 => 100
 
-        //Logger.Debug("ROWS: 0 to " + preFilter.Height);
-        //var postFilter = preFilter;
         for (var y = 0; y < preFilter.Height; y++)
         {
             rows[y] = 0;
@@ -1894,36 +1846,34 @@ internal partial class OCR
             {
                 var clr = preFilter.GetPixel(x, y);
                 if (ThemeThresholdFilter(clr, active))
-                    //{
                     rows[y]++;
-                //postFilter.SetPixel(x, y, Color.Black);
-                //} else
-                //postFilter.SetPixel(x, y, Color.White);
             }
-            //Debug.Write(rows[y] + " ");
         }
 
-        //postFilter.Save(ApplicationConstants.AppPath + @"\Debug\PostFilter" + timestamp + ".png");
-
         end = Stopwatch.GetElapsedTime(start);
-        Logger.Debug("Filtered Image " + end);
+        Logger.Debug("Filtered Image. time={Time}", end);
         start = Stopwatch.GetTimestamp();
 
-        var percWeights = new double[51];
-        var topWeights = new double[51];
-        var midWeights = new double[51];
-        var botWeights = new double[51];
+        var percWeights = new Span<double>(new double[51]);
+        var topWeights = new Span<double>(new double[51]);
+        var midWeights = new Span<double>(new double[51]);
+        var botWeights = new Span<double>(new double[51]);
 
-        var topLine_100 = preFilter.Height - lineHeight;
-        var topLine_50 = lineHeight / 2;
+        var topLine100 = preFilter.Height - lineHeight;
+        var topLine50 = lineHeight / 2;
 
-        var scaling = -1D;
+        var scaling = -1;
         double lowestWeight = 0;
-        var uidebug = new Rectangle((topLine_100 - topLine_50) / 50 + topLine_50,
-            (int)(preFilter.Height / _window.ScreenScaling), preFilter.Width, 50);
+        var uiDebug = new Rectangle(
+            x: (topLine100 - topLine50) / 50 + topLine50,
+            y: (int)(preFilter.Height / _window.ScreenScaling),
+            width: preFilter.Width,
+            height: 50
+        );
+
         for (var i = 0; i <= 50; i++)
         {
-            var yFromTop = preFilter.Height - (i * (topLine_100 - topLine_50) / 50 + topLine_50);
+            var yFromTop = preFilter.Height - (i * (topLine100 - topLine50) / 50 + topLine50);
 
             var scale = (50 + i);
             var scaleWidth = preFilter.Width * scale / 100;
@@ -1964,9 +1914,9 @@ internal partial class OCR
 
         end = Stopwatch.GetElapsedTime(start);
 
-        Logger.Debug("Got scaling " + end);
+        Logger.Debug("Got scaling. time={Time}", end);
 
-        int[] topFive = [-1, -1, -1, -1, -1];
+        Span<int> topFive = stackalloc int[] { -1, -1, -1, -1, -1 };
 
         for (var i = 0; i <= 50; i++)
         {
@@ -1984,37 +1934,37 @@ internal partial class OCR
 
         for (var i = 0; i < 5; i++)
         {
-            Logger.Debug("RANK " + (5 - i) + " SCALE: " + (topFive[i] + 50) + "%\t\t" +
-                         percWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture) + " -- " +
-                         topWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture) + ", " +
-                         midWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture) + ", " +
-                         botWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture));
+            Logger.Debug("RANK {Rank} SCALE: {TopFive}%\t\t{PercW} -- {TopW}, {MidW}, {BotW}",
+                5 - i,
+                topFive[i] + 50,
+                percWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture),
+                topWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture),
+                midWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture),
+                botWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture));
         }
 
         using (var g = Graphics.FromImage(fullScreen))
         {
             g.DrawRectangle(Pens.Red, rectangle);
-            g.DrawRectangle(Pens.Chartreuse, uidebug);
+            g.DrawRectangle(Pens.Chartreuse, uiDebug);
         }
 
-        fullScreen.Save(ApplicationConstants.AppPath + @"\Debug\BorderScreenshot " + timestamp + ".png");
+        fullScreen.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"BorderScreenshot {timestamp}.png"));
+        preFilter.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"FullPartArea {timestamp}.png"));
 
-
-        //postFilter.Save(ApplicationConstants.AppPath + @"\Debug\DebugBox1 " + timestamp + ".png");
-        preFilter.Save(ApplicationConstants.AppPath + @"\Debug\FullPartArea " + timestamp + ".png");
-        scaling = topFive[4] +
-                  50; //scaling was sometimes going to 50 despite being set to 100, so taking the value from above that seems to be accurate.
-
+        //scaling was sometimes going to 50 despite being set to 100, so taking the value from above that seems to be accurate.
+        scaling = topFive[4] + 50;
         scaling /= 100;
+
         var highScaling = scaling < 1.0 ? scaling + 0.01 : scaling;
         var lowScaling = scaling > 0.5 ? scaling - 0.01 : scaling;
 
-        var cropWidth = (int)(pixleRewardWidth * _window.ScreenScaling * highScaling);
+        var cropWidth = (int)(PixelRewardWidth * _window.ScreenScaling * highScaling);
         var cropLeft = (preFilter.Width / 2) - (cropWidth / 2);
-        var cropTop = height / 2 - (int)((pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight) *
+        var cropTop = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight + PixelRewardLineHeight) *
                                          _window.ScreenScaling * highScaling);
         var cropBot = height / 2 -
-                      (int)((pixleRewardYDisplay - pixleRewardHeight) * _window.ScreenScaling * lowScaling);
+                      (int)((PixelRewardYDisplay - PixelRewardHeight) * _window.ScreenScaling * lowScaling);
         var cropHei = cropBot - cropTop;
         cropTop -= mostTop;
         try
@@ -2103,7 +2053,7 @@ internal partial class OCR
                     "Unable to detect reward from selection screen\nScanning inventory? Hold down snap-it modifier",
                     StatusSeverity.Error);
             });
-            processingActive.GetAndSet(false);
+            ProcessingActive.GetAndSet(false);
             throw new Exception("Unable to find any parts");
         }
 
@@ -2216,6 +2166,9 @@ internal partial class OCR
 
     [GeneratedRegex("[^a-z가-힣]", RegexOptions.IgnoreCase | RegexOptions.Compiled, "da-DK")]
     private static partial Regex WordTrimRegEx();
+
+    [GeneratedRegex(@"\s")]
+    private static partial Regex SpaceRegEx();
 }
 
 public struct InventoryItem(string itemName, Rectangle boundingbox, bool showWarning = false)

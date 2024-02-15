@@ -4,9 +4,14 @@
 
 - [x] Clean up namespaces
 - [ ] Remove unused code
-- [ ] Modernize a bit to C# 12
+- [x] Modernize a bit to C# 12
 - [ ] Replace Newtonsoft.Json with System.Text.Json
-- [ ] Replace WebClient with HttpClient
+- [x] Replace WebClient with HttpClient
+
+## Bugs
+
+- [ ] On rare occasions, the app crashes when trying create capture item from window (COMException)
+- [ ] Drawn boxes on images are off on the x axis
 
 ## Refactor
 
@@ -27,3 +32,5 @@
 
 - [x] Improve DI across the board
 - [ ] Add everything to DI
+
+

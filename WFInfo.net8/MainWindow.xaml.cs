@@ -398,7 +398,7 @@ public partial class MainWindow
 
     private void CreateListing_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (OCR.processingActive)
+        if (OCR.ProcessingActive)
         {
             Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;
@@ -442,7 +442,7 @@ public partial class MainWindow
 
     private void SearchItButton_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (OCR.processingActive)
+        if (OCR.ProcessingActive)
         {
             Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;

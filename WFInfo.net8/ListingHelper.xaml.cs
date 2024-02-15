@@ -384,9 +384,24 @@ public partial class ListingHelper : Window
         }
 
         Logger.Debug("Getting listing for {PrimeName}", primeName);
-        var results = await Main.DataBase.GetTopListings(primeName);
         var listings = new List<MarketListing>();
-        var sellOrders = new JArray(results["payload"]["sell_orders"].Children());
+        var results = await Main.DataBase.GetTopListings(primeName);
+
+        if (results is null)
+        {
+            Log.Debug("No results found for {PrimeName}", primeName);
+            return listings;
+        }
+
+        var payload = results["payload"];
+
+        if (payload is null)
+        {
+            Log.Debug("Payload was null for {PrimeName}", primeName);
+            return listings;
+        }
+
+        var sellOrders = new JArray(payload["sell_orders"].Children());
         foreach (var item in sellOrders)
         {
             var platinum = item.Value<short>("platinum");

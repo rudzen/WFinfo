@@ -1163,7 +1163,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
         if (line.Contains("Pause countdown done") || line.Contains("Got rewards"))
         {
             autoThread = Task.Factory.StartNew(AutoTriggered);
-            Overlay.rewardsDisplaying = true;
+            Overlay.RewardsDisplaying = true;
         }
 
         //abort if autolist and autocsv disabled, or line doesn't contain end-of-session message or timer finished message
@@ -1178,7 +1178,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
             if (_settings.AutoList && inGameName.IsNullOrEmpty() && !await IsJWTvalid())
                 Disconnect();
 
-            Overlay.rewardsDisplaying = false;
+            Overlay.RewardsDisplaying = false;
             var csv = string.Empty;
             Logger.Debug("Looping through rewards");
             Logger.Debug("AutoList: " + _settings.AutoList + ", AutoCSV: " + _settings.AutoCSV + ", AutoCount: " +

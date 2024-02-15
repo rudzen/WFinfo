@@ -53,8 +53,8 @@ public partial class ErrorDialogue : Window
         var fullZipPath = Path.Combine(ZipPath, $"WFInfoError_{time}");
         try
         {
-            using ZipFile zip = new ZipFile();
-            foreach (FileInfo file in files)
+            using var zip = new ZipFile();
+            foreach (var file in files)
                 zip.AddFile(file.FullName, string.Empty);
 
             foreach (var staticFile in staticFiles)
