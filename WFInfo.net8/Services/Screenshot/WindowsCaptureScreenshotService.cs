@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using Composition.WindowsRuntimeHelpers;
 using SharpDX;
 using SharpDX.Direct3D11;
@@ -9,6 +10,8 @@ using WFInfo.Services.WarframeProcess;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
+using Serilog;
+using WFInfo.Services.Screenshot.Composition.WindowsRuntimeHelpers;
 using Point = System.Drawing.Point;
 using Rectangle = System.Drawing.Rectangle;
 
@@ -16,13 +19,15 @@ namespace WFInfo.Services.Screenshot;
 
 public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
 {
+    private static readonly ILogger Logger = Log.Logger.ForContext<WindowsCaptureScreenshotService>();
+
     private readonly bool _useHdr;
     private readonly IProcessFinder _process;
 
     private readonly Device _d3dDevice;
     private readonly IDirect3DDevice? _device;
 
-    private Direct3D11CaptureFramePool _framePool;
+    private Direct3D11CaptureFramePool? _framePool;
     private GraphicsCaptureSession _session;
     private GraphicsCaptureItem _item;
 
@@ -96,9 +101,13 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
     private void CreateCaptureSession(Process process)
     {
         _session?.Dispose();
-        _framePool?.Dispose();
+        if (_framePool is not null)
+        {
+            _framePool.FrameArrived -= FrameArrived;
+            _framePool.Dispose();
+        }
 
-        _item = CaptureHelper.CreateItemForWindow(process.MainWindowHandle);
+        _item = process.MainWindowHandle.CreateItemForWindow();
         _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(_device, pixelFormat, 2, _item.Size);
         _framePool.FrameArrived += FrameArrived;
 
@@ -113,7 +122,14 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
         lock (_frameLock)
         {
             _frame?.Dispose();
-            _frame = _framePool.TryGetNextFrame();
+            try
+            {
+                _frame = _framePool!.TryGetNextFrame();
+            }
+            catch (ObjectDisposedException e)
+            {
+                Logger.Warning(e, "FramePool disposed");
+            }
         }
     }
 
@@ -129,12 +145,12 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
             bitmapSpan = new Span<byte>(bitmapData.Scan0.ToPointer(), bitmapData.Height * bitmapData.Stride);
         }
 
-        for (int y = 0; y < height; y++)
+        for (var y = 0; y < height; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (var x = 0; x < width; x++)
             {
-                var pixel = bitmapSpan.Slice(y     * bitmapData.Stride + x * 3, 3);
-                var sdrPixel = textureData.Slice(y * rowPitch          + x * 4, 4);
+                var pixel = bitmapSpan.Slice(y * bitmapData.Stride + x * 3, 3);
+                var sdrPixel = textureData.Slice(y * rowPitch + x * 4, 4);
 
                 pixel[0] = sdrPixel[2];
                 pixel[1] = sdrPixel[1];
@@ -149,13 +165,13 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
     private Bitmap CaptureHdr(Span<ushort> textureData, int width, int height, int rowPitch)
     {
         var bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
-        float[] floats = new float[textureData.Length / 4 * 3]; // Pixel components (RGB) as floats
-        float[] luminances = new float[textureData.Length / 4]; // Luminance of individual pixels
-        float largestLuminance = float.MinValue;
+        var floats = new float[textureData.Length / 4 * 3]; // Pixel components (RGB) as floats
+        var luminances = new float[textureData.Length / 4]; // Luminance of individual pixels
+        var largestLuminance = float.MinValue;
 
-        for (int y = 0; y < height; y++)
+        for (var y = 0; y < height; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (var x = 0; x < width; x++)
             {
                 var r = new SharpDX.Half(textureData[y * rowPitch + x * 4 + 0]);
                 var g = new SharpDX.Half(textureData[y * rowPitch + x * 4 + 1]);
@@ -177,19 +193,18 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
         var largestLuminanceSquared = largestLuminance * largestLuminance;
         Span<byte> bitmapSpan;
 
-
         unsafe
         {
             bitmapSpan = new Span<byte>(bitmapData.Scan0.ToPointer(), bitmapData.Height * bitmapData.Stride);
         }
 
-        for (int y = 0; y < height; y++)
+        for (var y = 0; y < height; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (var x = 0; x < width; x++)
             {
                 var pixel = bitmapSpan.Slice(y * bitmapData.Stride + x * 3, 3);
-                var hdrPixel = floats.AsSpan((y * width * 3)       + x * 3, 3);
-                ReinhardToneMap(hdrPixel, luminances[y                 * width + x], largestLuminanceSquared);
+                var hdrPixel = floats.AsSpan((y * width * 3) + x * 3, 3);
+                ReinhardToneMap(hdrPixel, luminances[y * width + x], largestLuminanceSquared);
 
                 pixel[0] = (byte)(hdrPixel[2] * 255f);
                 pixel[1] = (byte)(hdrPixel[1] * 255f);
@@ -203,35 +218,33 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
 
     public void Dispose()
     {
+        _process.OnProcessChanged -= CreateCaptureSession;
         _session?.Dispose();
         _framePool?.Dispose();
-        _device.Dispose();
-
-        _process.OnProcessChanged -= CreateCaptureSession;
+        _device?.Dispose();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private float GetPixelLuminance(Span<float> pixel)
+    private static float GetPixelLuminance(Span<float> pixel)
     {
         return 0.2126f * pixel[0] + 0.7152f * pixel[1] + 0.0722f * pixel[2];
     }
 
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private float ChangeLuminance(float c_in, float l_ratio)
+    private static float ChangeLuminance(float cIn, float lRatio)
     {
-        return MathUtil.Clamp(c_in * l_ratio, 0.0f, 1.0f);
+        return MathUtil.Clamp(cIn * lRatio, 0.0f, 1.0f);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ReinhardToneMap(Span<float> pixel, float l_old, float max_white_l_squared)
+    private void ReinhardToneMap(Span<float> pixel, float lOld, float maxWhiteLSquared)
     {
-        float numerator = l_old * (1.0f + (l_old / max_white_l_squared));
-        float l_new = numerator / (1.0f + l_old);
-        float l_ratio = l_new   / l_old;
+        var numerator = lOld * (1.0f + (lOld / maxWhiteLSquared));
+        var lNew = numerator / (1.0f + lOld);
+        var lRatio = lNew / lOld;
 
-        pixel[0] = ChangeLuminance(pixel[0], l_ratio);
-        pixel[1] = ChangeLuminance(pixel[1], l_ratio);
-        pixel[2] = ChangeLuminance(pixel[2], l_ratio);
+        pixel[0] = ChangeLuminance(pixel[0], lRatio);
+        pixel[1] = ChangeLuminance(pixel[1], lRatio);
+        pixel[2] = ChangeLuminance(pixel[2], lRatio);
     }
 }
