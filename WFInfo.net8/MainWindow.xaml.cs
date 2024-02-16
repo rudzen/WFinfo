@@ -39,7 +39,6 @@ public partial class MainWindow
     private Main Main { get; set; } //subscriber
     public static MainWindow INSTANCE { get; set; }
     public static WelcomeDialogue welcomeDialogue { get; set; }
-    public static LowLevelListener listener { get; set; }
     private static bool updatesupression;
 
     private readonly IServiceProvider _sp;
@@ -51,6 +50,7 @@ public partial class MainWindow
     private readonly EquipmentWindow _equipmentWindow;
 
     private readonly IEncryptedDataService _encryptedDataService;
+    private readonly ILowLevelListener _lowLevelListener;
 
     public MainWindow(
         ApplicationSettings applicationSettings,
@@ -59,7 +59,8 @@ public partial class MainWindow
         RelicsWindow relicsWindow,
         EquipmentWindow equipmentWindow,
         IEncryptedDataService encryptedDataService,
-        IServiceProvider sp)
+        IServiceProvider sp,
+        ILowLevelListener lowLevelListener)
     {
         _applicationSettings = applicationSettings;
         _sp = sp;
@@ -75,7 +76,7 @@ public partial class MainWindow
         _encryptedDataService = encryptedDataService;
 
         // publisher
-        listener = new LowLevelListener();
+        _lowLevelListener = lowLevelListener;
 
         try
         {
@@ -83,9 +84,9 @@ public partial class MainWindow
 
             LowLevelListener.KeyEvent += Main.OnKeyAction;
             LowLevelListener.MouseEvent += Main.OnMouseAction;
-            listener.Hook();
+            _lowLevelListener.Hook();
             InitializeComponent();
-            Version.Content = "v" + ApplicationConstants.MajorBuildVersion;
+            Version.Content = $"v{ApplicationConstants.MajorBuildVersion}";
 
             Left = 300;
             Top = 300;
@@ -467,7 +468,7 @@ public partial class MainWindow
     private void MainWindow_OnClosed(object? sender, EventArgs e)
     {
         NotifyIcon.Dispose();
-        listener.Dispose();
+        _lowLevelListener.Dispose();
 
         if (Main.DataBase.rememberMe)
         {

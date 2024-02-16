@@ -74,6 +74,7 @@ public partial class App : Application
                     services.TryAddSingleton<IHDRDetectorService, SchemeHDRDetector>();
                     services.TryAddSingleton<IHDRDetectionScheme, GameSettingsHDRDetectionScheme>();
                     services.TryAddSingleton<ILogCapture, LogCapture>();
+                    services.TryAddSingleton<ILowLevelListener, LowLevelListener>();
 
                     services.TryAddSingleton<Data>();
                     services.TryAddSingleton<ITesseractService, TesseractService>();

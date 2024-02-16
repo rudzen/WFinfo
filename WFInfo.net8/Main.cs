@@ -385,13 +385,13 @@ public class Main
         if (SnapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
         {
             SnapItOverlayWindow.CloseOverlay();
-            await _mediator.Publish(new UpdateStatus("Closed snapit", 0));
+            await _mediator.Publish(new UpdateStatus("Snap-It closed", 0));
             return;
         }
 
         if (SearchIt.IsInUse)
         {
-            //if key is pressed and searchbox is active then rederect keystokes to it.
+            //if key is pressed and search box is active then redirect key stokes to it.
             if (key == Key.Escape)
             {
                 // close it if esc is used.
@@ -403,13 +403,9 @@ public class Main
             return;
         }
 
-
+        // Check if user pressed activation key
         if (key == _settings.ActivationKeyKey)
-        {
-            //check if user pressed activation key
-
             await ActivationKeyPressed(key);
-        }
     }
 
     // timestamp is the time to look for, and gap is the threshold of seconds different

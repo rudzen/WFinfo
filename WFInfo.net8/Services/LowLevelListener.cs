@@ -2,9 +2,9 @@
 using System.Runtime.InteropServices;
 using System.Windows.Input;
 
-namespace WFInfo;
+namespace WFInfo.Services;
 
-public class LowLevelListener : IDisposable
+public sealed class LowLevelListener : ILowLevelListener
 {
     private const int WH_MOUSE_LL = 14;
     private const int WH_KEYBOARD_LL = 13;
@@ -42,10 +42,6 @@ public class LowLevelListener : IDisposable
         public uint flags;
         public uint time;
         public IntPtr dwExtraInfo;
-    }
-
-    public LowLevelListener()
-    {
     }
 
     private bool hooked = false;
@@ -101,7 +97,7 @@ public class LowLevelListener : IDisposable
     /// <returns></returns>
     private static IntPtr HookCallbackKB(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
+        if (nCode >= 0 && wParam == WM_KEYDOWN)
         {
             var vkCode = Marshal.ReadInt32(lParam);
             OnKeyAction(KeyInterop.KeyFromVirtualKey(vkCode));
@@ -120,7 +116,14 @@ public class LowLevelListener : IDisposable
         MouseEvent?.Invoke(key);
     }
 
-    private static IntPtr HookCallbackM(int nCode, IntPtr wParam, IntPtr lParam) //handels mouse input
+    /// <summary>
+    /// Handles mouse input
+    /// </summary>
+    /// <param name="nCode"></param>
+    /// <param name="wParam"></param>
+    /// <param name="lParam"></param>
+    /// <returns></returns>
+    private static IntPtr HookCallbackM(int nCode, IntPtr wParam, IntPtr lParam)
     {
         if (nCode < 0)
             return CallNextHookEx(_hookIDMouse, nCode, wParam, lParam);
