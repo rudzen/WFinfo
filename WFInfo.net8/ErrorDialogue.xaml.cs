@@ -40,20 +40,19 @@ public partial class ErrorDialogue : Window
 
         var staticFiles = new[]
         {
-            Path.Combine(ApplicationConstants.AppPathDebug, "..", "eqmt_data.json"),
-            Path.Combine(ApplicationConstants.AppPathDebug, "..", "market_data.json"),
-            Path.Combine(ApplicationConstants.AppPathDebug, "..", "market_items.json"),
-            Path.Combine(ApplicationConstants.AppPathDebug, "..", "name_data.json"),
-            Path.Combine(ApplicationConstants.AppPathDebug, "..", "relic_data.json"),
-            Path.Combine(ApplicationConstants.AppPathDebug, "..", "settings.json"),
-            Path.Combine(ApplicationConstants.AppPathDebug, "..", "debug.json"),
+            Path.Combine(ApplicationConstants.AppPath, "eqmt_data.json"),
+            Path.Combine(ApplicationConstants.AppPath, "market_data.json"),
+            Path.Combine(ApplicationConstants.AppPath, "market_items.json"),
+            Path.Combine(ApplicationConstants.AppPath, "name_data.json"),
+            Path.Combine(ApplicationConstants.AppPath, "relic_data.json"),
+            Path.Combine(ApplicationConstants.AppPath, "settings.json"),
+            Path.Combine(ApplicationConstants.AppPath, "debug.json"),
         };
-
         var time = closest.ToString("yyyy-MM-dd_HH-mm-ssff");
-        var fullZipPath = Path.Combine(ZipPath, $"WFInfoError_{time}");
+        var fullZipPath = Path.Combine(ZipPath, $"WFInfoError_{time}.zip");
         try
         {
-            using var zip = new ZipFile();
+            using var zip = new ZipFile(fullZipPath);
             foreach (var file in files)
                 zip.AddFile(file.FullName, string.Empty);
 
@@ -67,7 +66,7 @@ public partial class ErrorDialogue : Window
 
             zip.Comment = $"This zip was created at {time}";
             zip.MaxOutputSegmentSize64 = 25000 * 1024; // 8m segments
-            zip.Save(Path.Combine(fullZipPath, ".zip"));
+            zip.Save();
         }
         catch (Exception ex)
         {
