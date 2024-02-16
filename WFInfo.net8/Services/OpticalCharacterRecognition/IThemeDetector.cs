@@ -4,8 +4,8 @@ namespace WFInfo.Services.OpticalCharacterRecognition;
 
 public interface IThemeDetector
 {
-    Color PrimaryThemeColor(WFtheme theme);
-    Color SecondaryThemeColor(WFtheme theme);
+    ref Color PrimaryThemeColor(WFtheme theme);
+    ref Color SecondaryThemeColor(WFtheme theme);
 
     /// <summary>
     /// Processes the theme, parse image to detect the theme in the image. Parse null to detect the theme from the screen.
@@ -16,7 +16,7 @@ public interface IThemeDetector
     /// <returns></returns>
     WFtheme GetThemeWeighted(
         out double closestThresh,
-        Bitmap? image = null);
+        Bitmap image);
 
     bool ThemeThresholdFilter(in Color test, WFtheme theme);
 }

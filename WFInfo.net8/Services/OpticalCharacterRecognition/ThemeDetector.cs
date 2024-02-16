@@ -1,6 +1,9 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Serilog;
 using WFInfo.Services.WindowInfo;
 using WFInfo.Settings;
@@ -10,7 +13,7 @@ namespace WFInfo.Services.OpticalCharacterRecognition;
 /// <summary>
 /// Detects a warframe theme based on image data
 /// </summary>
-public sealed class ThemeDetector : IThemeDetector
+public sealed class ThemeDetector(IWindowInfoService window, ApplicationSettings settings) : IThemeDetector
 {
     // Pixel measurements for reward screen @ 1920 x 1080 with 100% scale https://docs.google.com/drawings/d/1Qgs7FU2w1qzezMK-G1u9gMTsQZnDKYTEU36UPakNRJQ/edit
     private const int PixelRewardWidth = 968;
@@ -18,14 +21,15 @@ public sealed class ThemeDetector : IThemeDetector
 
     private static readonly ILogger Logger = Log.Logger.ForContext<ThemeDetector>();
 
-#pragma warning disable IDE0044 // Add readonly modifier
-    private static short[,,] GetThemeCache = new short[256, 256, 256];
-    private static short[,,] GetThresholdCache = new short[256, 256, 256];
-#pragma warning disable IDE0044 // Add readonly modifier
+    private record struct ThemeWithThreshold(WFtheme Theme, int Threshold);
+
+    private readonly Dictionary<Color, ThemeWithThreshold> _themeCache = new(256);
+
+    // TODO (rudzen) : Add the following themes : Conquera, Deadlock, Lunar Renewal
 
     // TODO (rudzen) : Load from config
     // Colors for the top left "profile bar"
-    private static readonly Color[] ThemePrimary =
+    private static readonly Memory<Color> ThemePrimary = new(
     [
         Color.FromArgb(190, 169, 102), //VITRUVIAN
         Color.FromArgb(153, 31, 35),   //STALKER
@@ -42,11 +46,11 @@ public sealed class ThemeDetector : IThemeDetector
         Color.FromArgb(158, 159, 167), //EQUINOX
         Color.FromArgb(140, 119, 147), //DARK_LOTUS
         Color.FromArgb(253, 132, 2)    //ZEPHYR
-    ];
+    ]);
 
     // TODO (rudzen) : Load from config
-    //highlight colors from selected items
-    private static readonly Color[] ThemeSecondary =
+    // Highlight colors from selected items
+    private static readonly Memory<Color> ThemeSecondary = new(
     [
         Color.FromArgb(245, 227, 173), //VITRUVIAN
         Color.FromArgb(255, 61, 51),   //STALKER
@@ -63,34 +67,29 @@ public sealed class ThemeDetector : IThemeDetector
         Color.FromArgb(232, 227, 227), //EQUINOX
         Color.FromArgb(189, 169, 237), //DARK_LOTUS
         Color.FromArgb(255, 53, 0)     //ZEPHYR
-    ];
+    ]);
 
     private static readonly WFtheme[] KnownThemes;
 
     static ThemeDetector()
     {
         var themes = (WFtheme[])Enum.GetValues(typeof(WFtheme));
-        KnownThemes = new List<WFtheme>(themes.Where(theme => (int)theme >= 0)).ToArray();
+        KnownThemes = new List<WFtheme>(themes.Where(theme => theme >= WFtheme.VITRUVIAN)).ToArray();
         Array.Sort(KnownThemes);
     }
 
-    private readonly IWindowInfoService _window;
-    private readonly ApplicationSettings _settings;
-
-    public ThemeDetector(IWindowInfoService window, ApplicationSettings settings)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ref Color PrimaryThemeColor(WFtheme theme)
     {
-        _window = window;
-        _settings = settings;
+        ref var r = ref MemoryMarshal.GetReference(ThemePrimary.Span);
+        return ref Unsafe.Add(ref r, theme.AsInt());
     }
 
-    public Color PrimaryThemeColor(WFtheme theme)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ref Color SecondaryThemeColor(WFtheme theme)
     {
-        return ThemePrimary[(int)theme];
-    }
-
-    public Color SecondaryThemeColor(WFtheme theme)
-    {
-        return ThemeSecondary[(int)theme];
+        ref var r = ref MemoryMarshal.GetReference(ThemeSecondary.Span);
+        return ref Unsafe.Add(ref r, theme.AsInt());
     }
 
     /// <summary>
@@ -100,54 +99,73 @@ public sealed class ThemeDetector : IThemeDetector
     /// <param name="closestThresh"></param>
     /// <param name="image"></param>
     /// <returns></returns>
-    public WFtheme GetThemeWeighted(
+    public unsafe WFtheme GetThemeWeighted(
         out double closestThresh,
-        Bitmap? image = null)
+        Bitmap image)
     {
         ArgumentNullException.ThrowIfNull(image);
         ArgumentOutOfRangeException.ThrowIfZero(image.Height);
 
-        var lineHeight = (int)(PixelRewardLineHeight / 2 * _window.ScreenScaling);
-        var mostWidth = (int)(PixelRewardWidth * _window.ScreenScaling);
+        var start = Stopwatch.GetTimestamp();
+        const int halfRewardLineHeight = PixelRewardLineHeight / 2;
+        var lineHeight = (int)(halfRewardLineHeight * window.ScreenScaling);
+        var mostWidth = (int)(PixelRewardWidth * window.ScreenScaling);
 
         Span<double> weights = stackalloc double[15];
         var minWidth = mostWidth / 4;
 
-        for (var y = lineHeight; y < image.Height; y++)
+        var bitmapData = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, image.PixelFormat);
+        var bytesPerPixel = Image.GetPixelFormatSize(image.PixelFormat) / 8;
+        var heightInPixels = bitmapData.Height;
+        var widthInBytes = bitmapData.Width * bytesPerPixel;
+
+        var pixels = new Span<byte>(bitmapData.Scan0.ToPointer(), widthInBytes * heightInPixels);
+
+        for (var y = lineHeight; y < heightInPixels; y++)
         {
             var perc = (y - lineHeight) / (double)(image.Height - lineHeight);
             var totWidth = (int)(minWidth * perc + minWidth);
+            var currentLine = y * bitmapData.Stride;
             for (var x = 0; x < totWidth; x++)
             {
-                var match = (int)GetClosestTheme(image.GetPixel(x + (mostWidth - totWidth) / 2, y), out var thresh);
-
-                weights[match] += 1 / Math.Pow(thresh + 1, 4);
+                var adjustedX = x + (mostWidth - totWidth) / 2;
+                var buffer = pixels.Slice(currentLine + adjustedX * bytesPerPixel, bytesPerPixel);
+                var color = Color.FromArgb(buffer[2], buffer[1], buffer[0]);
+                ref var match = ref GetClosestTheme(in color);
+                weights[match.Theme.AsInt()] += 1 / Math.Pow(match.Threshold + 1, 4);
             }
         }
 
-        var simdMax = GetMaxWeight(weights);
-        var simdActive = (WFtheme)weights.IndexOf(simdMax);
+        image.UnlockBits(bitmapData);
 
-        Logger.Debug("CLOSEST THEME ({Culture}): {Active}", simdMax.ToString("F2", ApplicationConstants.Culture), simdActive);
+        var max = GetMaxWeight(weights);
+        var active = (WFtheme)weights.IndexOf(max);
 
-        closestThresh = simdMax;
-        if (_settings.ThemeSelection != WFtheme.AUTO)
+        closestThresh = max;
+
+        var end = Stopwatch.GetElapsedTime(start);
+
+        Logger.Debug("Theme detection complete. found={Active},weight={Weight},time={Time}",
+            active, max.ToString("F2", ApplicationConstants.Culture), end);
+
+        if (settings.ThemeSelection != WFtheme.AUTO)
         {
-            Logger.Debug("Theme overwrite present, setting to: {ThemeSelection}", _settings.ThemeSelection.ToString());
-            return _settings.ThemeSelection;
+            Logger.Debug("Theme overwrite present. detected={Active},forced={Forced}",
+                settings.ThemeSelection.ToFriendlyString(), active.ToFriendlyString());
+            return settings.ThemeSelection;
         }
 
-        return simdActive;
+        return active;
     }
 
     public bool ThemeThresholdFilter(in Color test, WFtheme theme)
     {
         //treat unknown as custom, for safety
         if (theme is WFtheme.CUSTOM or WFtheme.UNKNOWN)
-            return CustomThresholdFilter(test);
+            return CustomThresholdFilter(in test);
 
-        var primary = PrimaryThemeColor(theme);
-        var secondary = SecondaryThemeColor(theme);
+        ref var primary = ref PrimaryThemeColor(theme);
+        ref var secondary = ref SecondaryThemeColor(theme);
 
         // TODO (rudzen) : wtf is this
         return theme switch
@@ -223,73 +241,72 @@ public sealed class ThemeDetector : IThemeDetector
         return result;
     }
 
-    private static WFtheme GetClosestTheme(Color clr, out int threshold)
+    private ref ThemeWithThreshold GetClosestTheme(in Color clr)
     {
-        threshold = 999;
-        var minTheme = WFtheme.CORPUS;
-        if (GetThemeCache[clr.R, clr.G, clr.B] > 0)
-        {
-            threshold = GetThresholdCache[clr.R, clr.G, clr.B];
-            return (WFtheme)(GetThemeCache[clr.R, clr.G, clr.B] - 1);
-        }
+        ref var cached = ref CollectionsMarshal.GetValueRefOrAddDefault(_themeCache, clr, out var exists);
+        if (exists)
+            return ref cached!;
 
-        foreach (var theme in KnownThemes)
-        {
-            //ignore special theme values
-            if ((int)theme < 0)
-                continue;
+        var threshold = 999;
 
-            var themeColor = ThemePrimary[(int)theme];
-            var tempThresh = ColorDifference(clr, themeColor);
+        var knownThemes = KnownThemes.AsSpan();
+
+        ref var minTheme = ref MemoryMarshal.GetReference(knownThemes);
+
+        for (var i = 0; i < knownThemes.Length; i++)
+        {
+            ref var knownTheme = ref Unsafe.Add(ref minTheme, i);
+
+            ref var themeColor = ref PrimaryThemeColor(knownTheme);
+            var tempThresh = ColorDifference(in clr, in themeColor);
             if (tempThresh < threshold)
             {
                 threshold = tempThresh;
-                minTheme = theme;
+                minTheme = knownTheme;
             }
         }
 
-        GetThemeCache[clr.R, clr.G, clr.B] = (byte)(minTheme + 1);
-        GetThresholdCache[clr.R, clr.G, clr.B] = (byte)threshold;
-        return minTheme;
+        cached = new ThemeWithThreshold(minTheme, threshold);
+        return ref cached;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ColorDifference(Color test, Color thresh)
+    private static int ColorDifference(in Color test, in Color thresh)
     {
         return Math.Abs(test.R - thresh.R) + Math.Abs(test.G - thresh.G) + Math.Abs(test.B - thresh.B);
     }
 
-    private bool CustomThresholdFilter(Color test)
+    private bool CustomThresholdFilter(in Color test)
     {
-        if (_settings.CF_usePrimaryHSL)
+        if (settings.CF_usePrimaryHSL)
         {
-            if (_settings.CF_pHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_pHueMin &&
-                _settings.CF_pSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_pSatMin &&
-                _settings.CF_pBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_pBrightMin)
+            if (settings.CF_pHueMax >= test.GetHue() && test.GetHue() >= settings.CF_pHueMin &&
+                settings.CF_pSatMax >= test.GetSaturation() && test.GetSaturation() >= settings.CF_pSatMin &&
+                settings.CF_pBrightMax >= test.GetBrightness() && test.GetBrightness() >= settings.CF_pBrightMin)
                 return true;
         }
 
-        if (_settings.CF_usePrimaryRGB)
+        if (settings.CF_usePrimaryRGB)
         {
-            if (_settings.CF_pRMax >= test.R && test.R >= _settings.CF_pRMin &&
-                _settings.CF_pGMax >= test.G && test.G >= _settings.CF_pGMin &&
-                _settings.CF_pBMax >= test.B && test.B >= _settings.CF_pBMin)
+            if (settings.CF_pRMax >= test.R && test.R >= settings.CF_pRMin &&
+                settings.CF_pGMax >= test.G && test.G >= settings.CF_pGMin &&
+                settings.CF_pBMax >= test.B && test.B >= settings.CF_pBMin)
                 return true;
         }
 
-        if (_settings.CF_useSecondaryHSL)
+        if (settings.CF_useSecondaryHSL)
         {
-            if (_settings.CF_sHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_sHueMin &&
-                _settings.CF_sSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_sSatMin &&
-                _settings.CF_sBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_sBrightMin)
+            if (settings.CF_sHueMax >= test.GetHue() && test.GetHue() >= settings.CF_sHueMin &&
+                settings.CF_sSatMax >= test.GetSaturation() && test.GetSaturation() >= settings.CF_sSatMin &&
+                settings.CF_sBrightMax >= test.GetBrightness() && test.GetBrightness() >= settings.CF_sBrightMin)
                 return true;
         }
 
-        if (_settings.CF_useSecondaryRGB)
+        if (settings.CF_useSecondaryRGB)
         {
-            if (_settings.CF_sRMax >= test.R && test.R >= _settings.CF_sRMin &&
-                _settings.CF_sGMax >= test.G && test.G >= _settings.CF_sGMin &&
-                _settings.CF_sBMax >= test.B && test.B >= _settings.CF_sBMin)
+            if (settings.CF_sRMax >= test.R && test.R >= settings.CF_sRMin &&
+                settings.CF_sGMax >= test.G && test.G >= settings.CF_sGMin &&
+                settings.CF_sBMax >= test.B && test.B >= settings.CF_sBMin)
                 return true;
         }
 
