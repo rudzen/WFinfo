@@ -69,9 +69,6 @@ public sealed class ThemeDetector : IThemeDetector
 
     static ThemeDetector()
     {
-        if (Vector.IsHardwareAccelerated)
-            Logger.Debug("Hardware acceleration is enabled");
-
         var themes = (WFtheme[])Enum.GetValues(typeof(WFtheme));
         KnownThemes = new List<WFtheme>(themes.Where(theme => (int)theme >= 0)).ToArray();
         Array.Sort(KnownThemes);

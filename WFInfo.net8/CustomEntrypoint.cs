@@ -4,6 +4,7 @@ using System.IO;
 using System.Management;
 using System.Net;
 using System.Net.Http;
+using System.Numerics;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Windows.Forms;
@@ -190,7 +191,7 @@ public sealed class CustomEntrypoint
     private static void CollectDebugInfo()
     {
         Logger.Debug(
-            "--------------------------------------------------------------------------------------------------------------------------------------------");
+            "-- [info] -> -------------------------------------------------------------------------------------------------------------------------------");
 
         try
         {
@@ -204,14 +205,10 @@ public sealed class CustomEntrypoint
             Logger.Error(e, "Unable to fetch CPU model");
         }
 
-        //Log OS version
         Logger.Debug("Detected Windows version: {OS}", Environment.OSVersion);
-
-        //Log 64 bit application
-        Logger.Debug("64bit application: {Is64BitProcess}", Environment.Is64BitProcess);
-
-        //Log .net Version
-        Logger.Debug("Detected .net version: {Version}", Environment.Version);
+        Logger.Debug("64-bit application: {Is64BitProcess}", Environment.Is64BitProcess);
+        Logger.Debug(".NET version: {Version}", Environment.Version);
+        Logger.Debug("Hardware acceleration enabled: {Hw}", Vector.IsHardwareAccelerated);
 
         //Log C++ x64 runtimes 14.29
         using (var ndpKey = RegistryKey.OpenBaseKey(RegistryHive.ClassesRoot, RegistryView.Registry32)
@@ -252,6 +249,9 @@ public sealed class CustomEntrypoint
                 Logger.Error(e, "Unable to fetch x86 runtime");
             }
         }
+
+        Logger.Debug(
+            "-- <- [info] -------------------------------------------------------------------------------------------------------------------------------");
     }
 
     public static string GetMD5hash(string filePath)
