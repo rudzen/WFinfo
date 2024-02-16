@@ -371,18 +371,6 @@ internal partial class OCR
 
                 await _mediator.Publish(new OverlayUpdate(bestDucatItem, OverlayUpdateType.Ducat));
                 await _mediator.Publish(new OverlayUpdate(bestPlatItem, OverlayUpdateType.Plat));
-
-                // Main.RunOnUIThread(() =>
-                // {
-                //     foreach (var item in unownedItems.Where(x => x != bestDucatItem && x != bestPlatItem))
-                //     {
-                //         Logger.Debug("Highlighting unowned item {Item}", item);
-                //         Main.Overlays[item].BestOwnedChoice();
-                //     }
-                //
-                //     Main.Overlays[bestDucatItem].BestDucatChoice();
-                //     Main.Overlays[bestPlatItem].BestPlatChoice();
-                // });
             }
 
             Logger.Debug(("----  Total Processing Time " + end + " ------------------------------------------------------------------------------------------")[..108]);
