@@ -7,6 +7,8 @@
 - [x] Modernize a bit to C# 12
 - [ ] Replace Newtonsoft.Json with System.Text.Json
 - [x] Replace WebClient with HttpClient
+- [ ] Remove all x86 related features
+- [ ] Add events to avoid tight coupling
 
 ## Bugs
 
@@ -17,7 +19,7 @@
 
 - [ ] OCR
 - [ ] Optional use for easier code reading
-- [ ] Use Serilog for logging
+- [X] Use Serilog for logging
 
 ## Database
 
