@@ -505,65 +505,84 @@ internal partial class OCR
     /// <param name="snapItImage"></param>
     /// <param name="fullShot"></param>
     /// <param name="snapItOrigin"></param>
-    internal static async Task ProcessSnapIt(Bitmap snapItImage, Bitmap fullShot, Point snapItOrigin)
+    internal static async Task ProcessSnapIt(
+        Bitmap snapItImage,
+        Bitmap fullShot,
+        Point snapItOrigin)
     {
-        var watch = new Stopwatch();
-        watch.Start();
-        var start = watch.ElapsedMilliseconds;
-
+        var start = Stopwatch.GetTimestamp();
         var now = DateTime.UtcNow;
-        var timestamp = now.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
+        var timeStamp = now.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
+
         var theme = GetThemeWeighted(out _, fullShot);
-        snapItImage.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImage {timestamp}.png"));
+
+        snapItImage.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImage {timeStamp}.png"));
+
         var snapItImageFiltered = ScaleUpAndFilter(snapItImage, theme, out var rowHits, out var colHits);
-        snapItImageFiltered.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImageFiltered {timestamp}.png"));
+
+        snapItImageFiltered.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImageFiltered {timeStamp}.png"));
+
+        // TODO: (rudzen) : Convert foundParts to queue
         var foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
-        var end = watch.ElapsedMilliseconds;
+        var end = Stopwatch.GetElapsedTime(start);
+
         snapItImage.Dispose();
         snapItImageFiltered.Dispose();
 
-        await _mediator.Publish(new UpdateStatus("Completed snapit Processing(" + (end - start) + "ms)"));
+        await _mediator.Publish(new UpdateStatus($"Snap-it completed processing. time={end}"));
+
+        var csvDate = now.ToString("yyyy-MM-dd", ApplicationConstants.Culture);
         var csv = string.Empty;
-        if (!File.Exists(Path.Combine(ApplicationConstants.AppPath, "export " + now.ToString("yyyy-MM-dd", ApplicationConstants.Culture) + ".csv")) && _settings.SnapitExport)
+        if (_settings.SnapitExport && !File.Exists(Path.Combine(ApplicationConstants.AppPath, "export " + csvDate + ".csv")))
             csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
-                   now.ToString("yyyy-MM-dd", ApplicationConstants.Culture) + Environment.NewLine;
+                   csvDate + Environment.NewLine;
+
         var resultCount = foundParts.Count;
         for (var i = 0; i < foundParts.Count; i++)
         {
             var part = foundParts[i];
             if (!PartNameValid(part.Name))
             {
-                foundParts.RemoveAt(
-                    i--); //remove invalid part from list to not clog VerifyCount. Decrement to not skip any entries
+                // remove invalid part from list to not clog VerifyCount. Decrement to not skip any entries
+                foundParts.RemoveAt(i--);
                 resultCount--;
                 continue;
             }
 
-            Logger.Debug("Processing part {Part} out of {Count}", i, foundParts.Count);
+            Logger.Debug("Snap-it processing part {Part} out of {Count}", i, foundParts.Count);
+
+            // TODO (rudzen) : Convert to request event?
             var name = Main.DataBase.GetPartName(part.Name, out var levenDist, false, out var multipleLowest);
             var primeSetName = Data.GetSetName(name);
+
+            // show warning triangle if the result is of questionable accuracy. The limit is basically arbitrary
             if (levenDist > Math.Min(part.Name.Length, name.Length) / 3 || multipleLowest)
-            {
-                //show warning triangle if the result is of questionable accuracy. The limit is basically arbitrary
                 part.Warning = true;
-            }
 
             var doWarn = part.Warning;
             part.Name = name;
             foundParts[i] = part;
+
+            // TODO (rudzen) : Convert to request event?
             var job = Main.DataBase.MarketData.GetValue(name).ToObject<JObject>();
+
+            // TODO (rudzen) : Convert to request event?
             var primeSet = (JObject)Main.DataBase.MarketData.GetValue(primeSetName);
+
             var plat = job["plat"].ToObject<string>();
 
             string primeSetPlat = null;
-            if (primeSet != null)
+            if (primeSet is not null)
                 primeSetPlat = (string)primeSet["plat"];
 
             var ducats = job["ducats"].ToObject<string>();
             var volume = job["volume"].ToObject<string>();
+
+            // TODO (rudzen) : Convert to request events?
             var vaulted = Main.DataBase.IsPartVaulted(name);
             var mastered = Main.DataBase.IsPartMastered(name);
             var partsOwned = Main.DataBase.PartsOwned(name);
+
             var partsDetected = part.Count.ToString();
 
             if (_settings.SnapitExport)
@@ -589,18 +608,21 @@ internal partial class OCR
             });
         }
 
+        // TODO (rudzen) : COnvert to notification event
         if (_settings.DoSnapItCount && resultCount > 0)
             Main.RunOnUIThread(() =>
             {
                 VerifyCount.ShowVerifyCount(foundParts);
             });
 
-        if (Main.SnapItOverlayWindow.tempImage != null)
+        if (Main.SnapItOverlayWindow.tempImage is not null)
             Main.SnapItOverlayWindow.tempImage.Dispose();
-        end = watch.ElapsedMilliseconds;
+
+        end = Stopwatch.GetElapsedTime(start);
+
         if (resultCount == 0)
         {
-            await _mediator.Publish(new UpdateStatus("Couldn't find any items to display (took " + (end - start) + "ms) ", StatusSeverity.Error));
+            await _mediator.Publish(new UpdateStatus($"Snap-it couldn't find any items to display. time={end}", StatusSeverity.Error));
             Main.RunOnUIThread(() =>
             {
                 Main.SpawnErrorPopup(DateTime.UtcNow);
@@ -608,15 +630,13 @@ internal partial class OCR
         }
         else
         {
-            await _mediator.Publish(new UpdateStatus("Completed snapit Displaying(" + (end - start) + "ms)"));
+            await _mediator.Publish(new UpdateStatus($"Snap-it completed, displaying. time={end}"));
         }
 
-        watch.Stop();
-        Logger.Debug("Snap-it finished, displayed reward count:{Count}, time: {Time}ms", resultCount, end - start);
+        Logger.Debug("Snap-it finished, displayed reward. count={Count},time={Time}", resultCount, end);
         if (_settings.SnapitExport)
         {
-            var file = Path.Combine(ApplicationConstants.AppPath,
-                $"export {DateTime.UtcNow.ToString("yyyy-MM-dd", ApplicationConstants.Culture)}.csv");
+            var file = Path.Combine(ApplicationConstants.AppPath, $"export {csvDate}.csv");
             await File.AppendAllTextAsync(file, csv);
         }
     }

@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Extensions;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WindowInfo;
 
@@ -18,13 +19,13 @@ public partial class SnapItOverlay : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<SnapItOverlay>();
 
-    private System.Windows.Point startDrag;
-    private System.Drawing.Point topLeft;
-    private readonly IWindowInfoService _window;
+    private System.Windows.Point _startDrag;
+    private System.Drawing.Point _topLeft;
+    private readonly IWindowInfoService _windowInfoService;
 
-    public SnapItOverlay(IWindowInfoService window)
+    public SnapItOverlay(IWindowInfoService windowInfoService)
     {
-        _window = window;
+        _windowInfoService = windowInfoService;
         WindowStartupLocation = WindowStartupLocation.Manual;
 
         Left = 0;
@@ -37,7 +38,7 @@ public partial class SnapItOverlay : Window
 
     public bool isEnabled { get; set; }
 
-    public Bitmap tempImage { get; set; }
+    public Bitmap? tempImage { get; set; }
 
     public void Populate(Bitmap screenshot)
     {
@@ -48,9 +49,11 @@ public partial class SnapItOverlay : Window
     private void canvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
         //Set the start point
-        startDrag = e.GetPosition(canvas);
+        _startDrag = e.GetPosition(canvas);
+
         //Move the selection marquee on top of all other objects in canvas
         Panel.SetZIndex(rectangle, canvas.Children.Count);
+
         //Capture the mouse
         if (!canvas.IsMouseCaptured)
             canvas.CaptureMouse();
@@ -71,60 +74,71 @@ public partial class SnapItOverlay : Window
         //       AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHH
         //
         //  fucking hate rectangles
-        Task.Factory.StartNew(async () =>
+        Task.Run(async () =>
         {
             await Task.Delay(100);
-            Dispatcher.Invoke(Hide);
+            Dispatcher.InvokeIfRequired(Hide);
         });
     }
 
     private async void canvas_MouseUp(object sender, MouseButtonEventArgs e)
     {
-        //Release the mouse
+        // Release the mouse
         if (canvas.IsMouseCaptured)
             canvas.ReleaseMouseCapture();
+
         canvas.Cursor = Cursors.Arrow;
-        Logger.Debug("User drew rectangle: Starting point: " + startDrag.ToString() + " Width: " + rectangle.Width +
-                    " Height:"                              + rectangle.Height);
+
+        Logger.Debug("User drew rectangle. point={Point},width={W},height={H}", _startDrag, rectangle.Width, rectangle.Height);
+
         if (rectangle.Width < 10 || rectangle.Height < 10)
         {
-            // box is smaller than 10x10 and thus will never be able to have any text.
-            // Also used as a fail save to prevent the program from crashing if the user makes a 0x0 sleection
+            // Box is smaller than 10x10 and thus will never be able to have any text.
+            // Also used as a fail save to prevent the program from crashing if the user makes a 0x0 selection
             Logger.Debug("User selected an area too small");
-            Main.StatusUpdate("Please slecet a larger area to scan", StatusSeverity.Warning);
+            Main.StatusUpdate("Please select a larger area to scan", StatusSeverity.Warning);
             return;
         }
 
-        Bitmap cutout = tempImage.Clone(
-            new Rectangle((int)(topLeft.X * _window.DpiScaling), (int)(topLeft.Y        * _window.DpiScaling),
-                (int)(rectangle.Width     * _window.DpiScaling), (int)(rectangle.Height * _window.DpiScaling)),
-            System.Drawing.Imaging.PixelFormat.DontCare);
+        var scaling = _windowInfoService.DpiScaling;
+        var cutout = tempImage.Clone(
+            rect: new Rectangle(
+                x: (int)(_topLeft.X * scaling),
+                y: (int)(_topLeft.Y * scaling),
+                width: (int)(rectangle.Width * scaling),
+                height: (int)(rectangle.Height * scaling)
+            ),
+            format: System.Drawing.Imaging.PixelFormat.DontCare
+        );
 
-        Task.Run(async () => await OCR.ProcessSnapIt(cutout, tempImage, topLeft));
+        // try to hide the evidence as fast as possible
+        rectangle.Visibility = Visibility.Hidden;
+
+        Task.Run(async () => await OCR.ProcessSnapIt(cutout, tempImage, _topLeft));
 
         CloseOverlay();
     }
 
     private void canvas_MouseMove(object sender, MouseEventArgs e)
     {
-        if (canvas.IsMouseCaptured)
-        {
-            System.Windows.Point currentPoint = e.GetPosition(canvas);
+        if (!canvas.IsMouseCaptured)
+            return;
 
-            //Calculate the top left corner of the rectangle
-            //regardless of drag direction
-            double x = startDrag.X < currentPoint.X ? startDrag.X : currentPoint.X;
-            double y = startDrag.Y < currentPoint.Y ? startDrag.Y : currentPoint.Y;
+        var currentPoint = e.GetPosition(canvas);
 
-            if (rectangle.Visibility == Visibility.Hidden)
-                rectangle.Visibility = Visibility.Visible;
+        // Calculate the top left corner of the rectangle regardless of drag direction
+        var x = _startDrag.X < currentPoint.X ? _startDrag.X : currentPoint.X;
+        var y = _startDrag.Y < currentPoint.Y ? _startDrag.Y : currentPoint.Y;
 
-            //Move the rectangle to proper place
-            topLeft = new System.Drawing.Point((int)x, (int)y);
-            rectangle.RenderTransform = new TranslateTransform(x, y);
-            //Set its size
-            rectangle.Width = Math.Abs(e.GetPosition(canvas).X  - startDrag.X);
-            rectangle.Height = Math.Abs(e.GetPosition(canvas).Y - startDrag.Y);
-        }
+        if (rectangle.Visibility == Visibility.Hidden)
+            rectangle.Visibility = Visibility.Visible;
+
+        // Move the rectangle to proper place
+        _topLeft = new System.Drawing.Point((int)x, (int)y);
+        rectangle.RenderTransform = new TranslateTransform(x, y);
+
+        // Set its size
+        rectangle.Width = Math.Abs(e.GetPosition(canvas).X - _startDrag.X);
+        rectangle.Height = Math.Abs(e.GetPosition(canvas).Y - _startDrag.Y);
     }
 }
