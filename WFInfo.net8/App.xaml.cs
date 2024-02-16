@@ -74,6 +74,7 @@ public partial class App : Application
                     services.TryAddSingleton<IHDRDetectionScheme, GameSettingsHDRDetectionScheme>();
                     services.TryAddSingleton<ILogCapture, LogCapture>();
                     services.TryAddSingleton<ILowLevelListener, LowLevelListener>();
+                    services.TryAddSingleton<ILevenshteinDistanceService, LevenshteinDistanceService>();
 
                     services.TryAddSingleton<Main>();
                     services.TryAddSingleton<Data>();
