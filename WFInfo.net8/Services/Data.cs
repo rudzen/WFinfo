@@ -433,7 +433,9 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
 
             foreach (KeyValuePair<string, JToken> era in allFiltered["relics"].ToObject<JObject>())
             {
-                RelicData[era.Key] = new JObject();
+                if (!RelicData.ContainsKey(era.Key))
+                    RelicData[era.Key] = new JObject();
+
                 foreach (KeyValuePair<string, JToken> relic in era.Value.ToObject<JObject>())
                     RelicData[era.Key][relic.Key] = relic.Value;
             }
