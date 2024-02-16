@@ -298,14 +298,14 @@ public class Main
             //normal debug
             Logger.Information("Loading screenshot from file");
             await _mediator.Publish(new UpdateStatus("Offline testing with screenshot", 0));
-            LoadScreenshot(ScreenshotType.NORMAL);
+            await LoadScreenshot(ScreenshotType.NORMAL);
         }
         else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
         {
-            //snapit
+            // Snap-it
             Logger.Information("Starting snap it");
-            await _mediator.Publish(new UpdateStatus("Starting snap it", 0));
-            OCR.SnapScreenshot();
+            await _mediator.Publish(new UpdateStatus("Starting snap it"));
+            await OCR.SnapScreenshot();
         }
         else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
         {
