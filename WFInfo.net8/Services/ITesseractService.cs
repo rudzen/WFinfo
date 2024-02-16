@@ -1,6 +1,6 @@
 using Tesseract;
 
-namespace WFInfo;
+namespace WFInfo.Services;
 
 public interface ITesseractService : IDisposable
 {

@@ -26,7 +26,7 @@ using System.Runtime.InteropServices;
 using Windows.Graphics.DirectX.Direct3D11;
 using WinRT;
 
-namespace Composition.WindowsRuntimeHelpers;
+namespace WFInfo.Services.Screenshot.Composition.WindowsRuntimeHelpers;
 
 public static class Direct3D11Helper
 {

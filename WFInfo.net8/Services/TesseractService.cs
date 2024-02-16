@@ -4,10 +4,9 @@ using System.Net.Http;
 using Serilog;
 using Tesseract;
 using WFInfo.Extensions;
-using WFInfo.Services;
 using WFInfo.Settings;
 
-namespace WFInfo;
+namespace WFInfo.Services;
 
 /// <summary>
 /// Holds all the TesseractEngine instances and is responsible for loadind/reloading them

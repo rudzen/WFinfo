@@ -13,7 +13,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.ObjectPool;
 using Serilog;
 using Serilog.Events;
-using WFInfo.Resources;
 using WFInfo.Services;
 using WFInfo.Services.HDRDetection;
 using WFInfo.Services.HDRDetection.Schemes;

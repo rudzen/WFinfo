@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace WFInfo;
+namespace WFInfo.Services;
 
 public sealed class SoundPlayer : ISoundPlayer
 {

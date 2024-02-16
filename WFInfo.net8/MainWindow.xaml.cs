@@ -11,7 +11,6 @@ using Newtonsoft.Json.Converters;
 using Serilog;
 using WFInfo.Domain;
 using WFInfo.Extensions;
-using WFInfo.Resources;
 using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Settings;

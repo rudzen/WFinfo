@@ -1,4 +1,4 @@
-﻿namespace WFInfo;
+﻿namespace WFInfo.Services;
 
 internal interface ISoundPlayer
 {

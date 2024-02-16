@@ -2,9 +2,8 @@ using System.IO;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 using Serilog;
-using WFInfo.Services;
 
-namespace WFInfo;
+namespace WFInfo.Services;
 
 public sealed class EncryptedDataService : IEncryptedDataService
 {

@@ -4,6 +4,7 @@ using System.Windows.Media;
 using Mediator;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Services;
 using WFInfo.Settings;
 
 namespace WFInfo;

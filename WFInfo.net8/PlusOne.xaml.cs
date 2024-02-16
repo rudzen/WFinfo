@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using Microsoft.Win32;
 
-namespace WFInfo.Resources;
+namespace WFInfo;
 
 /// <summary>
 /// Interaction logic for PlusOne.xaml

@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using Composition.WindowsRuntimeHelpers;
 using SharpDX;
 using SharpDX.Direct3D11;
 using System.Diagnostics;

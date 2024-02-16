@@ -1,18 +1,17 @@
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Drawing;
 using System.IO;
 using System.Windows;
-using System.Windows.Input;
-using System.Drawing;
-using System.Windows.Media.Imaging;
 using System.Windows.Forms;
+using System.Windows.Input;
+using System.Windows.Media.Imaging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Serilog;
 using WFInfo.Domain;
 using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
-using WFInfo.Settings;
 
-namespace WFInfo;
+namespace WFInfo.Settings;
 
 /// <summary>
 /// Interaction logic for verifyCount.xaml

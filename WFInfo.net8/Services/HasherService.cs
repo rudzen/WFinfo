@@ -1,7 +1,7 @@
 ﻿using System.IO;
 using System.Security.Cryptography;
 
-namespace WFInfo;
+namespace WFInfo.Services;
 
 public sealed class HasherService : IHasherService
 {
