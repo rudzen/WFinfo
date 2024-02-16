@@ -13,8 +13,8 @@ namespace WFInfo.Services.OpticalCharacterRecognition;
 public sealed class ThemeDetector : IThemeDetector
 {
     // Pixel measurements for reward screen @ 1920 x 1080 with 100% scale https://docs.google.com/drawings/d/1Qgs7FU2w1qzezMK-G1u9gMTsQZnDKYTEU36UPakNRJQ/edit
-    private const int pixleRewardWidth = 968;
-    private const int pixelRewardLineHeight = 48;
+    private const int PixelRewardWidth = 968;
+    private const int PixelRewardLineHeight = 48;
 
     private static readonly ILogger Logger = Log.Logger.ForContext<ThemeDetector>();
 
@@ -41,7 +41,7 @@ public sealed class ThemeDetector : IThemeDetector
         Color.FromArgb(255, 255, 255), //LEGACY
         Color.FromArgb(158, 159, 167), //EQUINOX
         Color.FromArgb(140, 119, 147), //DARK_LOTUS
-        Color.FromArgb(253, 132, 2) //ZEPHYR
+        Color.FromArgb(253, 132, 2)    //ZEPHYR
     ];
 
     // TODO (rudzen) : Load from config
@@ -110,8 +110,8 @@ public sealed class ThemeDetector : IThemeDetector
         ArgumentNullException.ThrowIfNull(image);
         ArgumentOutOfRangeException.ThrowIfZero(image.Height);
 
-        var lineHeight = (int)(pixelRewardLineHeight / 2 * _window.ScreenScaling);
-        var mostWidth = (int)(pixleRewardWidth * _window.ScreenScaling);
+        var lineHeight = (int)(PixelRewardLineHeight / 2 * _window.ScreenScaling);
+        var mostWidth = (int)(PixelRewardWidth * _window.ScreenScaling);
 
         Span<double> weights = stackalloc double[15];
         var minWidth = mostWidth / 4;
@@ -141,6 +141,50 @@ public sealed class ThemeDetector : IThemeDetector
         }
 
         return simdActive;
+    }
+
+    public bool ThemeThresholdFilter(in Color test, WFtheme theme)
+    {
+        //treat unknown as custom, for safety
+        if (theme is WFtheme.CUSTOM or WFtheme.UNKNOWN)
+            return CustomThresholdFilter(test);
+
+        var primary = PrimaryThemeColor(theme);
+        var secondary = SecondaryThemeColor(theme);
+
+        // TODO (rudzen) : wtf is this
+        return theme switch
+        {
+            // TO CHECK
+            WFtheme.VITRUVIAN => Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.25 && test.GetBrightness() >= 0.42,
+            WFtheme.LOTUS => Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetSaturation() >= 0.65 && Math.Abs(test.GetBrightness() - primary.GetBrightness()) <= 0.1
+                             || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetBrightness() >= 0.65),
+            // TO CHECK
+            WFtheme.OROKIN => (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() <= 0.42 && test.GetSaturation() >= 0.1) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5
+                && test.GetBrightness() <= 0.5 && test.GetBrightness() >= 0.25
+                && test.GetSaturation() >= 0.25),
+            WFtheme.STALKER => ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66))
+                               && test.GetBrightness() >= 0.25,
+            WFtheme.CORPUS  => Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.42 && test.GetSaturation() >= 0.35,
+            WFtheme.EQUINOX => test.GetSaturation() <= 0.2 && test.GetBrightness() >= 0.55,
+            WFtheme.DARK_LOTUS => (Math.Abs(test.GetHue() - secondary.GetHue()) < 20 && test.GetBrightness() >= 0.35 && test.GetBrightness() <= 0.55 && test.GetSaturation() <= 0.25
+                                   && test.GetSaturation() >= 0.05) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.50 && test.GetSaturation() >= 0.20),
+            WFtheme.FORTUNA => ((Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.35) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.15))
+                               && test.GetSaturation() >= 0.20,
+            WFtheme.HIGH_CONTRAST => (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.75
+                && test.GetBrightness() >= 0.35 // || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
+            ,
+            // TO CHECK
+            WFtheme.LEGACY => (test.GetBrightness() >= 0.65) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() >= 0.5 && test.GetSaturation() >= 0.5),
+            WFtheme.NIDUS => (Math.Abs(test.GetHue() - (primary.GetHue() + 6)) < 8 && test.GetSaturation() >= 0.30)
+                             || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetSaturation() >= 0.55),
+            WFtheme.TENNO   => (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.38 && test.GetBrightness() <= 0.55,
+            WFtheme.BARUUK  => (Math.Abs(test.GetHue() - primary.GetHue()) < 2) && test.GetSaturation() > 0.25 && test.GetBrightness() > 0.5,
+            WFtheme.GRINEER => (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() > 0.5) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() > 0.55),
+            WFtheme.ZEPHYR => ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66))
+                              && test.GetBrightness() >= 0.25,
+            var _ => Math.Abs(test.GetHue() - primary.GetHue()) < 2 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2
+        };
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -216,5 +260,43 @@ public sealed class ThemeDetector : IThemeDetector
     private static int ColorDifference(Color test, Color thresh)
     {
         return Math.Abs(test.R - thresh.R) + Math.Abs(test.G - thresh.G) + Math.Abs(test.B - thresh.B);
+    }
+
+    private bool CustomThresholdFilter(Color test)
+    {
+        if (_settings.CF_usePrimaryHSL)
+        {
+            if (_settings.CF_pHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_pHueMin &&
+                _settings.CF_pSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_pSatMin &&
+                _settings.CF_pBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_pBrightMin)
+                return true;
+        }
+
+        if (_settings.CF_usePrimaryRGB)
+        {
+            if (_settings.CF_pRMax >= test.R && test.R >= _settings.CF_pRMin &&
+                _settings.CF_pGMax >= test.G && test.G >= _settings.CF_pGMin &&
+                _settings.CF_pBMax >= test.B && test.B >= _settings.CF_pBMin)
+                return true;
+        }
+
+        if (_settings.CF_useSecondaryHSL)
+        {
+            if (_settings.CF_sHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_sHueMin &&
+                _settings.CF_sSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_sSatMin &&
+                _settings.CF_sBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_sBrightMin)
+                return true;
+        }
+
+        if (_settings.CF_useSecondaryRGB)
+        {
+            if (_settings.CF_sRMax >= test.R && test.R >= _settings.CF_sRMin &&
+                _settings.CF_sGMax >= test.G && test.G >= _settings.CF_sGMin &&
+                _settings.CF_sBMax >= test.B && test.B >= _settings.CF_sBMin)
+                return true;
+        }
+
+
+        return false;
     }
 }

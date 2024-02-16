@@ -17,4 +17,6 @@ public interface IThemeDetector
     WFtheme GetThemeWeighted(
         out double closestThresh,
         Bitmap? image = null);
+
+    bool ThemeThresholdFilter(in Color test, WFtheme theme);
 }

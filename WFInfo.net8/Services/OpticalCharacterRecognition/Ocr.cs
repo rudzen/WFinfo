@@ -8,7 +8,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Akka.Util;
-using DotNext;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
@@ -1681,87 +1680,6 @@ internal partial class OCR
         return foundItems;
     }
 
-    private static bool CustomThresholdFilter(Color test)
-    {
-        if (_settings.CF_usePrimaryHSL)
-        {
-            if (_settings.CF_pHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_pHueMin &&
-                _settings.CF_pSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_pSatMin &&
-                _settings.CF_pBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_pBrightMin)
-                return true;
-        }
-
-        if (_settings.CF_usePrimaryRGB)
-        {
-            if (_settings.CF_pRMax >= test.R && test.R >= _settings.CF_pRMin &&
-                _settings.CF_pGMax >= test.G && test.G >= _settings.CF_pGMin &&
-                _settings.CF_pBMax >= test.B && test.B >= _settings.CF_pBMin)
-                return true;
-        }
-
-        if (_settings.CF_useSecondaryHSL)
-        {
-            if (_settings.CF_sHueMax >= test.GetHue() && test.GetHue() >= _settings.CF_sHueMin &&
-                _settings.CF_sSatMax >= test.GetSaturation() && test.GetSaturation() >= _settings.CF_sSatMin &&
-                _settings.CF_sBrightMax >= test.GetBrightness() && test.GetBrightness() >= _settings.CF_sBrightMin)
-                return true;
-        }
-
-        if (_settings.CF_useSecondaryRGB)
-        {
-            if (_settings.CF_sRMax >= test.R && test.R >= _settings.CF_sRMin &&
-                _settings.CF_sGMax >= test.G && test.G >= _settings.CF_sGMin &&
-                _settings.CF_sBMax >= test.B && test.B >= _settings.CF_sBMin)
-                return true;
-        }
-
-
-        return false;
-    }
-
-    private static bool ThemeThresholdFilter(Color test, WFtheme theme)
-    {
-        //treat unknown as custom, for safety
-        if (theme is WFtheme.CUSTOM or WFtheme.UNKNOWN)
-            return CustomThresholdFilter(test);
-
-        var primary = _themeDetector.PrimaryThemeColor(theme);
-        var secondary = _themeDetector.SecondaryThemeColor(theme);
-
-        return theme switch
-        {
-            // TO CHECK
-            WFtheme.VITRUVIAN => Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.25 && test.GetBrightness() >= 0.42,
-            WFtheme.LOTUS => Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetSaturation() >= 0.65 && Math.Abs(test.GetBrightness() - primary.GetBrightness()) <= 0.1
-                             || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetBrightness() >= 0.65),
-            // TO CHECK
-            WFtheme.OROKIN => (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() <= 0.42 && test.GetSaturation() >= 0.1) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 5
-                && test.GetBrightness() <= 0.5 && test.GetBrightness() >= 0.25
-                && test.GetSaturation() >= 0.25),
-            WFtheme.STALKER => ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66))
-                               && test.GetBrightness() >= 0.25,
-            WFtheme.CORPUS  => Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.42 && test.GetSaturation() >= 0.35,
-            WFtheme.EQUINOX => test.GetSaturation() <= 0.2 && test.GetBrightness() >= 0.55,
-            WFtheme.DARK_LOTUS => (Math.Abs(test.GetHue() - secondary.GetHue()) < 20 && test.GetBrightness() >= 0.35 && test.GetBrightness() <= 0.55 && test.GetSaturation() <= 0.25
-                                   && test.GetSaturation() >= 0.05) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.50 && test.GetSaturation() >= 0.20),
-            WFtheme.FORTUNA => ((Math.Abs(test.GetHue() - primary.GetHue()) < 3 && test.GetBrightness() >= 0.35) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetBrightness() >= 0.15))
-                               && test.GetSaturation() >= 0.20,
-            WFtheme.HIGH_CONTRAST => (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.75
-                && test.GetBrightness() >= 0.35 // || Math.Abs(test.GetHue() - secondary.GetHue()) < 2;
-            ,
-            // TO CHECK
-            WFtheme.LEGACY => (test.GetBrightness() >= 0.65) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() >= 0.5 && test.GetSaturation() >= 0.5),
-            WFtheme.NIDUS => (Math.Abs(test.GetHue() - (primary.GetHue() + 6)) < 8 && test.GetSaturation() >= 0.30)
-                             || (Math.Abs(test.GetHue() - secondary.GetHue()) < 15 && test.GetSaturation() >= 0.55),
-            WFtheme.TENNO   => (Math.Abs(test.GetHue() - primary.GetHue()) < 3 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2) && test.GetSaturation() >= 0.38 && test.GetBrightness() <= 0.55,
-            WFtheme.BARUUK  => (Math.Abs(test.GetHue() - primary.GetHue()) < 2) && test.GetSaturation() > 0.25 && test.GetBrightness() > 0.5,
-            WFtheme.GRINEER => (Math.Abs(test.GetHue() - primary.GetHue()) < 5 && test.GetBrightness() > 0.5) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 6 && test.GetBrightness() > 0.55),
-            WFtheme.ZEPHYR => ((Math.Abs(test.GetHue() - primary.GetHue()) < 4 && test.GetSaturation() >= 0.55) || (Math.Abs(test.GetHue() - secondary.GetHue()) < 4 && test.GetSaturation() >= 0.66))
-                              && test.GetBrightness() >= 0.25,
-            var _ => Math.Abs(test.GetHue() - primary.GetHue()) < 2 || Math.Abs(test.GetHue() - secondary.GetHue()) < 2
-        };
-    }
-
     public static unsafe Bitmap ScaleUpAndFilter(Bitmap image, WFtheme active, out int[] rowHits, out int[] colHits)
     {
         if (image.Height <= ScalingLimit)
@@ -1794,7 +1712,7 @@ internal partial class OCR
         var numBytes = Math.Abs(lockedBitmapData.Stride) * filtered.Height;
         var lockedBitmapBytes = new Span<byte>((void*)lockedBitmapData.Scan0, numBytes);
 
-        Span<byte> alpha = stackalloc byte[] { 0, 0, 0, 255 };
+        Span<byte> black = stackalloc byte[] { 0, 0, 0, 255 };
 
         const int pixelSize = 4; //ARGB, order in array is BGRA
         for (var i = 0; i < numBytes; i += pixelSize)
@@ -1806,9 +1724,9 @@ internal partial class OCR
                 blue: lockedBitmapBytes[i]
             );
 
-            if (ThemeThresholdFilter(clr, active))
+            if (_themeDetector.ThemeThresholdFilter(clr, active))
             {
-                alpha.CopyTo(lockedBitmapBytes.Slice(i, pixelSize));
+                black.CopyTo(lockedBitmapBytes.Slice(i, pixelSize));
                 //Black
                 var x = (i / pixelSize) % filtered.Width;
                 var y = (i / pixelSize - x) / filtered.Width;
@@ -1889,7 +1807,7 @@ internal partial class OCR
             for (var x = 0; x < preFilter.Width; x++)
             {
                 var clr = preFilter.GetPixel(x, y);
-                if (ThemeThresholdFilter(clr, active))
+                if (_themeDetector.ThemeThresholdFilter(clr, active))
                     rows[y]++;
             }
         }
@@ -2064,7 +1982,7 @@ internal partial class OCR
             for (var y = 0; y < height; y++)
             {
                 var clr = partBox.GetPixel(x, y);
-                if (ThemeThresholdFilter(clr, active))
+                if (_themeDetector.ThemeThresholdFilter(clr, active))
                 {
                     filtered.SetPixel(x, y, Color.Black);
                     counts[y]++;
