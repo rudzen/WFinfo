@@ -141,7 +141,7 @@ public sealed class CustomEntrypoint
 
         try
         {
-            HttpClient httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("WFInfo");
+            var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("WFInfo");
             await RefreshTesseractDlls(httpClient, hasher, stopDownloadTask.Token);
         }
         catch (Exception ex)
@@ -252,13 +252,6 @@ public sealed class CustomEntrypoint
 
         Logger.Debug(
             "-- <- [info] -------------------------------------------------------------------------------------------------------------------------------");
-    }
-
-    public static string GetMD5hash(string filePath)
-    {
-        using var stream = File.OpenRead(filePath);
-        var hash = MD5.HashData(stream);
-        return BitConverter.ToString(hash).Replace("-", string.Empty).ToLowerInvariant();
     }
 
     private static void DownloadProgressCallback(object sender, DownloadProgressChangedEventArgs e)

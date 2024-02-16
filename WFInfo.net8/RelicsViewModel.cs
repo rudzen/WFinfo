@@ -74,7 +74,7 @@ public class RelicsViewModel : INPC
             foreach (var era in _rawRelicNodes)
             {
                 foreach (var relic in era.Children)
-                    relic.topLevel = value;
+                    relic.TopLevel = value;
             }
 
             SetField(ref _showAllRelics, value);

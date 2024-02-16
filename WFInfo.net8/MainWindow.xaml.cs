@@ -60,12 +60,13 @@ public partial class MainWindow
         EquipmentWindow equipmentWindow,
         IEncryptedDataService encryptedDataService,
         IServiceProvider sp,
-        ILowLevelListener lowLevelListener)
+        ILowLevelListener lowLevelListener,
+        Main main)
     {
         _applicationSettings = applicationSettings;
         _sp = sp;
         INSTANCE = this;
-        Main = new Main(sp);
+        Main = main;
 
         _settingsViewModel = settingsViewModel;
         _plusOne = plusOne;
@@ -119,8 +120,9 @@ public partial class MainWindow
         Application.Current.MainWindow = this;
     }
 
-    public void InitializeSettings()
+    private void InitializeSettings()
     {
+        // TODO (rudzen) : Move this to Pre-startup
         var jsonSettings = new JsonSerializerSettings()
         {
             NullValueHandling = NullValueHandling.Ignore

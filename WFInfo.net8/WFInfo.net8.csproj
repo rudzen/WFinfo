@@ -9,6 +9,7 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <DefineConstants>SYSTEM_DRAWING_SUPPORT</DefineConstants>
         <RootNamespace>WFInfo</RootNamespace>
+        <ApplicationIcon>Resources\WFLogo.ico</ApplicationIcon>
     </PropertyGroup>
 
 <!--    <PropertyGroup>-->

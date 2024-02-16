@@ -102,7 +102,7 @@ public partial class TreeNode : INPC
 
     public object ShowAll { get; set; }
 
-    public bool topLevel = false;
+    public bool TopLevel { get; set; } = false;
 
     private string _era;
 
@@ -124,7 +124,7 @@ public partial class TreeNode : INPC
 
     public string Name
     {
-        get => topLevel ? $"{_era} {_name}" : _name;
+        get => TopLevel ? $"{_era} {_name}" : _name;
         set => SetField(ref _name, value);
     }
 
@@ -790,7 +790,7 @@ public partial class TreeNode : INPC
     }
 
     public Visibility IsVisible =>
-        (_forceVisibility || current == null || current.IsExpanded || topLevel)
+        (_forceVisibility || current == null || current.IsExpanded || TopLevel)
             ? Visibility.Visible
             : Visibility.Collapsed;
 

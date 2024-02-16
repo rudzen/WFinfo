@@ -87,7 +87,7 @@ internal partial class OCR
     private static IScreenshotService _gdiScreenshot = null!;
     private static IScreenshotService? _windowsScreenshot;
 
-    public static void Init(IServiceProvider sp, Overlay[] overlays)
+    public static void Init(IServiceProvider sp)
     {
         var tesseractService = sp.GetRequiredService<ITesseractService>();
         var soundPlayer = sp.GetRequiredService<ISoundPlayer>();
@@ -108,7 +108,6 @@ internal partial class OCR
             snapZoneDivider: snapZoneDivider,
             hdrDetector: hdrDetector,
             mediator: mediator,
-            overlays: overlays,
             gdiScreenshot: gdiScreenshot,
             windowsScreenshot: windowsScreenshot
         );
@@ -127,7 +126,6 @@ internal partial class OCR
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
         IMediator mediator,
-        Overlay[] overlays,
         IScreenshotService gdiScreenshot,
         IScreenshotService? windowsScreenshot = null)
     {
@@ -207,6 +205,7 @@ internal partial class OCR
             await _mediator.Publish(new UpdateStatus("Couldn't find any rewards to display", StatusSeverity.Warning));
             if (_firstChecks == null)
             {
+                // TODO (rudzen) : Add event
                 Main.RunOnUIThread(() =>
                 {
                     Main.SpawnErrorPopup(time);

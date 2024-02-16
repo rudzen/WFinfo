@@ -279,7 +279,7 @@ public partial class EquipmentWindow : Window
         foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
         {
             foreach (TreeNode kid in primeType.Value.Children)
-                kid.topLevel = showAllEqmt;
+                kid.TopLevel = showAllEqmt;
         }
 
         var content = showAllEqmt ? "All Equipment" : "Equipment Types";

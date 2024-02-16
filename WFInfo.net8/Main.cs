@@ -60,8 +60,8 @@ public class Main
 
     // Instance services
     private readonly ApplicationSettings _settings;
-    private readonly IProcessFinder _process;
-    private readonly IWindowInfoService _windowInfo;
+    private readonly IProcessFinder _processFinder;
+    private readonly IWindowInfoService _windowInfoService;
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly IRewardSelector _rewardSelector;
     private readonly IMediator _mediator;
@@ -70,27 +70,40 @@ public class Main
     // also, the auto updater needs this to allow for event to be used
     private readonly IServiceProvider _sp;
 
-    public Main(IServiceProvider sp)
+    public Main(
+        Login login,
+        ApplicationSettings applicationSettings,
+        IProcessFinder processFinder,
+        IWindowInfoService windowInfoService,
+        IEncryptedDataService encryptedDataService,
+        IRewardSelector rewardSelector,
+        IMediator mediator,
+        Data data,
+        RewardWindow rewardWindow,
+        SettingsWindow settingsWindow,
+        AutoCount autoCount,
+        SearchIt searchIt,
+        IServiceProvider sp)
     {
         _sp = sp;
-        Login = sp.GetRequiredService<Login>();
+        Login = login;
 
-        _settings = sp.GetRequiredService<ApplicationSettings>();
-        _process = sp.GetRequiredService<IProcessFinder>();
-        _windowInfo = sp.GetRequiredService<IWindowInfoService>();
-        _encryptedDataService = sp.GetRequiredService<IEncryptedDataService>();
-        _rewardSelector = sp.GetRequiredService<IRewardSelector>();
-        _mediator = sp.GetRequiredService<IMediator>();
+        _settings = applicationSettings;
+        _processFinder = processFinder;
+        _windowInfoService = windowInfoService;
+        _encryptedDataService = encryptedDataService;
+        _rewardSelector = rewardSelector;
+        _mediator = mediator;
 
-        DataBase = sp.GetRequiredService<Data>();
-        RewardWindow = sp.GetRequiredService<RewardWindow>();
-        SettingsWindow = sp.GetRequiredService<SettingsWindow>();
-        AutoCount = sp.GetRequiredService<AutoCount>();
-        SearchIt = sp.GetRequiredService<SearchIt>();
+        DataBase = data;
+        RewardWindow = rewardWindow;
+        SettingsWindow = settingsWindow;
+        AutoCount = autoCount;
+        SearchIt = searchIt;
 
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
-            SnapItOverlayWindow = new SnapItOverlay(_windowInfo);
+            SnapItOverlayWindow = new SnapItOverlay(_windowInfoService);
             Overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
@@ -111,10 +124,10 @@ public class Main
     {
         try
         {
-            await _mediator.Publish(new UpdateStatus("Initializing OCR engine...", 0));
-            OCR.Init(_sp, Overlays);
+            await _mediator.Publish(new UpdateStatus("Initializing OCR engine..."));
+            OCR.Init(_sp); // fix for now until added to DI
 
-            await _mediator.Publish(new UpdateStatus("Updating Databases...", 0));
+            await _mediator.Publish(new UpdateStatus("Updating Databases..."));
             await DataBase.Update();
 
             if (_settings.Auto)
@@ -124,7 +137,7 @@ public class Main
             if (validJwt)
                 await Handle(new StartLoggedInTimer(string.Empty), CancellationToken.None);
 
-            await _mediator.Publish(new UpdateStatus("WFInfo Initialization Complete", 0));
+            await _mediator.Publish(new UpdateStatus("WFInfo Initialization Complete"));
             Logger.Debug("WFInfo has launched successfully");
             FinishedLoading();
 
@@ -150,13 +163,13 @@ public class Main
 
     private async void TimeoutCheck()
     {
-        if (!await DataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
+        if (!await DataBase.IsJWTvalid().ConfigureAwait(true) || _processFinder.GameIsStreamed)
             return;
 
         var now = DateTime.UtcNow;
         Logger.Debug("Checking if the user has been inactive. Now={Now}, lastActive={LastActive}", now, _latestActive);
 
-        if (!_process.IsRunning && LastMarketStatus != "invisible")
+        if (!_processFinder.IsRunning && LastMarketStatus != "invisible")
         {
             //set user offline if Warframe has closed but no new game was found
             Logger.Debug("Warframe was detected as closed");
@@ -171,7 +184,7 @@ public class Main
                     return;
                 //IDE0058 - computed value is never used.  Ever. Consider changing the return signature of SetWebsocketStatus to void instead
                 await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed", 0));
+                await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed"));
             }).ConfigureAwait(false);
         }
         else
@@ -186,11 +199,11 @@ public class Main
                     {
                         await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(ConfigureAwaitOptions.None);
                         var user = DataBase.inGameName.IsNullOrEmpty() ? "user" : DataBase.inGameName;
-                        await _mediator.Publish(new UpdateStatus($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0));
+                        await _mediator.Publish(new UpdateStatus($"Welcome back {user}, restored as {LastMarketStatusB4AFK}"));
                     }
                     else
                     {
-                        await _mediator.Publish(new UpdateStatus("Welcome back user", 0));
+                        await _mediator.Publish(new UpdateStatus("Welcome back user"));
                     }
 
                     break;
@@ -207,7 +220,7 @@ public class Main
                         await Task.Run(async () =>
                         {
                             await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                            await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes", 0));
+                            await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes"));
                         }).ConfigureAwait(ConfigureAwaitOptions.None);
                     }
 
@@ -282,7 +295,7 @@ public class Main
         {
             //snapit debug
             Logger.Information("Loading screenshot from file for snapit");
-            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for snapit", 0));
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for snapit"));
             await LoadScreenshot(ScreenshotType.SNAPIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
@@ -290,14 +303,14 @@ public class Main
         {
             //master debug
             Logger.Information("Loading screenshot from file for masterit");
-            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for masterit", 0));
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for masterit"));
             await LoadScreenshot(ScreenshotType.MASTERIT);
         }
         else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
         {
             //normal debug
             Logger.Information("Loading screenshot from file");
-            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot", 0));
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot"));
             await LoadScreenshot(ScreenshotType.NORMAL);
         }
         else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
@@ -311,18 +324,18 @@ public class Main
         {
             //Searchit
             Logger.Information("Starting search it");
-            await _mediator.Publish(new UpdateStatus("Starting search it", 0));
+            await _mediator.Publish(new UpdateStatus("Starting search it"));
             SearchIt.Start(() => _encryptedDataService.IsJwtLoggedIn());
         }
         else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
         {
             //masterit
             Logger.Information("Starting master it");
-            await _mediator.Publish(new UpdateStatus("Starting master it", 0));
+            await _mediator.Publish(new UpdateStatus("Starting master it"));
             using var bigScreenshot = await OCR.CaptureScreenshot();
             OCR.ProcessProfileScreen(bigScreenshot);
         }
-        else if (_settings.Debug || _process.IsRunning)
+        else if (_settings.Debug || _processFinder.IsRunning)
         {
             await OCR.ProcessRewardScreen();
         }
@@ -353,7 +366,7 @@ public class Main
         }
         else if (key == MouseButton.Left
                  && Overlay.RewardsDisplaying
-                 && _process is { Warframe.HasExited: false, GameIsStreamed: false })
+                 && _processFinder is { Warframe.HasExited: false, GameIsStreamed: false })
         {
             if (_settings.Display != Display.Overlay
                 && _settings is { AutoList: false, AutoCSV: false, AutoCount: false })
@@ -385,7 +398,7 @@ public class Main
         if (SnapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
         {
             SnapItOverlayWindow.CloseOverlay();
-            await _mediator.Publish(new UpdateStatus("Snap-It closed", 0));
+            await _mediator.Publish(new UpdateStatus("Snap-It closed"));
             return;
         }
 
@@ -452,7 +465,7 @@ public class Main
 
                                 //Get the path of specified file
                                 var image = new Bitmap(file);
-                                _windowInfo.UseImage(image);
+                                _windowInfoService.UseImage(image);
                                 await OCR.ProcessRewardScreen(image);
                                 break;
                             }
@@ -461,7 +474,7 @@ public class Main
                                 Logger.Debug("Testing snapit on file. name={File}", file);
 
                                 var image = new Bitmap(file);
-                                _windowInfo.UseImage(image);
+                                _windowInfoService.UseImage(image);
                                 await OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
                                 break;
                             }
@@ -470,7 +483,7 @@ public class Main
                                 Logger.Debug("Testing masterit on file. name={File}", file);
 
                                 var image = new Bitmap(file);
-                                _windowInfo.UseImage(image);
+                                _windowInfoService.UseImage(image);
                                 OCR.ProcessProfileScreen(image);
                                 break;
                             }

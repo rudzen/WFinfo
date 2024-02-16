@@ -76,6 +76,7 @@ public partial class App : Application
                     services.TryAddSingleton<ILogCapture, LogCapture>();
                     services.TryAddSingleton<ILowLevelListener, LowLevelListener>();
 
+                    services.TryAddSingleton<Main>();
                     services.TryAddSingleton<Data>();
                     services.TryAddSingleton<ITesseractService, TesseractService>();
                     services.TryAddSingleton<ApplicationSettings>();
@@ -127,15 +128,13 @@ public partial class App : Application
 
     private async void Application_Startup(object sender, StartupEventArgs e)
     {
-        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
 
         await _host.StartAsync();
 
         await CustomEntrypoint.Run(AppDomain.CurrentDomain, _host.Services);
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-
         // well because so far, the original author(s) decided to intertwine things
-        WFInfo.MainWindow.INSTANCE = mainWindow;
         mainWindow.Show();
     }
 
