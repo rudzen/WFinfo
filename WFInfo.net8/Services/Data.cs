@@ -6,6 +6,8 @@ using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
+using Akka.Util;
+using DotNext;
 using Mediator;
 using Microsoft.Extensions.ObjectPool;
 using Newtonsoft.Json;
@@ -21,7 +23,7 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services;
 
-public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
+public sealed partial class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Data>();
 
@@ -1025,7 +1027,9 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
                 multipleLowest = false;
             }
             else if (val == low)
+            {
                 multipleLowest = true;
+            }
 
             //If both
             if (val == low && lowest.StartsWith("Gara") && prop.Key.StartsWith("Ivara"))
@@ -1036,7 +1040,8 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
         }
 
         if (!suppressLogging)
-            Logger.Debug("Found part(" + low + "): \"" + lowestUnfiltered + "\" from \"" + name + "\"");
+            Logger.Debug("Found part({Low}): \"{Unfiltered}\" from \"{Name}\"", low, lowestUnfiltered, name);
+
         return lowest;
     }
 
@@ -1353,7 +1358,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
         var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
         var responseBody = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
-        var rgxBody = new Regex("\"check_code\": \".*?\"");
+        var rgxBody = CheckCodeRegEx();
         var censoredResponse = rgxBody.Replace(responseBody, "\"check_code\": \"REDACTED\"");
         Logger.Debug(censoredResponse);
         if (response.IsSuccessStatusCode)
@@ -1433,7 +1438,8 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
     {
         foreach (var item in headers)
         {
-            if (!item.Key.Contains("authorization", StringComparison.CurrentCultureIgnoreCase)) continue;
+            if (!item.Key.Contains("authorization", StringComparison.CurrentCultureIgnoreCase))
+                continue;
             var temp = item.Value.First();
             _encryptedDataService.JWT = temp[4..];
             return;
@@ -1454,7 +1460,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
             using var request = new HttpRequestMessage();
             request.RequestUri = new Uri("https://api.warframe.market/v1/profile/orders");
             request.Method = HttpMethod.Post;
-            var itemId = PrimeItemToItemID(primeItem);
+            var itemId = PrimeItemToItemId(primeItem);
             var json =
                 $"{{\"order_type\":\"sell\",\"item_id\":\"{itemId}\",\"platinum\":{platinum},\"quantity\":{quantity}}}";
             request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
@@ -1475,7 +1481,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
         }
         catch (Exception e)
         {
-            Logger.Debug($"ListItem: {e.Message} ");
+            Logger.Error(e, "ListItem");
             return false;
         }
     }
@@ -1525,7 +1531,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
     /// </summary>
     /// <param name="primeItem">Human friendly name of prime item</param>
     /// <returns>Warframe.market prime item ID</returns>
-    private string PrimeItemToItemID(string primeItem)
+    private string PrimeItemToItemId(string primeItem)
     {
         foreach (var marketItem in MarketItems)
         {
@@ -1633,7 +1639,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
     /// </summary>
     /// <param name="primeName"></param>
     /// <returns></returns>
-    public async Task<JObject?> GetTopListings(string primeName)
+    public async Task<Optional<JObject>> GetTopListings(string primeName)
     {
         var urlName = GetUrlName(primeName);
 
@@ -1659,8 +1665,9 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
         catch (Exception exception)
         {
             Logger.Error(exception, "GetTopListings");
-            return null;
         }
+
+        return Optional<JObject>.None;
     }
 
     /// <summary>
@@ -1704,7 +1711,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
     /// </summary>
     /// <param name="primeName"></param>
     /// <returns>Quantity of prime named listed on the site</returns>
-    public async Task<JToken?> GetCurrentListing(string primeName)
+    public async Task<Optional<JToken>> GetCurrentListing(string primeName)
     {
         try
         {
@@ -1723,24 +1730,31 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
             var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
             var payload = JsonConvert.DeserializeObject<JObject>(body);
             var sellOrders = (JArray)payload?["payload"]?["sell_orders"];
-            var itemID = PrimeItemToItemID(primeName);
+            var itemId = PrimeItemToItemId(primeName);
 
-            if (sellOrders == null)
-                throw new Exception("No sell orders found: " + payload);
+            if (sellOrders is null)
+                throw new Exception($"No sell orders found: {payload}");
 
             foreach (var listing in sellOrders)
             {
-                if (itemID == (string)listing?["item"]?["id"])
+                var itemToken = listing["item"];
+                var idToken = itemToken?["id"];
+
+                if (idToken is null)
+                    continue;
+
+                var id = idToken.ToObject<string>();
+
+                if (itemId == id)
                     return listing;
             }
-
-            return null; //The requested item was not found, but don't throw
         }
         catch (Exception e)
         {
-            Logger.Debug("GetCurrentListing: " + e.Message);
-            return null;
+            Logger.Error(e, "GetCurrentListing");
         }
+
+        return Optional.None<JToken>();
     }
 
     public bool GetSocketAliveStatus()
@@ -1823,4 +1837,7 @@ public sealed class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
         LogChanged(logCaptureLineChange.Line);
         return ValueTask.CompletedTask;
     }
+
+    [GeneratedRegex("\"check_code\": \".*?\"", RegexOptions.Compiled)]
+    private static partial Regex CheckCodeRegEx();
 }

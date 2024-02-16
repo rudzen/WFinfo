@@ -69,7 +69,7 @@ public static class DataTypeExtensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int Index(this DataTypes cet)
     {
-        // If no bit is set or more than one bit is set, return null
+        // If no bit is set or more than one bit is set, return -1
         if (cet == DataTypes.None || cet.MoreThanOne())
             return -1;
 

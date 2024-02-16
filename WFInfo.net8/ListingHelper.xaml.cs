@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json.Linq;
@@ -385,15 +384,15 @@ public partial class ListingHelper : Window
 
         Logger.Debug("Getting listing for {PrimeName}", primeName);
         var listings = new List<MarketListing>();
-        var results = await Main.DataBase.GetTopListings(primeName);
+        var possibleTopListings = await Main.DataBase.GetTopListings(primeName);
 
-        if (results is null)
+        if (!possibleTopListings.TryGet(out var topListings))
         {
             Log.Debug("No results found for {PrimeName}", primeName);
             return listings;
         }
 
-        var payload = results["payload"];
+        var payload = topListings["payload"];
 
         if (payload is null)
         {
@@ -419,10 +418,13 @@ public partial class ListingHelper : Window
     /// Tries to post the current screen to wfm
     /// </summary>
     /// <returns>if it succeeded</returns>
-    private async Task<bool> PlaceListing(string primeItem, int platinum)
+    private static async Task<bool> PlaceListing(string primeItem, int platinum)
     {
-        var listing = await Main.DataBase.GetCurrentListing(primeItem);
-        if (listing == null) return await Main.DataBase.ListItem(primeItem, platinum, 1);
+        var potentialListing = await Main.DataBase.GetCurrentListing(primeItem);
+
+        if (!potentialListing.TryGet(out var listing))
+            return await Main.DataBase.ListItem(primeItem, platinum, 1);
+
         //listing already exists, thus update it
         var listingId = listing["id"].ToString();
         var quantity = (int)listing["quantity"];

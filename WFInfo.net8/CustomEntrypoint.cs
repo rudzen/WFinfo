@@ -345,16 +345,14 @@ public sealed class CustomEntrypoint
         var assyName = new AssemblyName(args.Name).Name;
 
         if (assyName is null)
-            return null;
+            return null!;
 
         var newPath = Path.Combine(probingPath, assyName);
-        if (!newPath.EndsWith(".dll"))
+
+        if (!Path.HasExtension(newPath))
             newPath += ".dll";
 
-        if (File.Exists(newPath))
-            return Assembly.Load(newPath);
-
-        return null;
+        return File.Exists(newPath) ? Assembly.Load(newPath) : null!;
     }
 
     // From: https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
@@ -365,15 +363,19 @@ public sealed class CustomEntrypoint
         var assemblyName = new AssemblyName(args.Name);
 
         var path = assemblyName.Name + ".dll";
-        if (assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture) == false)
+        if (!assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture))
             path = $@"{assemblyName.CultureInfo}\{path}";
 
         using var stream = executingAssembly.GetManifestResourceStream(path);
-        if (stream == null)
-            return null;
+        if (stream is null)
+            return null!;
 
         var assemblyRawBytes = new byte[stream.Length];
-        stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
+        var read = stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
+
+        if (read != assemblyRawBytes.Length)
+            return null!;
+
         return Assembly.Load(assemblyRawBytes);
     }
 }
