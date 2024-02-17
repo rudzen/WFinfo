@@ -72,7 +72,8 @@ public partial class Login : Window
             Password.Password = string.Empty;
             Main.DataBase.rememberMe = RememberMe.IsChecked.HasValue && RememberMe.IsChecked.Value;
 
-            Hide(); //dispose of window once done
+            //dispose of window once done
+            Hide();
         }
         catch (Exception ex)
         {
@@ -137,9 +138,9 @@ public partial class Login : Window
 
         if (Main.SearchIt.IsActive)
         {
-            Main.SearchIt.placeholder.Content = "Logged in";
+            Main.SearchIt.Placeholder.Content = "Logged in";
             Main.SearchIt.IsInUse = true;
-            Main.SearchIt.searchField.Focusable = true;
+            Main.SearchIt.SearchField.Focusable = true;
         }
     }
 

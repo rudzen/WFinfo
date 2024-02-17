@@ -44,7 +44,7 @@ public sealed class LowLevelListener : ILowLevelListener
         public IntPtr dwExtraInfo;
     }
 
-    private bool hooked = false;
+    private bool hooked;
 
     public void Hook()
     {
@@ -106,12 +106,12 @@ public sealed class LowLevelListener : ILowLevelListener
         return CallNextHookEx(_hookIDKeyboard, nCode, wParam, lParam);
     }
 
-    protected static void OnKeyAction(Key key)
+    private static void OnKeyAction(Key key)
     {
         KeyEvent?.Invoke(key);
     }
 
-    protected static void OnMouseAction(MouseButton key)
+    private static void OnMouseAction(MouseButton key)
     {
         MouseEvent?.Invoke(key);
     }
@@ -149,8 +149,6 @@ public sealed class LowLevelListener : ILowLevelListener
                 : //https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-xbuttondown
                 var button = hookStruct.pt.y == 1 ? MouseButton.XButton1 : MouseButton.XButton2;
                 OnMouseAction(button);
-                break;
-            default:
                 break;
         }
 

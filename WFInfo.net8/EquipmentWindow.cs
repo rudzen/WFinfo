@@ -43,11 +43,11 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
         if (primeTypes is null)
             return;
 
-        foreach (TreeNode category in primeTypes.Values)
+        foreach (var category in primeTypes.Values)
         {
-            foreach (TreeNode prime in category.Children)
+            foreach (var prime in category.Children)
             {
-                foreach (TreeNode part in prime.Children)
+                foreach (var part in prime.Children)
                 {
                     part.ReloadPartOwned(prime);
                 }
@@ -64,19 +64,20 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
         primeTypes = new Dictionary<string, TreeNode>();
         foreach (KeyValuePair<string, JToken> prime in Main.DataBase.EquipmentData)
         {
-            if (prime.Key.Contains("Prime"))
+            var primeIndex = prime.Key.IndexOf("Prime");
+            if (primeIndex != -1)
             {
-                string primeName = prime.Key[..(prime.Key.IndexOf("Prime") + 5)];
-                string primeType = prime.Value["type"].ToObject<string>();
-                bool mastered = prime.Value["mastered"].ToObject<bool>();
+                var primeName = prime.Key[..(primeIndex + 5)];
+                var primeType = prime.Value["type"].ToObject<string>();
+                var mastered = prime.Value["mastered"].ToObject<bool>();
                 if (primeType.Contains("Sentinel") || primeType.Contains("Skin"))
                     primeType = "Companion";
                 else if (primeType.Contains("Arch")) //Future proofing for Arch-Guns and Arch-Melee
                     primeType = "Archwing";
 
-                if (!primeTypes.TryGetValue(primeType, out TreeNode? value))
+                if (!primeTypes.TryGetValue(primeType, out var value))
                 {
-                    TreeNode newType = new TreeNode(primeType, string.Empty, false, 0);
+                    var newType = new TreeNode(primeType, string.Empty, false, 0);
                     if (!types.Contains(primeType))
                         types.Add(primeType);
                     newType.SortNum = types.IndexOf(primeType);
@@ -84,36 +85,36 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
                     primeTypes[primeType] = value;
                 }
 
-                TreeNode type = value;
-                TreeNode primeNode = new TreeNode(primeName, prime.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "",
+                var type = value;
+                var primeNode = new TreeNode(primeName, prime.Value["vaulted"].ToObject<bool>() ? "Vaulted" : string.Empty,
                     mastered, 1);
                 primeNode.MakeClickable(prime.Key);
                 foreach (KeyValuePair<string, JToken> primePart in prime.Value["parts"].ToObject<JObject>())
                 {
-                    string partName = primePart.Key;
+                    var partName = primePart.Key;
                     if (primePart.Key.IndexOf("Prime") + 6 < primePart.Key.Length)
                         partName = partName[(primePart.Key.IndexOf("Prime") + 6)..];
 
                     if (partName.Contains("Kubrow"))
                         partName = partName[(partName.IndexOf(" Blueprint") + 1)..];
-                    TreeNode partNode = new TreeNode(partName,
+                    var partNode = new TreeNode(partName,
                         primePart.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "", false, 0);
                     partNode.MakeClickable(primePart.Key);
-                    if (Main.DataBase.MarketData.TryGetValue(primePart.Key.ToString(), out JToken marketValues))
+                    if (Main.DataBase.MarketData.TryGetValue(primePart.Key.ToString(), out var marketValues))
                         partNode.SetPrimePart(marketValues["plat"].ToObject<double>(),
                             marketValues["ducats"].ToObject<int>(), primePart.Value["owned"].ToObject<int>(),
                             primePart.Value["count"].ToObject<int>());
-                    else if (Main.DataBase.EquipmentData.TryGetValue(primePart.Key, out JToken job))
+                    else if (Main.DataBase.EquipmentData.TryGetValue(primePart.Key, out var job))
                     {
-                        double plat = 0.0;
-                        double ducats = 0.0;
+                        var plat = 0.0;
+                        var ducats = 0.0;
                         foreach (KeyValuePair<string, JToken> subPartPart in job["parts"].ToObject<JObject>())
                         {
                             if (Main.DataBase.MarketData.TryGetValue(subPartPart.Key.ToString(),
-                                    out JToken subMarketValues))
+                                    out var subMarketValues))
                             {
-                                int temp = subPartPart.Value["count"].ToObject<int>();
-                                plat += temp   * subMarketValues["plat"].ToObject<double>();
+                                var temp = subPartPart.Value["count"].ToObject<int>();
+                                plat += temp * subMarketValues["plat"].ToObject<double>();
                                 ducats += temp * subMarketValues["ducats"].ToObject<double>();
                             }
                         }
@@ -138,9 +139,9 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
             }
         }
 
-        foreach (string typeName in types)
+        foreach (var typeName in types)
         {
-            TreeNode primeType = primeTypes[typeName];
+            var primeType = primeTypes[typeName];
             primeType.ResetFilter();
             primeType.FilterOutVaulted();
             EqmtTree.Items.Add(primeType);
@@ -203,7 +204,7 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
                     break;
             }
 
-            bool i = false;
+            var i = false;
             foreach (TreeNode prime in EqmtTree.Items)
             {
                 i = !i;
@@ -250,20 +251,18 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
         };
     }
 
-    private void TextboxTextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    private void TextboxTextChanged(object sender, TextChangedEventArgs e)
     {
         searchActive = textBox.Text.Length > 0 && textBox.Text != "Filter Terms";
-        if (textBox.IsLoaded)
-        {
-            if (searchActive || (searchText != null && searchText.Length > 0))
-            {
-                if (searchActive)
-                    searchText = textBox.Text.Split(' ');
-                else
-                    searchText = null;
-                StartSearchReapplyTimer();
-            }
-        }
+
+        if (!textBox.IsLoaded)
+            return;
+
+        if (!searchActive && searchText is not { Length: > 0 })
+            return;
+
+        searchText = searchActive ? textBox.Text.Split(' ') : null;
+        StartSearchReapplyTimer();
     }
 
     private void TextBoxFocus(object sender, RoutedEventArgs e)
@@ -281,9 +280,9 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
     private void ToggleShowAllEqmt(object sender, RoutedEventArgs e)
     {
         showAllEqmt = !showAllEqmt;
-        foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
+        foreach (var value in primeTypes.Values)
         {
-            foreach (TreeNode kid in primeType.Value.Children)
+            foreach (var kid in value.Children)
                 kid.TopLevel = showAllEqmt;
         }
 
@@ -299,12 +298,10 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
         if (e.Handled)
             return;
 
-        TreeViewItem tvi = e.OriginalSource as TreeViewItem;
-
-        if (tvi == null)
+        if (e.OriginalSource is not TreeViewItem tvi)
             return;
 
-        tvi.IsExpanded = !tvi.IsExpanded;
+        tvi.IsExpanded ^= true;
         tvi.IsSelected = false;
         e.Handled = true;
     }
@@ -321,27 +318,26 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
 
     private void ExpandAll(bool expand)
     {
-        foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
+        foreach (var primeType in primeTypes)
             primeType.Value.ChangeExpandedTo(expand);
     }
 
     private void RefreshVisibleRelics()
     {
-        int index = 0;
+        var index = 0;
         if (showAllEqmt)
         {
             List<TreeNode> activeNodes = [];
-            foreach (string typeName in types)
+            foreach (var typeName in types)
             {
-                TreeNode primeType = primeTypes[typeName];
-                foreach (TreeNode eqmt in primeType.ChildrenFiltered)
+                var primeType = primeTypes[typeName];
+                foreach (var eqmt in primeType.ChildrenFiltered)
                     activeNodes.Add(eqmt);
             }
 
-
-            for (index = 0; index < EqmtTree.Items.Count;)
+            while (index < EqmtTree.Items.Count)
             {
-                TreeNode eqmt = (TreeNode)EqmtTree.Items.GetItemAt(index);
+                var eqmt = (TreeNode)EqmtTree.Items.GetItemAt(index);
                 if (!activeNodes.Contains(eqmt))
                     EqmtTree.Items.RemoveAt(index);
                 else
@@ -351,17 +347,17 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
                 }
             }
 
-            foreach (TreeNode eqmt in activeNodes)
+            foreach (var eqmt in activeNodes)
                 EqmtTree.Items.Add(eqmt);
 
             SortBoxChanged(null, null);
         }
         else
         {
-            foreach (string typeName in types)
+            foreach (var typeName in types)
             {
-                TreeNode primeType = primeTypes[typeName];
-                int curr = EqmtTree.Items.IndexOf(primeType);
+                var primeType = primeTypes[typeName];
+                var curr = EqmtTree.Items.IndexOf(primeType);
                 if (primeType.ChildrenFiltered.Count == 0)
                 {
                     if (curr != -1)
@@ -384,7 +380,7 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
 
     private void ReapplyFilters()
     {
-        foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
+        foreach (var primeType in primeTypes)
             primeType.Value.ResetFilter();
 
         if ((bool)vaulted.IsChecked)
@@ -392,7 +388,7 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
                 primeType.Value.FilterOutVaulted(true);
 
         if (searchText != null && searchText.Length != 0)
-            foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
+            foreach (var primeType in primeTypes)
                 primeType.Value.FilterSearchText(searchText, false, true);
 
         RefreshVisibleRelics();

@@ -40,7 +40,7 @@ public sealed class ApplicationSettings
     [JsonIgnore]
     public Point MainWindowLocation
     {
-        get => new Point(MainWindowLocation_X, MainWindowLocation_Y);
+        get => new(MainWindowLocation_X, MainWindowLocation_Y);
         set
         {
             MainWindowLocation_X = value.X;
@@ -57,11 +57,11 @@ public sealed class ApplicationSettings
     public string ActivationKey { get; set; } = "Snapshot";
 
     [JsonIgnore]
-    public Key? ActivationKeyKey => Enum.TryParse<Key>(ActivationKey, out var res) ? res : (Key?)null;
+    public Key? ActivationKeyKey => Enum.TryParse<Key>(ActivationKey, out var res) ? res : null;
 
     [JsonIgnore]
     public MouseButton? ActivationMouseButton =>
-        Enum.TryParse<MouseButton>(ActivationKey, out var res) ? res : (MouseButton?)null;
+        Enum.TryParse<MouseButton>(ActivationKey, out var res) ? res : null;
 
     public Key DebugModifierKey { get; set; } = Key.LeftShift;
     public Key SearchItModifierKey { get; set; } = Key.OemTilde;

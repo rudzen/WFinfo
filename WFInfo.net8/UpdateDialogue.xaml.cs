@@ -79,7 +79,7 @@ public partial class UpdateDialogue : Window
         {
             e.Handled = true;
             if (AutoUpdater.DownloadUpdate(_updateInfo))
-                WFInfo.MainWindow.INSTANCE.Close();
+                MainWindow.INSTANCE.Close();
         }
         catch (Exception exception)
         {

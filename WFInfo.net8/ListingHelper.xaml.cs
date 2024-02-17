@@ -327,14 +327,12 @@ public partial class ListingHelper : Window
     /// <returns>the data for an entire "Create listing" screen</returns>
     public async Task<RewardCollection> GetRewardCollection(List<string> primeNames)
     {
+        ArgumentNullException.ThrowIfNull(primeNames);
+
         var platinumValues = new List<short>(4);
         var marketListings = new List<List<MarketListing>>(5);
         var index = SelectedRewardIndex;
         SelectedRewardIndex = 0;
-        if (primeNames == null)
-        {
-            throw new ArgumentNullException(nameof(primeNames));
-        }
 
         foreach (var primeItem in primeNames)
         {
@@ -348,8 +346,8 @@ public partial class ListingHelper : Window
             {
                 Application.Current.Dispatcher.InvokeIfRequired(() =>
                 {
-                    Main.SearchIt.placeholder.Content = $"Could not find {primeItem}";
-                    Main.SearchIt.searchField.Text = string.Empty;
+                    Main.SearchIt.Placeholder.Content = $"Could not find {primeItem}";
+                    Main.SearchIt.SearchField.Text = string.Empty;
                 });
             }
         }
@@ -446,23 +444,16 @@ public partial class ListingHelper : Window
 /// Class to represent a single "
 /// " of the create listing screen, consisting of up to 4 possible rewards for which are unique plat, quantity and market listings
 /// </summary>
-public class RewardCollection
+public class RewardCollection(
+    List<string> primeNames,
+    List<short> platinumValues,
+    List<List<MarketListing>> marketListings,
+    short rewardIndex)
 {
-    public List<string> PrimeNames { get; set; } =
-        new List<string>(4); // the reward items in case user wants to change selection
-
-    public List<short> PlatinumValues { get; set; } = new List<short>(4);
-    public List<List<MarketListing>> MarketListings { get; set; } = new List<List<MarketListing>>(5);
-    public short RewardIndex { get; set; }
-
-    public RewardCollection(List<string> primeNames, List<short> platinumValues,
-        List<List<MarketListing>> marketListings, short rewardIndex)
-    {
-        PrimeNames = primeNames;
-        PlatinumValues = platinumValues;
-        MarketListings = marketListings;
-        RewardIndex = rewardIndex;
-    }
+    public List<string> PrimeNames { get; set; } = primeNames; // the reward items in case user wants to change selection
+    public List<short> PlatinumValues { get; set; } = platinumValues;
+    public List<List<MarketListing>> MarketListings { get; set; } = marketListings;
+    public short RewardIndex { get; set; } = rewardIndex;
 
     /// <summary>
     /// Gets a human friendly version back for logging.
@@ -479,7 +470,6 @@ public class RewardCollection
 
             msg += $"Prime item: \"{item}\", Platinum value: \"{PlatinumValues[index]}\",  Market listings: \n";
 
-
             msg = MarketListings[index]
                 .Aggregate(msg, (current, listing) => current + (listing.ToHumanString() + "\n"));
         }
@@ -491,18 +481,11 @@ public class RewardCollection
 /// <summary>
 /// Class to represent a single listing of an item, usually comes in groups of 5
 /// </summary>
-public class MarketListing
+public class MarketListing(short platinum, short amount, short reputation)
 {
-    public short Platinum { get; set; }   // plat amount of listing
-    public short Amount { get; set; }     //amount user lists
-    public short Reputation { get; set; } // user's reputation
-
-    public MarketListing(short platinum, short amount, short reputation)
-    {
-        Platinum = platinum;
-        Amount = amount;
-        Reputation = reputation;
-    }
+    public short Platinum { get; set; } = platinum; // plat amount of listing
+    public short Amount { get; set; } = amount; //amount user lists
+    public short Reputation { get; set; } = reputation; // user's reputation
 
     /// <summary>
     /// Gets a human friendly version back for logging.
@@ -510,6 +493,6 @@ public class MarketListing
     /// <returns></returns>
     public string ToHumanString()
     {
-        return "Platinum: " + Platinum + " Amount: " + Amount + " Reputation: " + Reputation;
+        return $"Platinum: {Platinum} Amount: {Amount} Reputation: {Reputation}";
     }
 }

@@ -44,7 +44,7 @@ public class Main
     public static SnapItOverlay SnapItOverlayWindow { get; private set; }
     public static SearchIt SearchIt { get; set; }
     public static Login Login { get; set; }
-    public static ListingHelper ListingHelper { get; set; } = new();
+    public static ListingHelper ListingHelper { get; } = new();
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
@@ -115,7 +115,7 @@ public class Main
         SnapItOverlayWindow = snapItOverlay;
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
-            _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
+            _overlays = [new Overlay(_settings), new Overlay(_settings), new Overlay(_settings), new Overlay(_settings)];
 
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
             AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
@@ -281,7 +281,7 @@ public class Main
         if (Keyboard.IsKeyDown(Key.Delete))
         {
             //Close all overlays if hotkey + delete is held down
-            foreach (Window overlay in App.Current.Windows)
+            foreach (Window overlay in Application.Current.Windows)
             {
                 // TODO (rudzen) : this is a hack, we should not be checking for the type NAME of the window
 
@@ -363,7 +363,7 @@ public class Main
                     return;
                 }
 
-                SearchIt.searchField.Focus();
+                SearchIt.SearchField.Focus();
                 return;
             }
 
@@ -417,7 +417,7 @@ public class Main
                 return;
             }
 
-            SearchIt.searchField.Focus();
+            SearchIt.SearchField.Focus();
             return;
         }
 

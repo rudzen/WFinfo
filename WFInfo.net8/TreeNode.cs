@@ -86,7 +86,7 @@ public partial class TreeNode : INPC
     private static Color BACK_COLOR = Color.FromRgb(27, 27, 27);
     private static Color BACK_U_COLOR = Color.FromRgb(32, 32, 32);
     public static Brush BACK_D_BRUSH = new SolidColorBrush(BACK_D_COLOR);
-    public static Brush BACK_BRUSH = new SolidColorBrush(BACK_COLOR);
+    private static Brush BACK_BRUSH = new SolidColorBrush(BACK_COLOR);
     public static Brush BACK_U_BRUSH = new SolidColorBrush(BACK_U_COLOR);
 
     public TreeNode(string name, string vaulted, bool mastered, byte showAll)
@@ -164,7 +164,7 @@ public partial class TreeNode : INPC
         set => SetField(ref _backcolor, value);
     }
 
-    private Thickness _col1margin = new Thickness(0, 0, 18, 0);
+    private Thickness _col1margin = new(0, 0, 18, 0);
 
     public Thickness Col1_Margin1
     {
@@ -172,7 +172,7 @@ public partial class TreeNode : INPC
         set => SetField(ref _col1margin, value);
     }
 
-    private Thickness _col1margin2 = new Thickness(0, 0, 0, 0);
+    private Thickness _col1margin2 = new(0, 0, 0, 0);
 
     public Thickness Col1_Margin2
     {
@@ -180,7 +180,7 @@ public partial class TreeNode : INPC
         set => SetField(ref _col1margin2, value);
     }
 
-    private Thickness _col2margin = new Thickness(0, 0, 18, 0);
+    private Thickness _col2margin = new(0, 0, 18, 0);
 
     public Thickness Col2_Margin1
     {
@@ -188,7 +188,7 @@ public partial class TreeNode : INPC
         set => SetField(ref _col2margin, value);
     }
 
-    private Thickness _col2margin2 = new Thickness(0, 0, 0, 0);
+    private Thickness _col2margin2 = new(0, 0, 0, 0);
 
     public Thickness Col2_Margin2
     {
@@ -538,80 +538,80 @@ public partial class TreeNode : INPC
     {
         foreach (var node in Children)
             node.Sort(index, isRelics, depth + 1);
-        if (Children.Count > 0)
+        if (Children.Count <= 0)
+            return;
+
+        if (isRelics)
         {
-            if (isRelics)
-            {
-                if (depth == 0) // Relics
-                {
-                    switch (index)
-                    {
-                        // 0 - Name
-                        // 1 - Average intact plat
-                        // 2 - Average radiant plat
-                        // 3 - Difference (radiant-intact)
-                        case 1:
-                            Children = Children.OrderByDescending(p => p._intact).ToList();
-                            ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p._intact).ToList();
-                            break;
-                        case 2:
-                            Children = Children.OrderByDescending(p => p._radiant).ToList();
-                            ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p._radiant).ToList();
-                            break;
-                        case 3:
-                            Children = Children.OrderByDescending(p => p._bonus).ToList();
-                            ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p._bonus).ToList();
-                            break;
-                        default:
-                            Children = Children.OrderBy(p => PadNumbers(p.Name)).ToList();
-                            ChildrenFiltered = ChildrenFiltered.OrderBy(p => PadNumbers(p.Name)).ToList();
-                            break;
-                    }
-                }
-                else // Parts
-                {
-                    Children = Children.OrderByDescending(p => p.NameColor.G).ToList();
-                    ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.NameColor.G).ToList();
-                }
-            }
-            else
+            if (depth == 0) // Relics
             {
                 switch (index)
                 {
                     // 0 - Name
-                    // 1 - Plat
-                    // 2 - Unowned (Capped)
-                    // 3 - Owned (Uncapped)
-                    // 4 - Owned Plat Value
-
+                    // 1 - Average intact plat
+                    // 2 - Average radiant plat
+                    // 3 - Difference (radiant-intact)
                     case 1:
-                        Children = Children.OrderByDescending(p => p.Plat_Val).ToList();
-                        ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Plat_Val).ToList();
+                        Children = Children.OrderByDescending(p => p._intact).ToList();
+                        ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p._intact).ToList();
                         break;
                     case 2:
-                        Children = Children.OrderBy(p => p.Owned_Capped_Val).ThenBy(p => p.Diff_Val).ToList();
-                        ChildrenFiltered = ChildrenFiltered
-                                           .OrderBy(p => p.Owned_Capped_Val)
-                                           .ThenBy(p => p.Diff_Val)
-                                           .ToList();
+                        Children = Children.OrderByDescending(p => p._radiant).ToList();
+                        ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p._radiant).ToList();
                         break;
                     case 3:
-                        Children = Children.OrderByDescending(p => p.Owned_Val).ToList();
-                        ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Owned_Val).ToList();
-                        break;
-                    case 4:
-                        Children = Children.OrderByDescending(p => p.Owned_Plat_Val).ToList();
-                        ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Owned_Plat_Val).ToList();
-                        break;
-                    case 5:
-                        Children = Children.OrderByDescending(p => p.Owned_Ducat_Val).ToList();
-                        ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Owned_Ducat_Val).ToList();
+                        Children = Children.OrderByDescending(p => p._bonus).ToList();
+                        ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p._bonus).ToList();
                         break;
                     default:
                         Children = Children.OrderBy(p => PadNumbers(p.Name)).ToList();
                         ChildrenFiltered = ChildrenFiltered.OrderBy(p => PadNumbers(p.Name)).ToList();
                         break;
                 }
+            }
+            else // Parts
+            {
+                Children = Children.OrderByDescending(p => p.NameColor.G).ToList();
+                ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.NameColor.G).ToList();
+            }
+        }
+        else
+        {
+            switch (index)
+            {
+                // 0 - Name
+                // 1 - Plat
+                // 2 - Unowned (Capped)
+                // 3 - Owned (Uncapped)
+                // 4 - Owned Plat Value
+
+                case 1:
+                    Children = Children.OrderByDescending(p => p.Plat_Val).ToList();
+                    ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Plat_Val).ToList();
+                    break;
+                case 2:
+                    Children = Children.OrderBy(p => p.Owned_Capped_Val).ThenBy(p => p.Diff_Val).ToList();
+                    ChildrenFiltered = ChildrenFiltered
+                                       .OrderBy(p => p.Owned_Capped_Val)
+                                       .ThenBy(p => p.Diff_Val)
+                                       .ToList();
+                    break;
+                case 3:
+                    Children = Children.OrderByDescending(p => p.Owned_Val).ToList();
+                    ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Owned_Val).ToList();
+                    break;
+                case 4:
+                    Children = Children.OrderByDescending(p => p.Owned_Plat_Val).ToList();
+                    ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Owned_Plat_Val).ToList();
+                    break;
+                case 5:
+                    Children = Children.OrderByDescending(p => p.Owned_Ducat_Val).ToList();
+                    ChildrenFiltered = ChildrenFiltered.OrderByDescending(p => p.Owned_Ducat_Val).ToList();
+                    break;
+                default:
+                    Children = Children.OrderBy(p => PadNumbers(p.Name)).ToList();
+                    ChildrenFiltered = ChildrenFiltered.OrderBy(p => PadNumbers(p.Name)).ToList();
+                    break;
             }
         }
     }
@@ -790,7 +790,7 @@ public partial class TreeNode : INPC
     }
 
     public Visibility IsVisible =>
-        (_forceVisibility || current == null || current.IsExpanded || TopLevel)
+        _forceVisibility || current == null || current.IsExpanded || TopLevel
             ? Visibility.Visible
             : Visibility.Collapsed;
 
@@ -802,7 +802,7 @@ public partial class TreeNode : INPC
         set
         {
             SetField(ref _forceVisibility, value);
-            RaisePropertyChanged("IsVisible");
+            RaisePropertyChanged(nameof(IsVisible));
         }
     }
 
@@ -815,7 +815,7 @@ public partial class TreeNode : INPC
         {
             SetField(ref _isExpanded, value);
             foreach (var kid in Children)
-                kid.RaisePropertyChanged("IsVisible");
+                kid.RaisePropertyChanged(nameof(IsVisible));
         }
     }
 
@@ -853,7 +853,7 @@ public partial class TreeNode : INPC
 
     public override string ToString()
     {
-        return Era + " " + Name;
+        return $"{Era} {Name}";
     }
 
     private ICommand _decrement;
@@ -894,7 +894,7 @@ public partial class TreeNode : INPC
     {
         if (current.dataRef != null)
         {
-            await System.Threading.Tasks.Task.Run(() => DecrementPartThreaded(current));
+            await Task.Run(() => DecrementPartThreaded(current));
         }
     }
 
@@ -902,11 +902,11 @@ public partial class TreeNode : INPC
     {
         if (current.dataRef != null)
         {
-            await System.Threading.Tasks.Task.Run(() => IncrementPartThreaded(current));
+            await Task.Run(() => IncrementPartThreaded(current));
         }
     }
 
-    public async void MarkCompleteFunc()
+    private async void MarkCompleteFunc()
     {
         await Task.Run(MarkSetAsComplete);
 

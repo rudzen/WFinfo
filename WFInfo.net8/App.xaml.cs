@@ -153,7 +153,7 @@ public partial class App : Application
         }
     }
 
-    private static Serilog.ILogger CreateLogger(IConfiguration configuration)
+    private static ILogger CreateLogger(IConfiguration configuration)
     {
         const string defaultTemplate =
             "[{Timestamp:HH:mm:ss} T:{ThreadId} {Level:u3}] {Message:lj} {SourceContext}{NewLine}{Exception}";

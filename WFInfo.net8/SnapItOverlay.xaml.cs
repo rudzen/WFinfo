@@ -52,22 +52,22 @@ public partial class SnapItOverlay : Window
     private void canvas_MouseDown(object sender, MouseButtonEventArgs e)
     {
         //Set the start point
-        _startDrag = e.GetPosition(canvas);
+        _startDrag = e.GetPosition(Canvas);
 
         //Move the selection marquee on top of all other objects in canvas
-        Panel.SetZIndex(rectangle, canvas.Children.Count);
+        Panel.SetZIndex(Rectangle, Canvas.Children.Count);
 
         //Capture the mouse
-        if (!canvas.IsMouseCaptured)
-            canvas.CaptureMouse();
-        canvas.Cursor = Cursors.Cross;
+        if (!Canvas.IsMouseCaptured)
+            Canvas.CaptureMouse();
+        Canvas.Cursor = Cursors.Cross;
     }
 
     public void CloseOverlay()
     {
-        rectangle.Width = 0;
-        rectangle.Height = 0;
-        rectangle.RenderTransform = new TranslateTransform(0, 0);
+        Rectangle.Width = 0;
+        Rectangle.Height = 0;
+        Rectangle.RenderTransform = new TranslateTransform(0, 0);
         Topmost = false;
         isEnabled = false;
 
@@ -87,14 +87,14 @@ public partial class SnapItOverlay : Window
     private async void canvas_MouseUp(object sender, MouseButtonEventArgs e)
     {
         // Release the mouse
-        if (canvas.IsMouseCaptured)
-            canvas.ReleaseMouseCapture();
+        if (Canvas.IsMouseCaptured)
+            Canvas.ReleaseMouseCapture();
 
-        canvas.Cursor = Cursors.Arrow;
+        Canvas.Cursor = Cursors.Arrow;
 
-        Logger.Debug("User drew rectangle. point={Point},width={W},height={H}", _startDrag, rectangle.Width, rectangle.Height);
+        Logger.Debug("User drew rectangle. point={Point},width={W},height={H}", _startDrag, Rectangle.Width, Rectangle.Height);
 
-        if (rectangle.Width < 10 || rectangle.Height < 10)
+        if (Rectangle.Width < 10 || Rectangle.Height < 10)
         {
             // Box is smaller than 10x10 and thus will never be able to have any text.
             // Also used as a fail save to prevent the program from crashing if the user makes a 0x0 selection
@@ -108,14 +108,14 @@ public partial class SnapItOverlay : Window
             rect: new Rectangle(
                 x: (int)(_topLeft.X * scaling),
                 y: (int)(_topLeft.Y * scaling),
-                width: (int)(rectangle.Width * scaling),
-                height: (int)(rectangle.Height * scaling)
+                width: (int)(Rectangle.Width * scaling),
+                height: (int)(Rectangle.Height * scaling)
             ),
             format: System.Drawing.Imaging.PixelFormat.DontCare
         );
 
         // try to hide the evidence as fast as possible
-        rectangle.Visibility = Visibility.Hidden;
+        Rectangle.Visibility = Visibility.Hidden;
 
         await OCR.ProcessSnapIt(cutout, tempImage, _topLeft);
 
@@ -124,24 +124,24 @@ public partial class SnapItOverlay : Window
 
     private void canvas_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!canvas.IsMouseCaptured)
+        if (!Canvas.IsMouseCaptured)
             return;
 
-        var currentPoint = e.GetPosition(canvas);
+        var currentPoint = e.GetPosition(Canvas);
 
         // Calculate the top left corner of the rectangle regardless of drag direction
         var x = _startDrag.X < currentPoint.X ? _startDrag.X : currentPoint.X;
         var y = _startDrag.Y < currentPoint.Y ? _startDrag.Y : currentPoint.Y;
 
-        if (rectangle.Visibility == Visibility.Hidden)
-            rectangle.Visibility = Visibility.Visible;
+        if (Rectangle.Visibility == Visibility.Hidden)
+            Rectangle.Visibility = Visibility.Visible;
 
         // Move the rectangle to proper place
         _topLeft = new System.Drawing.Point((int)x, (int)y);
-        rectangle.RenderTransform = new TranslateTransform(x, y);
+        Rectangle.RenderTransform = new TranslateTransform(x, y);
 
         // Set its size
-        rectangle.Width = Math.Abs(e.GetPosition(canvas).X - _startDrag.X);
-        rectangle.Height = Math.Abs(e.GetPosition(canvas).Y - _startDrag.Y);
+        Rectangle.Width = Math.Abs(e.GetPosition(Canvas).X - _startDrag.X);
+        Rectangle.Height = Math.Abs(e.GetPosition(Canvas).Y - _startDrag.Y);
     }
 }

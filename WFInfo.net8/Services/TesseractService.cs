@@ -85,7 +85,7 @@ public class TesseractService : ITesseractService
         Dispose(false);
     }
 
-    private TesseractEngine CreateEngine() => new TesseractEngine(DataPath, _locale)
+    private TesseractEngine CreateEngine() => new(DataPath, _locale)
     {
         DefaultPageSegMode = PageSegMode.SingleBlock
     };

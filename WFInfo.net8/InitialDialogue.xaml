@@ -53,10 +53,10 @@
                     <Setter Property="FontFamily" Value="/WFInfo;component/Resources/Roboto/#Roboto" />
                     <Setter Property="BorderBrush" Value="#FF646464" />
                     <Setter Property="BorderThickness" Value="1" />
-                    <Setter Property="Control.FontWeight" Value="Bold" />
-                    <Setter Property="Control.Padding" Value="0" />
-                    <Setter Property="Control.HorizontalContentAlignment" Value="Center" />
-                    <Setter Property="Control.VerticalContentAlignment" Value="Center" />
+                    <Setter Property="FontWeight" Value="Bold" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="HorizontalContentAlignment" Value="Center" />
+                    <Setter Property="VerticalContentAlignment" Value="Center" />
                     <Setter Property="Panel.ZIndex" Value="500" />
 
                     <Style.Triggers>

@@ -12,7 +12,7 @@ namespace WFInfo;
 /// <summary>
 /// Interaction logic for verifyCount.xaml
 /// </summary>
-public partial class VerifyCount : Window
+public partial class VerifyCount
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<VerifyCount>();
 
@@ -33,26 +33,26 @@ public partial class VerifyCount : Window
 
     public static void ShowVerifyCount(List<InventoryItem> itemList)
     {
-        if (INSTANCE != null)
-        {
-            INSTANCE.latestSnap = itemList;
-            INSTANCE.triggerTime = DateTime.UtcNow;
-            INSTANCE.BackupButton.Visibility = Visibility.Visible;
-            INSTANCE.Show();
-            INSTANCE.Focus();
-        }
+        if (INSTANCE == null)
+            return;
+
+        INSTANCE.latestSnap = itemList;
+        INSTANCE.triggerTime = DateTime.UtcNow;
+        INSTANCE.BackupButton.Visibility = Visibility.Visible;
+        INSTANCE.Show();
+        INSTANCE.Focus();
     }
 
     private void SaveClick(object sender, RoutedEventArgs e)
     {
-        bool saveFailed = false;
+        var saveFailed = false;
         const string prime = "Prime";
         var primes = latestSnap.Where(x => x.Name.Contains(prime));
         foreach (var item in primes)
         {
-            string[] nameParts = item.Name.Split([prime], 2, StringSplitOptions.RemoveEmptyEntries);
-            string primeName = nameParts[0] + prime;
-            string partName = primeName + ((nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow"))
+            var nameParts = item.Name.Split([prime], 2, StringSplitOptions.RemoveEmptyEntries);
+            var primeName = nameParts[0] + prime;
+            var partName = primeName + (nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow")
                 ? nameParts[1].Replace(" Blueprint", string.Empty)
                 : nameParts[1]);
 
@@ -90,14 +90,15 @@ public partial class VerifyCount : Window
         File.Copy(itemPath, backupPath);
         foreach (KeyValuePair<string, JToken> prime in Main.DataBase.EquipmentData)
         {
-            string primeName = prime.Key.Substring(0, prime.Key.IndexOf("Prime") + 5);
-            if (prime.Key.Contains("Prime"))
+            var primeIndex = prime.Key.IndexOf("Prime");
+            if (primeIndex == -1)
+                continue;
+
+            var primeName = prime.Key[..(primeIndex + 5)];
+            foreach (KeyValuePair<string, JToken> primePart in prime.Value["parts"].ToObject<JObject>())
             {
-                foreach (KeyValuePair<string, JToken> primePart in prime.Value["parts"].ToObject<JObject>())
-                {
-                    string partName = primePart.Key;
-                    Main.DataBase.EquipmentData[primeName]["parts"][partName]["owned"] = 0;
-                }
+                var partName = primePart.Key;
+                Main.DataBase.EquipmentData[primeName]["parts"][partName]["owned"] = 0;
             }
         }
 
@@ -111,7 +112,7 @@ public partial class VerifyCount : Window
         Hide();
     }
 
-    // Allows the draging of the window
+    // Allows the dragging of the window
     private new void MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton == MouseButton.Left)

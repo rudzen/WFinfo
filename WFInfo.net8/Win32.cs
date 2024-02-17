@@ -9,7 +9,7 @@ using System.Windows.Media.Imaging;
 namespace WFInfo;
 
 #pragma warning disable CA1060 // Move pinvokes to native methods class
-class Win32
+internal class Win32
 #pragma warning restore CA1060 // Move pinvokes to native methods class
 {
     //If you get 'dllimport unknown'-, then add 'using System.Runtime.InteropServices;'

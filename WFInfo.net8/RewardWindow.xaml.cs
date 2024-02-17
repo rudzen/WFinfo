@@ -28,122 +28,122 @@ public partial class RewardWindow : Window, INotificationHandler<LoadRewardTextD
         switch (notification.PartNumber)
         {
             case 0:
-                firstPartText.Text = notification.Name;
+                FirstPartText.Text = notification.Name;
                 if (notification.HideReward)
                 {
-                    platImage.Visibility = Visibility.Hidden;
-                    setPlatImage.Visibility = Visibility.Hidden;
-                    firstDucatImage.Visibility = Visibility.Hidden;
-                    firstPlatText.Text = string.Empty;
-                    firstSetPlatText.Text = string.Empty;
-                    firstDucatText.Text = string.Empty;
-                    firstVolumeText.Text = string.Empty;
-                    firstVaultedMargin.Visibility = Visibility.Hidden;
-                    firstOwnedText.Text = string.Empty;
+                    PlatImage.Visibility = Visibility.Hidden;
+                    SetPlatImage.Visibility = Visibility.Hidden;
+                    FirstDucatImage.Visibility = Visibility.Hidden;
+                    FirstPlatText.Text = string.Empty;
+                    FirstSetPlatText.Text = string.Empty;
+                    FirstDucatText.Text = string.Empty;
+                    FirstVolumeText.Text = string.Empty;
+                    FirstVaultedMargin.Visibility = Visibility.Hidden;
+                    FirstOwnedText.Text = string.Empty;
                     if (notification.Resize)
                         Width = width;
                     break;
                 }
 
-                platImage.Visibility = Visibility.Visible;
-                setPlatImage.Visibility = Visibility.Visible;
-                firstDucatImage.Visibility = Visibility.Visible;
-                firstPlatText.Text = notification.Plat;
-                firstSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
-                firstDucatText.Text = notification.Ducats;
-                firstVolumeText.Text = $"{notification.Volume} sold last 48hrs";
-                firstVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
-                firstOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
+                PlatImage.Visibility = Visibility.Visible;
+                SetPlatImage.Visibility = Visibility.Visible;
+                FirstDucatImage.Visibility = Visibility.Visible;
+                FirstPlatText.Text = notification.Plat;
+                FirstSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                FirstDucatText.Text = notification.Ducats;
+                FirstVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                FirstVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                FirstOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
                 if (notification.Resize)
                     Width = width;
                 break;
 
             case 1:
-                secondPartText.Text = notification.Name;
+                SecondPartText.Text = notification.Name;
                 if (notification.HideReward)
                 {
-                    platImage1.Visibility = Visibility.Hidden;
-                    setPlatImage1.Visibility = Visibility.Hidden;
-                    firstDucatImage1.Visibility = Visibility.Hidden;
-                    secondPlatText.Text = string.Empty;
-                    secondSetPlatText.Text = string.Empty;
-                    secondDucatText.Text = string.Empty;
-                    secondVolumeText.Text = string.Empty;
-                    secondVaultedMargin.Visibility = Visibility.Hidden;
-                    secondOwnedText.Text = string.Empty;
+                    PlatImage1.Visibility = Visibility.Hidden;
+                    SetPlatImage1.Visibility = Visibility.Hidden;
+                    FirstDucatImage1.Visibility = Visibility.Hidden;
+                    SecondPlatText.Text = string.Empty;
+                    SecondSetPlatText.Text = string.Empty;
+                    SecondDucatText.Text = string.Empty;
+                    SecondVolumeText.Text = string.Empty;
+                    SecondVaultedMargin.Visibility = Visibility.Hidden;
+                    SecondOwnedText.Text = string.Empty;
                     if (notification.Resize)
                         Width = width;
                 }
 
-                platImage1.Visibility = Visibility.Visible;
-                setPlatImage1.Visibility = Visibility.Visible;
-                firstDucatImage1.Visibility = Visibility.Visible;
-                secondPlatText.Text = notification.Plat;
-                secondSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
-                secondDucatText.Text = notification.Ducats;
-                secondVolumeText.Text = $"{notification.Volume} sold last 48hrs";
-                secondVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
-                secondOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
+                PlatImage1.Visibility = Visibility.Visible;
+                SetPlatImage1.Visibility = Visibility.Visible;
+                FirstDucatImage1.Visibility = Visibility.Visible;
+                SecondPlatText.Text = notification.Plat;
+                SecondSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                SecondDucatText.Text = notification.Ducats;
+                SecondVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                SecondVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                SecondOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
                 if (notification.Resize)
                     Width = width;
                 break;
 
             case 2:
-                thirdPartText.Text = notification.Name;
+                ThirdPartText.Text = notification.Name;
                 if (notification.HideReward)
                 {
-                    platImage2.Visibility = Visibility.Hidden;
-                    setPlatImage2.Visibility = Visibility.Hidden;
-                    firstDucatImage2.Visibility = Visibility.Hidden;
-                    thirdPlatText.Text = string.Empty;
-                    thirdSetPlatText.Text = string.Empty;
-                    thirdDucatText.Text = string.Empty;
-                    thirdVolumeText.Text = string.Empty;
-                    thirdVaultedMargin.Visibility = Visibility.Hidden;
-                    thirdOwnedText.Text = string.Empty;
+                    PlatImage2.Visibility = Visibility.Hidden;
+                    SetPlatImage2.Visibility = Visibility.Hidden;
+                    FirstDucatImage2.Visibility = Visibility.Hidden;
+                    ThirdPlatText.Text = string.Empty;
+                    ThirdSetPlatText.Text = string.Empty;
+                    ThirdDucatText.Text = string.Empty;
+                    ThirdVolumeText.Text = string.Empty;
+                    ThirdVaultedMargin.Visibility = Visibility.Hidden;
+                    ThirdOwnedText.Text = string.Empty;
                     if (notification.Resize)
                         Width = width;
                 }
 
-                platImage2.Visibility = Visibility.Visible;
-                setPlatImage2.Visibility = Visibility.Visible;
-                firstDucatImage2.Visibility = Visibility.Visible;
-                thirdPlatText.Text = notification.Plat;
-                thirdSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
-                thirdDucatText.Text = notification.Ducats;
-                thirdVolumeText.Text = $"{notification.Volume} sold last 48hrs";
-                thirdVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
-                thirdOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
+                PlatImage2.Visibility = Visibility.Visible;
+                SetPlatImage2.Visibility = Visibility.Visible;
+                FirstDucatImage2.Visibility = Visibility.Visible;
+                ThirdPlatText.Text = notification.Plat;
+                ThirdSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                ThirdDucatText.Text = notification.Ducats;
+                ThirdVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                ThirdVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                ThirdOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
                 if (notification.Resize)
                     Width = width;
                 break;
 
             case 3:
-                fourthPartText.Text = notification.Name;
+                FourthPartText.Text = notification.Name;
                 if (notification.HideReward)
                 {
-                    platImage3.Visibility = Visibility.Hidden;
-                    setPlatImage3.Visibility = Visibility.Hidden;
-                    firstDucatImage3.Visibility = Visibility.Hidden;
-                    fourthPlatText.Text = string.Empty;
-                    fourthSetPlatText.Text = string.Empty;
-                    fourthDucatText.Text = string.Empty;
-                    fourthVolumeText.Text = string.Empty;
-                    fourthVaultedMargin.Visibility = Visibility.Hidden;
-                    fourthOwnedText.Text = string.Empty;
+                    PlatImage3.Visibility = Visibility.Hidden;
+                    SetPlatImage3.Visibility = Visibility.Hidden;
+                    FirstDucatImage3.Visibility = Visibility.Hidden;
+                    FourthPlatText.Text = string.Empty;
+                    FourthSetPlatText.Text = string.Empty;
+                    FourthDucatText.Text = string.Empty;
+                    FourthVolumeText.Text = string.Empty;
+                    FourthVaultedMargin.Visibility = Visibility.Hidden;
+                    FourthOwnedText.Text = string.Empty;
                     if (notification.Resize)
                         Width = width;
                 }
 
-                platImage3.Visibility = Visibility.Visible;
-                setPlatImage3.Visibility = Visibility.Visible;
-                firstDucatImage3.Visibility = Visibility.Visible;
-                fourthPlatText.Text = notification.Plat;
-                fourthSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
-                fourthDucatText.Text = notification.Ducats;
-                fourthVolumeText.Text = $"{notification.Volume} sold last 48hrs";
-                fourthVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
-                fourthOwnedText.Text = notification.Owned.Length > 0 ? (notification.Mastered ? "✓ " : string.Empty) + notification.Owned + " OWNED" : string.Empty;
+                PlatImage3.Visibility = Visibility.Visible;
+                SetPlatImage3.Visibility = Visibility.Visible;
+                FirstDucatImage3.Visibility = Visibility.Visible;
+                FourthPlatText.Text = notification.Plat;
+                FourthSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                FourthDucatText.Text = notification.Ducats;
+                FourthVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                FourthVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                FourthOwnedText.Text = notification.Owned.Length > 0 ? (notification.Mastered ? "✓ " : string.Empty) + notification.Owned + " OWNED" : string.Empty;
                 if (notification.Resize)
                     Width = width;
                 break;

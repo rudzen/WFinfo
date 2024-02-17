@@ -38,7 +38,9 @@ public partial class MainWindow
         Brushes.Orange
     ];
 
-    private Main Main { get; set; } //subscriber
+    //subscriber
+    private Main Main { get; set; }
+
     public static MainWindow INSTANCE { get; set; }
     public static WelcomeDialogue welcomeDialogue { get; set; }
     private bool updatesupression;
@@ -101,18 +103,14 @@ public partial class MainWindow
                 Convert.ToInt32(_settingsViewModel.MainWindowLocation.X),
                 Convert.ToInt32(_settingsViewModel.MainWindowLocation.Y), Convert.ToInt32(Width),
                 Convert.ToInt32(Height));
-            foreach (var scr in System.Windows.Forms.Screen.AllScreens)
+
+            if (Array.Exists(System.Windows.Forms.Screen.AllScreens, scr => scr.Bounds.Contains(winBounds)))
             {
-                if (scr.Bounds.Contains(winBounds))
-                {
-                    Left = _settingsViewModel.MainWindowLocation.X;
-                    Top = _settingsViewModel.MainWindowLocation.Y;
-                    break;
-                }
+                Left = _settingsViewModel.MainWindowLocation.X;
+                Top = _settingsViewModel.MainWindowLocation.Y;
             }
 
             _settingsViewModel.MainWindowLocation = new Point(Left, Top);
-
             _settingsViewModel.Save();
 
             Closing += LoggOut;
@@ -128,7 +126,7 @@ public partial class MainWindow
     private void InitializeSettings()
     {
         // TODO (rudzen) : Move this to Pre-startup
-        var jsonSettings = new JsonSerializerSettings()
+        var jsonSettings = new JsonSerializerSettings
         {
             NullValueHandling = NullValueHandling.Ignore
         };
@@ -149,21 +147,11 @@ public partial class MainWindow
 
         _applicationSettings.Initialized = true;
 
-        try
+        if (!Enum.TryParse(typeof(Key), _settingsViewModel.ActivationKey, out var _)
+            && !Enum.TryParse(typeof(MouseButton), _settingsViewModel.ActivationKey, out var _))
         {
-            Enum.Parse(typeof(Key), _settingsViewModel.ActivationKey);
-        }
-        catch
-        {
-            try
-            {
-                Enum.Parse(typeof(MouseButton), _settingsViewModel.ActivationKey);
-            }
-            catch
-            {
-                Logger.Debug("Couldn't Parse Activation Key -- Defaulting to PrintScreen");
-                _settingsViewModel.ActivationKey = "Snapshot";
-            }
+            Logger.Debug("Couldn't Parse Activation Key -- Defaulting to PrintScreen");
+            _settingsViewModel.ActivationKey = "Snapshot";
         }
 
         _settingsViewModel.Save();
@@ -265,15 +253,17 @@ public partial class MainWindow
     // Allows the draging of the window
     private new void MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton == MouseButton.Left && e.LeftButton == MouseButtonState.Pressed)
-            try
-            {
-                DragMove();
-            }
-            catch (Exception)
-            {
-                Logger.Debug("Error in Mouse down in mainwindow");
-            }
+        if (e is not { ChangedButton: MouseButton.Left, LeftButton: MouseButtonState.Pressed })
+            return;
+
+        try
+        {
+            DragMove();
+        }
+        catch (Exception)
+        {
+            Logger.Debug("Error in Mouse down in mainwindow");
+        }
     }
 
     private void OnLocationChanged(object sender, EventArgs e)
@@ -333,7 +323,7 @@ public partial class MainWindow
             "online"    => 1,
             "invisible" => 2,
             "ingame"    => 0,
-            _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
+            var _       => throw new ArgumentOutOfRangeException(nameof(status), status, null)
         };
 
         if (ComboBox.SelectedIndex != selectionIndex)
@@ -400,7 +390,7 @@ public partial class MainWindow
             return;
         }
 
-        if (Main.ListingHelper.PrimeRewards == null || Main.ListingHelper.PrimeRewards.Count == 0)
+        if (Main.ListingHelper.PrimeRewards.Count == 0)
         {
             Dispatcher.InvokeAsync(() => ChangeStatus("No recorded rewards found", StatusSeverity.Warning));
             return;

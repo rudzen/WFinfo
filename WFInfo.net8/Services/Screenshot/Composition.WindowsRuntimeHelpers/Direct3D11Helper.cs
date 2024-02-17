@@ -30,7 +30,7 @@ namespace WFInfo.Services.Screenshot.Composition.WindowsRuntimeHelpers;
 
 public static class Direct3D11Helper
 {
-    private static readonly Guid ID3D11Texture2D = new Guid("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
+    private static readonly Guid ID3D11Texture2D = new("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
 
     [ComImport]
     [Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1")]

@@ -33,7 +33,7 @@ public class SelectTextOnFocus : DependencyObject
 
     private static void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        DependencyObject dependencyObject = GetParentFromVisualTree(e.OriginalSource);
+        var dependencyObject = GetParentFromVisualTree(e.OriginalSource);
 
         if (dependencyObject == null)
         {
@@ -61,7 +61,7 @@ public class SelectTextOnFocus : DependencyObject
 
     private static void OnKeyboardFocusSelectText(object sender, KeyboardFocusChangedEventArgs e)
     {
-        TextBox textBox = e.OriginalSource as TextBox;
+        var textBox = e.OriginalSource as TextBox;
         textBox?.SelectAll();
     }
 

@@ -16,13 +16,13 @@ public partial class ErrorDialogue : Window
     private static readonly ILogger Logger = Log.Logger.ForContext<ErrorDialogue>();
     private static readonly string ZipPath = Path.Combine(ApplicationConstants.AppPath, "generatedZip");
 
-    private int distance;
-    private DateTime closest;
+    private readonly int _distance;
+    private readonly DateTime _closest;
 
     public ErrorDialogue(DateTime timeStamp, int gap)
     {
-        distance = gap;
-        closest = timeStamp;
+        _distance = gap;
+        _closest = timeStamp;
 
         InitializeComponent();
         Show();
@@ -35,8 +35,8 @@ public partial class ErrorDialogue : Window
 
         var files = new DirectoryInfo(ApplicationConstants.AppPathDebug)
                     .GetFiles()
-                    .Where(f => f.CreationTimeUtc > closest.AddSeconds(-1 * distance))
-                    .Where(f => f.CreationTimeUtc < closest.AddSeconds(distance));
+                    .Where(f => f.CreationTimeUtc > _closest.AddSeconds(-1 * _distance))
+                    .Where(f => f.CreationTimeUtc < _closest.AddSeconds(_distance));
 
         var staticFiles = new[]
         {
@@ -48,7 +48,7 @@ public partial class ErrorDialogue : Window
             Path.Combine(ApplicationConstants.AppPath, "settings.json"),
             Path.Combine(ApplicationConstants.AppPath, "debug.json"),
         };
-        var time = closest.ToString("yyyy-MM-dd_HH-mm-ssff");
+        var time = _closest.ToString("yyyy-MM-dd_HH-mm-ssff");
         var fullZipPath = Path.Combine(ZipPath, $"WFInfoError_{time}.zip");
         try
         {

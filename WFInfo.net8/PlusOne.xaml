@@ -33,7 +33,7 @@
             <LineBreak /><Run Text="* Leave a review on warframe.market" /><LineBreak /><LineBreak />
             <Run Text="If you want you can leave a review right here!" />
         </TextBlock>
-        <Button x:Name="postReview" HorizontalContentAlignment="Center" Content="Post review" Margin="313,199,11,0"
+        <Button x:Name="PostReview" HorizontalContentAlignment="Center" Content="Post review" Margin="313,199,11,0"
                 VerticalAlignment="Top" BorderBrush="#FF646464" Background="{x:Null}" Height="22"
                 Foreground="#FFB1D0D9" Click="post">
             <Button.Style>

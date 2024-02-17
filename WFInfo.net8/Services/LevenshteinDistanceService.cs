@@ -6,7 +6,7 @@ public sealed class LevenshteinDistanceService : ILevenshteinDistanceService
 {
     private static readonly List<Dictionary<int, List<int>>> Korean =
     [
-        new Dictionary<int, List<int>>()
+        new Dictionary<int, List<int>>
         {
             { 0, [6, 7, 8, 16] },           // ㅁ, ㅂ, ㅃ, ㅍ
             { 1, [2, 3, 4, 16, 5, 9, 10] }, // ㄴ, ㄷ, ㄸ, ㅌ, ㄹ, ㅅ, ㅆ
@@ -14,7 +14,7 @@ public sealed class LevenshteinDistanceService : ILevenshteinDistanceService
             { 3, [0, 1, 15, 11, 18] }       // ㄱ, ㄲ, ㅋ, ㅇ, ㅎ
         },
 
-        new Dictionary<int, List<int>>()
+        new Dictionary<int, List<int>>
         {
             { 0, [20, 5, 1, 7, 3, 19] }, // ㅣ, ㅔ, ㅐ, ㅖ, ㅒ, ㅢ
             { 1, [16, 11, 15, 10] },     // ㅟ, ㅚ, ㅞ, ㅙ
@@ -22,7 +22,7 @@ public sealed class LevenshteinDistanceService : ILevenshteinDistanceService
             { 3, [18, 13, 8, 17, 12] }   // ㅡ, ㅜ, ㅗ, ㅠ, ㅛ
         },
 
-        new Dictionary<int, List<int>>()
+        new Dictionary<int, List<int>>
         {
             { 0, [16, 17, 18, 26] }, // ㅁ, ㅂ, ㅄ, ㅍ
             {
@@ -41,8 +41,8 @@ public sealed class LevenshteinDistanceService : ILevenshteinDistanceService
         return locale switch
         {
             // for korean
-            "ko" => LevenshteinDistanceKorean(s, t, marketItems),
-            _    => LevenshteinDistanceDefault(s, t)
+            "ko"  => LevenshteinDistanceKorean(s, t, marketItems),
+            var _ => LevenshteinDistanceDefault(s, t)
         };
     }
 
@@ -164,7 +164,7 @@ public sealed class LevenshteinDistanceService : ILevenshteinDistanceService
         // For example: Nuvo Prime is closer to Nova Prime (2) then Ash Prime (4)
         // For more info see: https://en.wikipedia.org/wiki/Levenshtein_distance
         var s = sIn.AsSpan();
-        var t = tIn.AsSpan();// .ToLower(ApplicationConstants.Culture);
+        var t = tIn.AsSpan(); // .ToLower(ApplicationConstants.Culture);
         var n = s.Length;
         var m = t.Length;
 

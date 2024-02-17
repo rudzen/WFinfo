@@ -19,8 +19,8 @@ public class GdiScreenshotService : IScreenshotService
         var window = _window.Window;
         var center = _window.Center;
 
-        int width = window.Width;
-        int height = window.Height;
+        var width = window.Width;
+        var height = window.Height;
 
         if (window == null || window.Width == 0 || window.Height == 0)
         {
@@ -31,10 +31,10 @@ public class GdiScreenshotService : IScreenshotService
             height *= (int)_window.DpiScaling;
         }
 
-        Bitmap image = new Bitmap(width, height);
-        Size FullscreenSize = new Size(image.Width, image.Height);
+        var image = new Bitmap(width, height);
+        var FullscreenSize = new Size(image.Width, image.Height);
 
-        using (Graphics graphics = Graphics.FromImage(image))
+        using (var graphics = Graphics.FromImage(image))
         {
             graphics.CopyFromScreen(window.Left, window.Top, 0, 0, FullscreenSize, CopyPixelOperation.SourceCopy);
         }

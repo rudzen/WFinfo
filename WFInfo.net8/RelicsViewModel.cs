@@ -168,7 +168,7 @@ public class RelicsViewModel : INPC
 
             while (index < _relicTreeItems.Count)
             {
-                var relic = (TreeNode)_relicTreeItems[index];
+                var relic = _relicTreeItems[index];
                 if (!activeNodes.Contains(relic))
                 {
                     _relicTreeItems.RemoveAt(index);
@@ -250,8 +250,10 @@ public class RelicsViewModel : INPC
             {
                 var primeItems = (JObject)Main.DataBase.RelicData[head.Name][prop.Name];
                 var vaulted = primeItems["vaulted"].ToObject<bool>() ? "vaulted" : "";
-                var relic = new TreeNode(prop.Name, vaulted, false, 0);
-                relic.Era = head.Name;
+                var relic = new TreeNode(prop.Name, vaulted, false, 0)
+                {
+                    Era = head.Name
+                };
                 foreach (KeyValuePair<string, JToken> kvp in primeItems)
                 {
                     if (kvp.Key != "vaulted" &&

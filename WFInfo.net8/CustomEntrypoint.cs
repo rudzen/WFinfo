@@ -28,9 +28,9 @@ public sealed class CustomEntrypoint
     private static readonly string[] ListOfDlls =
     [
         @"\x86\" + libtesseract + ".dll",
-        @"\x86\" + liblept      + ".dll",
+        @"\x86\" + liblept + ".dll",
         @"\x64\" + libtesseract + ".dll",
-        @"\x64\" + liblept      + ".dll",
+        @"\x64\" + liblept + ".dll",
         @"\Tesseract.dll"
     ];
 
@@ -274,62 +274,68 @@ public sealed class CustomEntrypoint
             var dll = ListOfDlls[i];
             var path = app_data_tesseract_catalog + dll;
             var md5 = ListOfChecksums[i];
-            if (!File.Exists(path) || hasherService.GetMD5hash(path) != md5)
-            {
-                if (File.Exists(path))
-                    File.Delete(path);
+            var fileExists = File.Exists(path);
 
-                if (token.IsCancellationRequested)
+            switch (fileExists)
+            {
+                case true when hasherService.GetMD5hash(path) == md5:
+                    continue;
+                case true:
+                    File.Delete(path);
                     break;
-                var success = false;
+            }
+
+            if (token.IsCancellationRequested)
+                break;
+
+            var success = false;
+            try
+            {
+                if (Directory.Exists("lib"))
+                {
+                    var file = $"lib{dll}";
+                    if (File.Exists(file))
+                    {
+                        File.Copy(file, app_data_tesseract_catalog + dll);
+                        success = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error moving dll. file={Dll}", dll);
+            }
+
+            if (token.IsCancellationRequested)
+                break;
+
+            if (!success)
+            {
                 try
                 {
-                    if (Directory.Exists("lib"))
+                    if (dll != @"\Tesseract.dll")
                     {
-                        var file = $"lib{dll}";
-                        if (File.Exists(file))
-                        {
-                            File.Copy(file, app_data_tesseract_catalog + dll);
-                            success = true;
-                        }
+                        var url = tesseract_hotlink_platform_specific_prefix + dll.Replace("\\", "/");
+                        var file = app_data_tesseract_catalog + dll;
+                        await httpClient.DownloadFile(url, file);
+                    }
+                    else
+                    {
+                        var url = tesseract_hotlink_prefix + dll.Replace("\\", "/");
+                        var file = app_data_tesseract_catalog + dll;
+                        await httpClient.DownloadFile(url, file);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception e) when (stopDownloadTask.Token.IsCancellationRequested)
                 {
-                    Logger.Error(ex, "Error moving dll. file={Dll}", dll);
+                    Logger.Error(e, "Download canceled. file={Dll}", dll);
                 }
-
-                if (token.IsCancellationRequested)
-                    break;
-
-                if (!success)
-                {
-                    try
-                    {
-                        if (dll != @"\Tesseract.dll")
-                        {
-                            var url = tesseract_hotlink_platform_specific_prefix + dll.Replace("\\", "/");
-                            var file = app_data_tesseract_catalog                + dll;
-                            await httpClient.DownloadFile(url, file);
-                        }
-                        else
-                        {
-                            var url = tesseract_hotlink_prefix    + dll.Replace("\\", "/");
-                            var file = app_data_tesseract_catalog + dll;
-                            await httpClient.DownloadFile(url, file);
-                        }
-                    }
-                    catch (Exception e) when (stopDownloadTask.Token.IsCancellationRequested)
-                    {
-                        Logger.Error(e, "Download canceled. file={Dll}", dll);
-                    }
-                }
-
-                _dialogue?.Dispatcher.Invoke(() =>
-                {
-                    _dialogue.FileComplete();
-                });
             }
+
+            _dialogue?.Dispatcher.Invoke(() =>
+            {
+                _dialogue.FileComplete();
+            });
         }
 
         _dialogue?.Dispatcher.Invoke(() =>
@@ -372,9 +378,6 @@ public sealed class CustomEntrypoint
         var assemblyRawBytes = new byte[stream.Length];
         var read = stream.Read(assemblyRawBytes, 0, assemblyRawBytes.Length);
 
-        if (read != assemblyRawBytes.Length)
-            return null!;
-
-        return Assembly.Load(assemblyRawBytes);
+        return read != assemblyRawBytes.Length ? null! : Assembly.Load(assemblyRawBytes);
     }
 }

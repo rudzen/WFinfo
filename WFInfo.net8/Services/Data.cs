@@ -518,7 +518,7 @@ public sealed partial class Data :
             var split = elem.Value.ToString().Split('|');
             var itemName = split[0];
             var itemUrl = split[1];
-            if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out _))
+            if (!itemName.Contains(" Set") && !MarketData.TryGetValue(itemName, out var _))
             {
                 await LoadMarketItem(itemName, itemUrl);
                 saveDatabases = true;
@@ -1070,7 +1070,7 @@ public sealed partial class Data :
         request.Method = HttpMethod.Post;
         var content =
             $"{{ \"email\":\"{email}\",\"password\":\"{password.Replace(@"\", @"\\")}\", \"auth_type\": \"header\"}}";
-        request.Content = new StringContent(content, System.Text.Encoding.UTF8, "application/json");
+        request.Content = new StringContent(content, Encoding.UTF8, "application/json");
         request.Headers.Add("Authorization", "JWT");
         request.Headers.Add("language", "en");
         request.Headers.Add("accept", "application/json");
@@ -1194,7 +1194,7 @@ public sealed partial class Data :
             var itemId = PrimeItemToItemId(primeItem);
             var json =
                 $"{{\"order_type\":\"sell\",\"item_id\":\"{itemId}\",\"platinum\":{platinum},\"quantity\":{quantity}}}";
-            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
@@ -1234,7 +1234,7 @@ public sealed partial class Data :
             request.Method = HttpMethod.Put;
             var json =
                 $"{{\"order_id\":\"{listingId}\", \"platinum\": {platinum}, \"quantity\":{quantity + 1}, \"visible\":true}}";
-            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
             request.Headers.Add("Authorization", $"JWT {_encryptedDataService.JWT}");
             request.Headers.Add("language", "en");
             request.Headers.Add("accept", "application/json");
@@ -1514,7 +1514,7 @@ public sealed partial class Data :
                 request.Headers.Add("accept", "application/json");
                 request.Headers.Add("platform", "pc");
                 request.Headers.Add("auth_type", "header");
-                request.Content = new StringContent(msg, System.Text.Encoding.UTF8, "application/json");
+                request.Content = new StringContent(msg, Encoding.UTF8, "application/json");
                 var response = await _client.SendAsync(request).ConfigureAwait(ConfigureAwaitOptions.None);
                 var body = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
                 Logger.Debug("Body: {Body}, Content: {Msg}", body, msg);

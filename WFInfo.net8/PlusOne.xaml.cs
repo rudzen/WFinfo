@@ -15,7 +15,7 @@ public partial class PlusOne : Window
     public PlusOne()
     {
         InitializeComponent();
-        RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\WFinfo");
+        var key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\WFinfo");
         if (key.GetValue("review") != null)
             Processed();
         key.Close();
@@ -41,7 +41,7 @@ public partial class PlusOne : Window
     private void TextboxGotFocus(object sender, RoutedEventArgs e)
     {
         if (TextBox.Text.Contains("Optional comment field") && TextBox.IsLoaded)
-            TextBox.Text = "";
+            TextBox.Text = string.Empty;
     }
 
     private void post(object sender, RoutedEventArgs e)
@@ -52,12 +52,12 @@ public partial class PlusOne : Window
             var t = Task.Run(async () => { await Main.DataBase.PostReview(message); });
             t.Wait();
         }
-        catch (System.Exception)
+        catch (Exception)
         {
             throw;
         }
 
-        RegistryKey key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\WFinfo");
+        using var key = Registry.CurrentUser.CreateSubKey(@"SOFTWARE\WFinfo");
         key.SetValue("review", true);
         key.Close();
         Processed();
@@ -67,8 +67,8 @@ public partial class PlusOne : Window
     {
         TextBox.Text = "Review submited, thank you";
         TextBox.IsEnabled = false;
-        postReview.Content = "Thank you!";
-        postReview.IsEnabled = false;
+        PostReview.Content = "Thank you!";
+        PostReview.IsEnabled = false;
     }
 
     private void TextBox_TextChanged(object sender, TextChangedEventArgs e)

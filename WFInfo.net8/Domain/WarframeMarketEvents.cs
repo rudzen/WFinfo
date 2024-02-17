@@ -10,5 +10,5 @@ public sealed record WarframeMarketStatusAwayStatusRequest(string Message) : IRe
 
 public sealed record WarframeMarketSignOut : INotification
 {
-    public static WarframeMarketSignOut Instance => new WarframeMarketSignOut();
+    public static WarframeMarketSignOut Instance => new();
 }

@@ -20,7 +20,7 @@ public partial class SearchIt : Window
         InitializeComponent();
     }
 
-    public bool IsInUse { get; set; } = false;
+    public bool IsInUse { get; set; }
 
     /// <summary>
     /// Launch snapit, prompts user if not logged in
@@ -29,10 +29,10 @@ public partial class SearchIt : Window
     {
         Main.SearchIt.Show();
         MainWindow.INSTANCE.Topmost = true;
-        Main.SearchIt.placeholder.Content = "Search for warframe.market Items";
+        Main.SearchIt.Placeholder.Content = "Search for warframe.market Items";
         if (!isJwtLegal())
         {
-            Main.SearchIt.placeholder.Content = "Please log in first";
+            Main.SearchIt.Placeholder.Content = "Please log in first";
             Main.Login.MoveLogin(Left, Main.SearchIt.Top - 130);
             return;
         }
@@ -40,7 +40,7 @@ public partial class SearchIt : Window
         MainWindow.INSTANCE.Topmost = false;
         IsInUse = true;
         Main.SearchIt.Show();
-        searchField.Focusable = true;
+        SearchField.Focusable = true;
         Main.SearchIt.Topmost = true;
         Win32.BringToFront(Process.GetCurrentProcess());
     }
@@ -54,7 +54,7 @@ public partial class SearchIt : Window
     {
         try
         {
-            var closest = Main.DataBase.GetPartNameHuman(searchField.Text, out _);
+            var closest = Main.DataBase.GetPartNameHuman(SearchField.Text, out var _);
             var primeRewards = new List<string> { closest };
             var rewardCollection = Main.ListingHelper.GetRewardCollection(primeRewards).GetAwaiter().GetResult();
             Main.ListingHelper.ScreensList.Add(new RewardCollectionItem(string.Empty, rewardCollection));
@@ -77,9 +77,9 @@ public partial class SearchIt : Window
     /// </summary>
     internal void Finish()
     {
-        searchField.Text = string.Empty;
-        placeholder.Visibility = Visibility.Visible;
-        searchField.Focusable = false;
+        SearchField.Text = string.Empty;
+        Placeholder.Visibility = Visibility.Visible;
+        SearchField.Focusable = false;
         IsInUse = false;
         Hide();
     }
@@ -91,7 +91,7 @@ public partial class SearchIt : Window
     /// <param name="e"></param>
     private void TextChanged(object sender, TextChangedEventArgs e)
     {
-        if (!searchField.Text.IsNullOrEmpty())
-            placeholder.Visibility = Visibility.Hidden;
+        if (!SearchField.Text.IsNullOrEmpty())
+            Placeholder.Visibility = Visibility.Hidden;
     }
 }

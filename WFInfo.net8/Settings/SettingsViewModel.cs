@@ -775,7 +775,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
 
     public void Save()
     {
-        var jsonSettings = new JsonSerializerSettings()
+        var jsonSettings = new JsonSerializerSettings
         {
             NullValueHandling = NullValueHandling.Ignore
         };

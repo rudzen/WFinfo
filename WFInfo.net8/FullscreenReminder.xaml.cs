@@ -32,7 +32,7 @@ public partial class FullscreenReminder : Window
 
     private void NoClick(object sender, RoutedEventArgs e)
     {
-        Logger.Debug($"[Fullscreen Reminder] User selected \"Do nothing\"");
+        Logger.Debug("[Fullscreen Reminder] User selected \"Do nothing\"");
         Close();
     }
 
