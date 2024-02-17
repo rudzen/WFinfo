@@ -8,7 +8,10 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services.WindowInfo;
 
-public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings settings, IMediator mediator)
+public class Win32WindowInfoService(
+    IProcessFinder process,
+    ApplicationSettings settings,
+    IPublisher publisher)
     : IWindowInfoService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Win32WindowInfoService>();
@@ -19,10 +22,12 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
     {
         get
         {
-            if (Window.Width         * 9 > Window.Height * 16) // image is less than 16:9 aspect
+            // Image is less than 16:9 aspect
+            if (Window.Width * 9 > Window.Height * 16)
                 return Window.Height / 1080.0;
-            else
-                return Window.Width / 1920.0; //image is higher than 16:9 aspect
+
+            // Image is higher than 16:9 aspect
+            return Window.Width / 1920.0;
         }
     }
 
@@ -37,7 +42,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
         if (!process.IsRunning && !settings.Debug)
         {
             Logger.Debug("Failed to find warframe process for window info");
-            await mediator.Publish(new UpdateStatus("Failed to find warframe process for window info",StatusSeverity.Error));
+            await publisher.Publish(new UpdateStatus("Failed to find warframe process for window info", StatusSeverity.Error));
             return;
         }
 
@@ -55,7 +60,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
 
     public void UseImage(Bitmap? bitmap)
     {
-        var width = bitmap?.Width   ?? Screen.Bounds.Width;
+        var width = bitmap?.Width ?? Screen.Bounds.Width;
         var height = bitmap?.Height ?? Screen.Bounds.Height;
 
         Window = new Rectangle(0, 0, width, height);
@@ -64,7 +69,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
         if (bitmap is not null)
             Logger.Debug("DETECTED LOADED IMAGE BOUNDS: {Window}", Window);
         else
-            Logger.Debug("Couldn't Detect Warframe Process. Using Primary Screen Bounds. window={Window},named={Name}",Window, Screen.DeviceName);
+            Logger.Debug("Couldn't Detect Warframe Process. Using Primary Screen Bounds. window={Window},named={Name}", Window, Screen.DeviceName);
     }
 
     private async Task GetWindowRect()
@@ -73,27 +78,28 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
         {
             if (settings.Debug)
             {
-                //if debug is on AND warframe is not detected, sillently ignore missing process and use main monitor center.
+                // If debug is on AND warframe is not detected,
+                // silently ignore missing process and use main monitor center.
                 GetFullscreenRect();
                 return;
             }
             else
             {
                 Logger.Debug("Failed to get window bounds");
-                await mediator.Publish(new UpdateStatus("Failed to get window bounds",StatusSeverity.Error));
+                await publisher.Publish(new UpdateStatus("Failed to get window bounds", StatusSeverity.Error));
                 return;
             }
         }
 
         if (osRect.Left < -20000 || osRect.Top < -20000)
         {
-            // if the window is in the VOID delete current process and re-set window to nothing
+            // If the window is in the VOID delete current process and re-set window to nothing
             Window = Rectangle.Empty;
         }
-        else if (Window != default || Window.Left   != osRect.Left || Window.Right != osRect.Right ||
+        else if (Window != default || Window.Left != osRect.Left || Window.Right != osRect.Right ||
                  Window.Top != osRect.Top || Window.Bottom != osRect.Bottom)
         {
-            // checks if old window size is the right size if not change it
+            // Checks if old window size is the right size if not change it
             // get Rectangle out of rect
             Window = new Rectangle(osRect.Left, osRect.Top, osRect.Right - osRect.Left, osRect.Bottom - osRect.Top);
 
@@ -110,7 +116,8 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
             }
             else if ((styles & WS_BORDER) != 0)
             {
-                // Windowed, adjust for thicc border
+                // Windowed, adjust for thick border
+                // TODO (rudze) : Get real border sizes at some point
                 Window = new Rectangle(Window.Left + 8, Window.Top + 30, Window.Width - 16, Window.Height - 38);
                 Logger.Debug("Windowed detected (0x{Styles:X8}, adjusting window to: {Window})", styles, Window);
             }
@@ -122,7 +129,7 @@ public class Win32WindowInfoService(IProcessFinder process, ApplicationSettings 
                 if (settings.IsOverlaySelected)
                 {
                     Logger.Debug("Showing the Fullscreen Reminder");
-                    Main.RunOnUIThread(Main.SpawnFullscreenReminder);
+                    await publisher.Publish(new FullscreenReminderShow(new Point(Window.X, Window.Y), new Point(Window.Width, Window.Height)));
                 }
             }
         }

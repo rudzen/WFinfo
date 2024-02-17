@@ -6,11 +6,15 @@ namespace WFInfo;
 
 public partial class FullscreenReminder : Window
 {
-    private static readonly ILogger Logger = Log.Logger.ForContext<FullscreenReminder>(); 
-    
+    private static readonly ILogger Logger = Log.Logger.ForContext<FullscreenReminder>();
+
     public FullscreenReminder()
     {
         InitializeComponent();
+    }
+
+    public void Open()
+    {
         Show();
         Focus();
     }

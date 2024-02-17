@@ -22,7 +22,8 @@ public class Main
     : INotificationHandler<StartLoggedInTimer>,
         INotificationHandler<OverlayUpdate>,
         INotificationHandler<OverlayUpdateData>,
-        INotificationHandler<GnfWarningShow>
+        INotificationHandler<GnfWarningShow>,
+        INotificationHandler<FullscreenReminderShow>
 {
     private enum ScreenshotType
     {
@@ -40,8 +41,6 @@ public class Main
     public static SettingsWindow SettingsWindow { get; private set; }
     public static AutoCount AutoCount { get; set; }
     public static ErrorDialogue ErrorDialogue { get; set; }
-    public static FullscreenReminder FullscreenReminder { get; set; }
-    public static UpdateDialogue Update { get; set; }
     public static SnapItOverlay SnapItOverlayWindow { get; private set; }
     public static SearchIt SearchIt { get; set; }
     public static Login Login { get; set; }
@@ -50,14 +49,15 @@ public class Main
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
-    public static Overlay[] Overlays { get; set; }
-
     private DateTime _latestActive;
 
     // ReSharper disable once NotAccessedField.Local
     private System.Threading.Timer _timer;
 
+    private Overlay[] _overlays;
     private readonly GFNWarning _gfnWarning;
+    private UpdateDialogue _update;
+    private readonly FullscreenReminder _fullscreenReminder;
 
     // Instance services
     private readonly ApplicationSettings _settings;
@@ -85,7 +85,9 @@ public class Main
         AutoCount autoCount,
         SearchIt searchIt,
         GFNWarning gfnWarning,
-        IServiceProvider sp)
+        FullscreenReminder fullscreenReminder,
+        IServiceProvider sp
+        )
     {
         _sp = sp;
         Login = login;
@@ -103,11 +105,12 @@ public class Main
         AutoCount = autoCount;
         SearchIt = searchIt;
         _gfnWarning = gfnWarning;
+        _fullscreenReminder = fullscreenReminder;
 
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
             SnapItOverlayWindow = new SnapItOverlay(_windowInfoService);
-            Overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
+            _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
             AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
@@ -120,7 +123,7 @@ public class Main
 
     private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
     {
-        Update = new UpdateDialogue(args, _sp);
+        _update = new UpdateDialogue(args, _sp);
     }
 
     private async Task ThreadedDataLoad()
@@ -429,11 +432,6 @@ public class Main
         ErrorDialogue = new ErrorDialogue(timeStamp, gap);
     }
 
-    public static void SpawnFullscreenReminder()
-    {
-        FullscreenReminder = new FullscreenReminder();
-    }
-
     private async Task LoadScreenshot(ScreenshotType type)
     {
         // Using WinForms for the openFileDialog because it's simpler and much easier
@@ -563,7 +561,7 @@ public class Main
         Logger.Debug("Updating overlay. index={Index}, type={Type}", overlayUpdate.Index, overlayUpdate.Tyoe);
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
-            var overlay = Overlays[overlayUpdate.Index];
+            var overlay = _overlays[overlayUpdate.Index];
             if (overlayUpdate.Tyoe == OverlayUpdateType.Owned)
                 overlay.BestOwnedChoice();
             else if (overlayUpdate.Tyoe == OverlayUpdateType.Ducat)
@@ -580,7 +578,7 @@ public class Main
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
             Overlay.RewardsDisplaying = true;
-            var overlay = Overlays[overlayUpdateData.Index];
+            var overlay = _overlays[overlayUpdateData.Index];
             overlay.LoadTextData(
                 name: overlayUpdateData.CorrectName,
                 plat: overlayUpdateData.Plat,
@@ -611,9 +609,21 @@ public class Main
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
             if (show)
-                _gfnWarning.Open();
+                _gfnWarning.Show();
             else
                 _gfnWarning.Hide();
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(FullscreenReminderShow fullscreenReminderShow, CancellationToken cancellationToken)
+    {
+        Logger.Debug("Showing the Fullscreen Reminder. (window) x/y={Xy},h/w={Hw}",
+            fullscreenReminderShow.Xy, fullscreenReminderShow.Hw);
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            _fullscreenReminder.Show();
         });
 
         return ValueTask.CompletedTask;
