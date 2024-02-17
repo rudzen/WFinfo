@@ -9,7 +9,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
-using Akka.Util;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
@@ -21,6 +20,7 @@ using WFInfo.Services.HDRDetection;
 using WFInfo.Services.Screenshot;
 using WFInfo.Services.WindowInfo;
 using WFInfo.Settings;
+using WFInfo.Types;
 using Brushes = System.Drawing.Brushes;
 using Clipboard = System.Windows.Forms.Clipboard;
 using Color = System.Drawing.Color;
@@ -54,6 +54,8 @@ internal partial class OCR
     private const int PixelRewardLineHeight = 48;
 
     private const int ScalingLimit = 100;
+
+    private static readonly Font Font = new("Arial", 16);
 
     private static readonly Pen OrangePen = new(Brushes.Orange);
     private static readonly Pen PinkPen = new(Brushes.Pink);
@@ -702,12 +704,9 @@ internal partial class OCR
         var numberTooLarge = 0;
         var numberTooFewCharacters = 0;
         var numberTooLargeButEnoughCharacters = 0;
-        var orange = new Pen(Brushes.Orange);
         var red = new SolidBrush(Color.FromArgb(100, 139, 0, 0));
         var green = new SolidBrush(Color.FromArgb(100, byte.MaxValue, 165, 0));
         var greenp = new Pen(green);
-        var pinkP = new Pen(Brushes.Pink);
-        var font = new Font("Arial", 16);
         List<SnapZone> zones;
         int snapThreads;
         if (_settings.SnapMultiThreaded)
@@ -776,7 +775,7 @@ internal partial class OCR
                         if (currentWord.Length > 3)
                         {
                             // more than 3 characters in a box too large is likely going to be good, pass it but mark as potentially bad
-                            g.DrawRectangle(orange, paddedBounds);
+                            g.DrawRectangle(OrangePen, paddedBounds);
                             numberTooLargeButEnoughCharacters++;
                         }
                         else
@@ -794,11 +793,11 @@ internal partial class OCR
                     }
                     else
                     {
-                        g.DrawRectangle(pinkP, paddedBounds);
+                        g.DrawRectangle(PinkPen, paddedBounds);
                     }
 
                     g.DrawRectangle(greenp, bounds);
-                    g.DrawString(currentWord, font, Brushes.Pink, new Point(paddedBounds.X, paddedBounds.Y));
+                    g.DrawString(currentWord, Font, Brushes.Pink, new Point(paddedBounds.X, paddedBounds.Y));
                 }
 
                 var i = foundItems.Count - 1;
@@ -846,16 +845,13 @@ internal partial class OCR
 
         if (_settings.DoSnapItCount)
         {
-            GetItemCounts(filteredImage, filteredImageClean, unfilteredImage, results, font);
+            GetItemCounts(filteredImage, filteredImageClean, unfilteredImage, results, Font);
         }
 
         filteredImageClean.Dispose();
         red.Dispose();
         green.Dispose();
-        orange.Dispose();
-        pinkP.Dispose();
         greenp.Dispose();
-        font.Dispose();
         if (numberTooLarge > .3 * foundItems.Count || numberTooFewCharacters > .4 * foundItems.Count)
         {
             //Log old noise level heuristics

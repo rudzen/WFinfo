@@ -67,9 +67,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Akka" Version="1.5.16" />
-        <PackageReference Include="Akka.DependencyInjection" Version="1.5.16" />
-        <PackageReference Include="Akka.Hosting" Version="1.5.15" />
         <PackageReference Include="Autoupdater.NET.Official" Version="1.8.4"/>
         <PackageReference Include="DotNetZip" Version="1.16.0"/>
         <PackageReference Include="DotNext" Version="5.0.1" />
