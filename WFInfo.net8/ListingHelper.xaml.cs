@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json.Linq;
 using Serilog;
-using WebSocketSharp;
+using WFInfo.Domain.Types;
 using WFInfo.Services;
 
 namespace WFInfo;
@@ -15,17 +15,19 @@ public partial class ListingHelper : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ListingHelper>();
 
-    public List<KeyValuePair<string, RewardCollection>> ScreensList { get; private set; } = [];
+    public List<RewardCollectionItem> ScreensList { get; } = [];
 
-    public List<List<string>> PrimeRewards { get; set; } = [];
+    public List<List<string>> PrimeRewards { get; } = [];
+
+    public short SelectedRewardIndex { get; set; }
 
     //Helper, allowing to store the rewards until needed to be processed
-    private int PageIndex { get; set; } = 0;
-    private bool updating;
-    public short SelectedRewardIndex = 0;
-    private static readonly int SucsesHeight = 180;
-    private static readonly int FailedHeight = 270;
-    private static readonly int NormalHeight = 255;
+    private int _pageIndex;
+    private bool _updating;
+
+    private const int SuccessHeight = 180;
+    private const int FailedHeight = 270;
+    private const int NormalHeight = 255;
 
     #region default methods
 
@@ -43,7 +45,7 @@ public partial class ListingHelper : Window
     {
         Hide();
         ScreensList.Clear();
-        PageIndex = 0;
+        _pageIndex = 0;
     }
 
     // Allows the draging of the window
@@ -71,15 +73,15 @@ public partial class ListingHelper : Window
             throw new Exception("Tried setting screen to an item that didn't exist");
 
         var screen = ScreensList[index];
-        updating = true;
+        _updating = true;
         ComboBox.Items.Clear();
-        ComboBox.SelectedIndex = screen.Value.RewardIndex;
-        foreach (var primeItem in screen.Value.PrimeNames.Where(primeItem => !primeItem.IsNullOrEmpty()))
+        ComboBox.SelectedIndex = screen.Collection.RewardIndex;
+        foreach (var primeItem in screen.Collection.PrimeNames.Where(primeItem => !string.IsNullOrEmpty(primeItem)))
             ComboBox.Items.Add(primeItem);
 
         SetCurrentStatus();
-        SetListings(screen.Value.RewardIndex);
-        updating = false;
+        SetListings(screen.Collection.RewardIndex);
+        _updating = false;
     }
 
     /// <summary>
@@ -97,7 +99,7 @@ public partial class ListingHelper : Window
                 // TODO (rudzen) : fix this .Result
                 var rewardCollection = Main.ListingHelper.GetRewardCollection(PrimeRewards[0]).GetAwaiter().GetResult();
                 if (rewardCollection.PrimeNames.Count != 0)
-                    Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>(string.Empty, rewardCollection));
+                    Main.ListingHelper.ScreensList.Add( new(string.Empty, rewardCollection));
                 PrimeRewards.RemoveAt(0);
                 Next.Content = "Next";
             }
@@ -108,14 +110,14 @@ public partial class ListingHelper : Window
             }
         }
 
-        if (ScreensList.Count - 1 == PageIndex) //reached the end of the list
+        if (ScreensList.Count - 1 == _pageIndex) //reached the end of the list
         {
             Next.IsEnabled = false;
             return;
         }
 
-        PageIndex++;
-        SetScreen(PageIndex);
+        _pageIndex++;
+        SetScreen(_pageIndex);
     }
 
     /// <summary>
@@ -126,17 +128,17 @@ public partial class ListingHelper : Window
         Next.IsEnabled = true;
 
         Logger.Debug("There are {ScreensList} screens and: {PrimeRewards} prime rewards. Currently on screen {PageIndex} and trying to go to the previous screen",
-            ScreensList.Count, PrimeRewards.Count, PageIndex);
+            ScreensList.Count, PrimeRewards.Count, _pageIndex);
 
-        if (PageIndex == 0)
+        if (_pageIndex == 0)
         {
             //reached start of the list
             Back.IsEnabled = false;
             return;
         }
 
-        PageIndex--;
-        SetScreen(PageIndex);
+        _pageIndex--;
+        SetScreen(_pageIndex);
     }
 
     /// <summary>
@@ -144,13 +146,13 @@ public partial class ListingHelper : Window
     /// </summary>
     private void SetCurrentStatus()
     {
-        Logger.Debug("Current status is: {Status}",ScreensList[PageIndex].Key);
-        switch (ScreensList[PageIndex].Key)
+        Logger.Debug("Current status is: {Status}",ScreensList[_pageIndex].Key);
+        switch (ScreensList[_pageIndex].Key)
         {
             //listing already successfully posted
             case "successful":
                 ListingGrid.Visibility = Visibility.Collapsed;
-                Height = SucsesHeight;
+                Height = SuccessHeight;
                 ConfirmListingButton.IsEnabled = false;
                 Status.Content = "Listing already successfully posted";
                 Status.Visibility = Visibility.Visible;
@@ -166,7 +168,7 @@ public partial class ListingHelper : Window
                 break;
             default: //an error occured.
                 Height = FailedHeight;
-                Status.Content = ScreensList[PageIndex].Key;
+                Status.Content = ScreensList[_pageIndex].Key;
                 Status.Visibility = Visibility.Visible;
                 ListingGrid.Visibility = Visibility.Visible;
                 ComboBox.IsEnabled = true;
@@ -190,17 +192,17 @@ public partial class ListingHelper : Window
             var success = Task.Run(async () => await PlaceListing(primeItem, platinum)).Result;
             if (success)
             {
-                var newEntry = new KeyValuePair<string, RewardCollection>("successful", ScreensList[PageIndex].Value);
-                ScreensList.RemoveAt(PageIndex);
-                ScreensList.Insert(PageIndex, newEntry);
+                var newEntry = new RewardCollectionItem("successful", ScreensList[_pageIndex].Collection);
+                ScreensList.RemoveAt(_pageIndex);
+                ScreensList.Insert(_pageIndex, newEntry);
                 ConfirmListingButton.IsEnabled = true;
             }
             else
             {
-                var newEntry = new KeyValuePair<string, RewardCollection>("Something uncaught went wrong",
-                    ScreensList[PageIndex].Value);
-                ScreensList.RemoveAt(PageIndex);
-                ScreensList.Insert(PageIndex, newEntry);
+                var newEntry = new RewardCollectionItem("Something uncaught went wrong",
+                    ScreensList[_pageIndex].Collection);
+                ScreensList.RemoveAt(_pageIndex);
+                ScreensList.Insert(_pageIndex, newEntry);
             }
 
             SetCurrentStatus();
@@ -208,10 +210,9 @@ public partial class ListingHelper : Window
         catch (Exception exception)
         {
             Logger.Error(exception, "Failed to place listing");
-            var newEntry =
-                new KeyValuePair<string, RewardCollection>(exception.ToString(), ScreensList[PageIndex].Value);
-            ScreensList.RemoveAt(PageIndex);
-            ScreensList.Insert(PageIndex, newEntry);
+            var newEntry = new RewardCollectionItem(exception.ToString(), ScreensList[_pageIndex].Collection);
+            ScreensList.RemoveAt(_pageIndex);
+            ScreensList.Insert(_pageIndex, newEntry);
         }
     }
 
@@ -222,7 +223,7 @@ public partial class ListingHelper : Window
     /// <param name="e"></param>
     private void ComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (!ComboBox.IsLoaded || updating) //Prevent firing off to early
+        if (!ComboBox.IsLoaded || _updating) //Prevent firing off to early
             return;
         SetListings(ComboBox.SelectedIndex);
     }
@@ -233,39 +234,39 @@ public partial class ListingHelper : Window
     /// <param name="index">the currently selected prime item</param>
     private void SetListings(int index)
     {
-        Logger.Debug("There are {Count} of plat values, setting index to: {Index}", ScreensList[PageIndex].Value.PrimeNames.Count, index);
+        Logger.Debug("There are {Count} of plat values, setting index to: {Index}", ScreensList[_pageIndex].Collection.PrimeNames.Count, index);
 
-        PlatinumTextBox.Text = ScreensList[PageIndex].Value.PlatinumValues[index].ToString(ApplicationConstants.Culture);
+        PlatinumTextBox.Text = ScreensList[_pageIndex].Collection.PlatinumValues[index].ToString(ApplicationConstants.Culture);
 
         ListingGrid.Visibility = Visibility.Visible;
         Height = 255;
-        Status.Content = ScreensList[PageIndex].Key;
+        Status.Content = ScreensList[_pageIndex].Key;
         Status.Visibility = Visibility.Collapsed;
         ComboBox.IsEnabled = true;
         ConfirmListingButton.IsEnabled = true;
         PlatinumTextBox.IsEnabled = true;
 
-        Platinum0.Content = ScreensList[PageIndex].Value.MarketListings[index][0].Platinum;
-        Amount0.Content = ScreensList[PageIndex].Value.MarketListings[index][0].Amount;
-        Reputation0.Content = ScreensList[PageIndex].Value.MarketListings[index][0].Reputation;
+        Platinum0.Content = ScreensList[_pageIndex].Collection.MarketListings[index][0].Platinum;
+        Amount0.Content = ScreensList[_pageIndex].Collection.MarketListings[index][0].Amount;
+        Reputation0.Content = ScreensList[_pageIndex].Collection.MarketListings[index][0].Reputation;
 
-        Platinum1.Content = ScreensList[PageIndex].Value.MarketListings[index][1].Platinum;
-        Amount1.Content = ScreensList[PageIndex].Value.MarketListings[index][1].Amount;
-        Reputation1.Content = ScreensList[PageIndex].Value.MarketListings[index][1].Reputation;
+        Platinum1.Content = ScreensList[_pageIndex].Collection.MarketListings[index][1].Platinum;
+        Amount1.Content = ScreensList[_pageIndex].Collection.MarketListings[index][1].Amount;
+        Reputation1.Content = ScreensList[_pageIndex].Collection.MarketListings[index][1].Reputation;
 
-        Platinum2.Content = ScreensList[PageIndex].Value.MarketListings[index][2].Platinum;
-        Amount2.Content = ScreensList[PageIndex].Value.MarketListings[index][2].Amount;
-        Reputation2.Content = ScreensList[PageIndex].Value.MarketListings[index][2].Reputation;
+        Platinum2.Content = ScreensList[_pageIndex].Collection.MarketListings[index][2].Platinum;
+        Amount2.Content = ScreensList[_pageIndex].Collection.MarketListings[index][2].Amount;
+        Reputation2.Content = ScreensList[_pageIndex].Collection.MarketListings[index][2].Reputation;
 
-        Platinum3.Content = ScreensList[PageIndex].Value.MarketListings[index][3].Platinum;
-        Amount3.Content = ScreensList[PageIndex].Value.MarketListings[index][3].Amount;
-        Reputation3.Content = ScreensList[PageIndex].Value.MarketListings[index][3].Reputation;
+        Platinum3.Content = ScreensList[_pageIndex].Collection.MarketListings[index][3].Platinum;
+        Amount3.Content = ScreensList[_pageIndex].Collection.MarketListings[index][3].Amount;
+        Reputation3.Content = ScreensList[_pageIndex].Collection.MarketListings[index][3].Reputation;
 
-        Platinum4.Content = ScreensList[PageIndex].Value.MarketListings[index][4].Platinum;
-        Amount4.Content = ScreensList[PageIndex].Value.MarketListings[index][4].Amount;
-        Reputation4.Content = ScreensList[PageIndex].Value.MarketListings[index][4].Reputation;
+        Platinum4.Content = ScreensList[_pageIndex].Collection.MarketListings[index][4].Platinum;
+        Amount4.Content = ScreensList[_pageIndex].Collection.MarketListings[index][4].Amount;
+        Reputation4.Content = ScreensList[_pageIndex].Collection.MarketListings[index][4].Reputation;
 
-        if (!IsItemBanned(ScreensList[PageIndex].Value.PrimeNames[index])) return;
+        if (!IsItemBanned(ScreensList[_pageIndex].Collection.PrimeNames[index])) return;
         ListingGrid.Visibility = Visibility.Collapsed;
         Height = 180;
         Status.Content = "Cannot list this item";
@@ -289,16 +290,16 @@ public partial class ListingHelper : Window
             return;
         }
 
-        if (PageIndex == 0) // if looking at the first screen
+        if (_pageIndex == 0) // if looking at the first screen
         {
             SetScreen(1);
             ScreensList.RemoveAt(0);
         }
         else
         {
-            ScreensList.RemoveAt(PageIndex);
-            --PageIndex;
-            SetScreen(PageIndex);
+            ScreensList.RemoveAt(_pageIndex);
+            --_pageIndex;
+            SetScreen(_pageIndex);
         }
     }
 
@@ -451,7 +452,7 @@ public class RewardCollection
 
     public List<short> PlatinumValues { get; set; } = new List<short>(4);
     public List<List<MarketListing>> MarketListings { get; set; } = new List<List<MarketListing>>(5);
-    public short RewardIndex { get; set; } = 0;
+    public short RewardIndex { get; set; }
 
     public RewardCollection(List<string> primeNames, List<short> platinumValues,
         List<List<MarketListing>> marketListings, short rewardIndex)
@@ -471,7 +472,7 @@ public class RewardCollection
         var msg = "Reward collection screen:\n";
         foreach (var item in PrimeNames)
         {
-            if (item.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(item))
                 continue;
             var index = PrimeNames.IndexOf(item);
 

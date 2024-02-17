@@ -14,6 +14,7 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 using WebSocketSharp;
 using WFInfo.Domain;
+using WFInfo.Domain.Types;
 using WFInfo.Extensions;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.WarframeProcess;
@@ -22,7 +23,10 @@ using WFInfo.Settings;
 
 namespace WFInfo.Services;
 
-public sealed partial class Data : INotificationHandler<LogCapture.LogCaptureLineChange>
+public sealed partial class Data :
+    INotificationHandler<LogCapture.LogCaptureLineChange>,
+    IRequestHandler<WebSocketAliveStatusRequest, WebSocketAliveStatusResponse>,
+    INotificationHandler<WebSocketSetStatus>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Data>();
 
@@ -893,12 +897,12 @@ public sealed partial class Data : INotificationHandler<LogCapture.LogCaptureLin
         if (!(line.Contains("MatchingService::EndSession") || line.Contains("Relic timer closed")) ||
             !(_settings.AutoList || _settings.AutoCSV || _settings.AutoCount)) return;
 
-        if (Main.ListingHelper.PrimeRewards == null || Main.ListingHelper.PrimeRewards.Count == 0)
+        if (Main.ListingHelper.PrimeRewards.Count == 0)
             return;
 
         Task.Run(async () =>
         {
-            if (_settings.AutoList && inGameName.IsNullOrEmpty() && !await IsJWTvalid())
+            if (_settings.AutoList && string.IsNullOrEmpty(inGameName) && !await IsJWTvalid())
                 Disconnect();
 
             Overlay.RewardsDisplaying = false;
@@ -961,8 +965,7 @@ public sealed partial class Data : INotificationHandler<LogCapture.LogCaptureLin
                     if (rewardCollection.PrimeNames.Count == 0)
                         continue;
 
-                    Main.ListingHelper.ScreensList.Add(
-                        new KeyValuePair<string, RewardCollection>("", rewardCollection));
+                    Main.ListingHelper.ScreensList.Add(new RewardCollectionItem(string.Empty, rewardCollection));
                 }
                 else
                 {
@@ -1431,7 +1434,7 @@ public sealed partial class Data : INotificationHandler<LogCapture.LogCaptureLin
     {
         try
         {
-            if (inGameName.IsNullOrEmpty())
+            if (string.IsNullOrEmpty(inGameName))
                 await SetIngameName();
 
             using var request = new HttpRequestMessage();
@@ -1556,4 +1559,16 @@ public sealed partial class Data : INotificationHandler<LogCapture.LogCaptureLin
 
     [GeneratedRegex("\"check_code\": \".*?\"", RegexOptions.Compiled)]
     private static partial Regex CheckCodeRegEx();
+
+    public ValueTask<WebSocketAliveStatusResponse> Handle(WebSocketAliveStatusRequest request, CancellationToken cancellationToken)
+    {
+        Logger.Debug("Checking websocket alive status. status={Status},at={At}", marketSocket.IsAlive, request.RequestedAt);
+        return new ValueTask<WebSocketAliveStatusResponse>(new WebSocketAliveStatusResponse(marketSocket.IsAlive));
+    }
+
+    public async ValueTask Handle(WebSocketSetStatus notification, CancellationToken cancellationToken)
+    {
+        Logger.Debug("Setting websocket status. status={Status}", notification.Status);
+        await SetWebsocketStatus(notification.Status);
+    }
 }

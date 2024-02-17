@@ -93,6 +93,7 @@ public partial class App : Application
                     services.TryAddSingleton<RewardWindow>();
                     services.TryAddSingleton<AutoCount>();
                     services.TryAddSingleton<SearchIt>();
+                    services.TryAddSingleton<GFNWarning>();
 
                     services.TryAddSingleton<SettingsViewModel>();
 

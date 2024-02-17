@@ -9,7 +9,6 @@ using WebSocketSharp;
 using WFInfo.Settings;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using WFInfo.Domain;
 using WFInfo.Extensions;
@@ -22,7 +21,8 @@ namespace WFInfo;
 public class Main
     : INotificationHandler<StartLoggedInTimer>,
         INotificationHandler<OverlayUpdate>,
-        INotificationHandler<OverlayUpdateData>
+        INotificationHandler<OverlayUpdateData>,
+        INotificationHandler<GnfWarningShow>
 {
     private enum ScreenshotType
     {
@@ -41,7 +41,6 @@ public class Main
     public static AutoCount AutoCount { get; set; }
     public static ErrorDialogue ErrorDialogue { get; set; }
     public static FullscreenReminder FullscreenReminder { get; set; }
-    public static GFNWarning GfnWarning { get; set; }
     public static UpdateDialogue Update { get; set; }
     public static SnapItOverlay SnapItOverlayWindow { get; private set; }
     public static SearchIt SearchIt { get; set; }
@@ -57,6 +56,8 @@ public class Main
 
     // ReSharper disable once NotAccessedField.Local
     private System.Threading.Timer _timer;
+
+    private readonly GFNWarning _gfnWarning;
 
     // Instance services
     private readonly ApplicationSettings _settings;
@@ -83,6 +84,7 @@ public class Main
         SettingsWindow settingsWindow,
         AutoCount autoCount,
         SearchIt searchIt,
+        GFNWarning gfnWarning,
         IServiceProvider sp)
     {
         _sp = sp;
@@ -100,6 +102,7 @@ public class Main
         SettingsWindow = settingsWindow;
         AutoCount = autoCount;
         SearchIt = searchIt;
+        _gfnWarning = gfnWarning;
 
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
@@ -183,11 +186,12 @@ public class Main
                 if (!await DataBase.IsJWTvalid().ConfigureAwait(true))
                     return;
                 //IDE0058 - computed value is never used.  Ever. Consider changing the return signature of SetWebsocketStatus to void instead
-                await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
+                await _mediator.Publish(new WebSocketSetStatus("invisible"));
                 await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed"));
             }).ConfigureAwait(false);
         }
         else
+        {
             switch (UserAway)
             {
                 case true when _latestActive > now:
@@ -217,11 +221,8 @@ public class Main
                     UserAway = true;
                     if (LastMarketStatus != "invisible")
                     {
-                        await Task.Run(async () =>
-                        {
-                            await DataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                            await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes"));
-                        }).ConfigureAwait(ConfigureAwaitOptions.None);
+                        await _mediator.Publish(new WebSocketSetStatus("invisible"));
+                        await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes"));
                     }
 
                     break;
@@ -234,6 +235,7 @@ public class Main
                     Logger.Debug("User is active - no status change needed");
                     break;
             }
+        }
     }
 
     public static void RunOnUIThread(Action act)
@@ -432,11 +434,6 @@ public class Main
         FullscreenReminder = new FullscreenReminder();
     }
 
-    public static void SpawnGFNWarning()
-    {
-        GfnWarning = new GFNWarning();
-    }
-
     private async Task LoadScreenshot(ScreenshotType type)
     {
         // Using WinForms for the openFileDialog because it's simpler and much easier
@@ -603,6 +600,20 @@ public class Main
                 y: overlayUpdateData.Position.Y,
                 wait: _settings.Delay
             );
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(GnfWarningShow gnfWarningShow, CancellationToken cancellationToken)
+    {
+        var show = gnfWarningShow.Show;
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            if (show)
+                _gfnWarning.Open();
+            else
+                _gfnWarning.Hide();
         });
 
         return ValueTask.CompletedTask;

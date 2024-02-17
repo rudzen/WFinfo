@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Domain.Types;
 using WFInfo.Extensions;
 using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
@@ -50,6 +51,7 @@ public partial class MainWindow
 
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly ILowLevelListener _lowLevelListener;
+    private readonly IMediator _mediator;
 
     public MainWindow(
         ApplicationSettings applicationSettings,
@@ -60,12 +62,14 @@ public partial class MainWindow
         IEncryptedDataService encryptedDataService,
         IServiceProvider sp,
         ILowLevelListener lowLevelListener,
-        Main main)
+        Main main,
+        IMediator mediator)
     {
         _applicationSettings = applicationSettings;
         _sp = sp;
         INSTANCE = this;
         Main = main;
+        _mediator = mediator;
 
         _settingsViewModel = settingsViewModel;
         _plusOne = plusOne;
@@ -346,29 +350,22 @@ public partial class MainWindow
     /// </summary>
     /// <param name="sender"></param>
     /// <param name="e"></param>
-    private void ComboBoxOnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void ComboBoxOnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!ComboBox.IsLoaded || updatesupression) //Prevent firing off to early
+        // Prevent firing off to early
+        if (!ComboBox.IsLoaded || updatesupression)
             return;
+
         switch (ComboBox.SelectedIndex)
         {
             case 0: //Online in game
-                Task.Run(async () =>
-                {
-                    await Main.DataBase.SetWebsocketStatus("in game");
-                });
+                await _mediator.Publish(new WebSocketSetStatus("in game"));
                 break;
             case 1: //Online
-                Task.Run(async () =>
-                {
-                    await Main.DataBase.SetWebsocketStatus("online");
-                });
+                await _mediator.Publish(new WebSocketSetStatus("online"));
                 break;
             case 2: //Invisible
-                Task.Run(async () =>
-                {
-                    await Main.DataBase.SetWebsocketStatus("offline");
-                });
+                await _mediator.Publish(new WebSocketSetStatus("offline"));
                 break;
             case 3: //Sign out
                 LoggOut(null, null);
@@ -419,7 +416,7 @@ public partial class MainWindow
                 var rewardCollection = await Main.ListingHelper.GetRewardCollection(rewardscreen);
                 if (rewardCollection.PrimeNames.Count == 0)
                     continue;
-                Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>(string.Empty, rewardCollection));
+                Main.ListingHelper.ScreensList.Add(new RewardCollectionItem(string.Empty, rewardCollection));
             }
         });
         t.Wait();

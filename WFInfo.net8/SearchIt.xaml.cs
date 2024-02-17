@@ -3,13 +3,14 @@ using System.Windows;
 using System.Windows.Controls;
 using Serilog;
 using WebSocketSharp;
+using WFInfo.Domain.Types;
 
 namespace WFInfo;
 
 /// <summary>
 /// Interaction logic for SearchIt.xaml
 /// </summary>
-/// 
+///
 public partial class SearchIt : Window
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<SearchIt>();
@@ -56,7 +57,7 @@ public partial class SearchIt : Window
             var closest = Main.DataBase.GetPartNameHuman(searchField.Text, out _);
             var primeRewards = new List<string> { closest };
             var rewardCollection = Main.ListingHelper.GetRewardCollection(primeRewards).GetAwaiter().GetResult();
-            Main.ListingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>(string.Empty, rewardCollection));
+            Main.ListingHelper.ScreensList.Add(new RewardCollectionItem(string.Empty, rewardCollection));
             if (!Main.ListingHelper.IsVisible)
                 Main.ListingHelper.SetScreen(Main.ListingHelper.ScreensList.Count - 1);
 

@@ -3,24 +3,25 @@ using System.Windows.Input;
 
 namespace WFInfo;
 
-/// <summary>
-/// Interaction logic for errorDialogue.xaml
-/// </summary>
 public partial class GFNWarning : Window
 {
     public GFNWarning()
     {
         InitializeComponent();
+    }
+
+    public void Open()
+    {
         Show();
         Focus();
     }
 
     private void Exit(object sender, RoutedEventArgs e)
     {
-        Close();
+        Hide();
     }
 
-    // Allows the draging of the window
+    // Allows the dragging of the window
     private new void MouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ChangedButton == MouseButton.Left)
