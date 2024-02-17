@@ -6,7 +6,6 @@ using System.Net;
 using System.Net.Http;
 using System.Numerics;
 using System.Reflection;
-using System.Security.Cryptography;
 using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;

@@ -1,4 +1,3 @@
-using System.Buffers.Binary;
 using SharpDX;
 using SharpDX.Direct3D11;
 using System.Diagnostics;

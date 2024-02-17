@@ -1,11 +1,9 @@
-﻿using System.Diagnostics;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Serilog;
-using Serilog.Core;
 using WFInfo.Services;
 using WFInfo.Settings;
 

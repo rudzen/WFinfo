@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Drawing;
 using System.Windows.Data;
 using Newtonsoft.Json.Linq;
 using WebSocketSharp;

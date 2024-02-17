@@ -1,8 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Mediator;
-using WFInfo.Domain;
 using WFInfo.Extensions;
 using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
@@ -12,7 +10,7 @@ namespace WFInfo.Settings;
 /// <summary>
 /// Interaction logic for Settings.xaml
 /// </summary>
-public partial class SettingsWindow : Window
+public partial class SettingsWindow
 {
     public SettingsViewModel SettingsViewModel { get; }
 
@@ -20,15 +18,13 @@ public partial class SettingsWindow : Window
 
     private readonly ThemeAdjuster _themeAdjuster;
     private readonly Data _data;
-    private readonly IPublisher _publisher;
 
-    public SettingsWindow(SettingsViewModel settingsViewModel, Data data, IPublisher publisher, ThemeAdjuster themeAdjuster)
+    public SettingsWindow(SettingsViewModel settingsViewModel, Data data, ThemeAdjuster themeAdjuster)
     {
         InitializeComponent();
         DataContext = this;
         SettingsViewModel = settingsViewModel;
         _data = data;
-        _publisher = publisher;
         _themeAdjuster = themeAdjuster;
     }
 
@@ -112,7 +108,8 @@ public partial class SettingsWindow : Window
 
     private void AutoClicked(object sender, RoutedEventArgs e)
     {
-        SettingsViewModel.Auto = autoCheckbox.IsChecked.Value;
+        var isChecked = autoCheckbox.IsChecked;
+        SettingsViewModel.Auto = isChecked.HasValue && isChecked.Value;
         if (SettingsViewModel.Auto)
         {
             var message = "Do you want to enable the new auto mode?" + Environment.NewLine +
@@ -163,7 +160,7 @@ public partial class SettingsWindow : Window
         if (!IsActivationFocused)
             return;
 
-        var key = MouseButton.Left;
+        MouseButton key;
 
         if (e.MiddleButton == MouseButtonState.Pressed)
             key = MouseButton.Middle;
@@ -171,8 +168,7 @@ public partial class SettingsWindow : Window
             key = MouseButton.XButton1;
         else if (e.XButton2 == MouseButtonState.Pressed)
             key = MouseButton.XButton2;
-
-        if (key == MouseButton.Left)
+        else
             return;
 
         e.Handled = true;
@@ -206,11 +202,14 @@ public partial class SettingsWindow : Window
         var item = (ComboBoxItem)localeCombobox.SelectedItem;
 
         var selectedLocale = item.Tag.ToString();
-        SettingsViewModel.Locale = selectedLocale;
+        SettingsViewModel.Locale = selectedLocale ?? string.Empty;
         Save();
 
         _ = OCR.UpdateEngineAsync();
-        _ = Task.Run(async () => { await _data.ReloadItems(); });
+        _ = Task.Run(async () =>
+        {
+            await _data.ReloadItems();
+        });
     }
 
     private void LightRadioChecked(object sender, RoutedEventArgs e)
@@ -269,7 +268,7 @@ public partial class SettingsWindow : Window
         hidden.Focus();
     }
 
-    private async void ConfigureTheme_button_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void ConfigureTheme_button_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         Dispatcher.InvokeIfRequired(() =>
         {
@@ -279,8 +278,8 @@ public partial class SettingsWindow : Window
 
     private void ThemeSelectionComboBox_OnDropDownClosed(object sender, EventArgs e)
     {
-        var messageBoxResult = MessageBox.Show(
+        MessageBox.Show(
             "This option will not change WFInfo screen style. It will force app to think you have selected this theme in Warframe (and will use its pixel colors for item scanning). Unless you know what you're doing, leave Auto selected.",
-            "Change of target theme", System.Windows.MessageBoxButton.OK);
+            "Change of target theme", MessageBoxButton.OK);
     }
 }
