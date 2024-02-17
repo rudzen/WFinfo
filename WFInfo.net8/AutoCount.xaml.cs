@@ -2,29 +2,27 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Mediator;
 using WFInfo.Domain;
+using WFInfo.Extensions;
 
 namespace WFInfo;
 
 /// <summary>
 /// Interaction logic for AutoCount.xaml
-/// TODO (rudzen): move this to relic window
 /// </summary>
-public partial class AutoCount : Window
+public partial class AutoCount : Window, INotificationHandler<AutoCountShow>
 {
-    //private readonly Settings.SettingsViewModel _viewModel;
-    //public Settings.SettingsViewModel SettingsViewModel => _viewModel;
-
-    public static AutoCount INSTANCE;
-    public AutoAddViewModel viewModel { get; }
+    public AutoAddViewModel ViewModel { get; }
     public SimpleCommand IncrementAll { get; }
     public SimpleCommand RemoveAll { get; }
 
-    public AutoCount()
-    {
-        INSTANCE = this;
-        viewModel = new AutoAddViewModel();
+    private readonly IMediator _mediator;
 
+    public AutoCount(AutoAddViewModel viewModel, IMediator mediator)
+    {
+        this.ViewModel = viewModel;
+        _mediator = mediator;
         RemoveAll = new SimpleCommand(RemoveFromParentAll);
         IncrementAll = new SimpleCommand(AddCountAll);
 
@@ -42,13 +40,10 @@ public partial class AutoCount : Window
         InitializeComponent();
     }
 
-    public static void ShowAutoCount()
+    private void ShowAutoCount()
     {
-        if (INSTANCE != null)
-        {
-            INSTANCE.Show();
-            INSTANCE.Focus();
-        }
+        Show();
+        Focus();
     }
 
     private void Hide(object sender, RoutedEventArgs e)
@@ -58,17 +53,17 @@ public partial class AutoCount : Window
 
     private void AddCountAll()
     {
-        foreach (AutoAddSingleItem item in viewModel.ItemList)
+        foreach (var item in ViewModel.ItemList)
         {
-            if (item._parent != viewModel)
+            if (item._parent != ViewModel)
             {
-                item._parent = viewModel;
+                item._parent = ViewModel;
             }
         }
 
-        while (viewModel.ItemList.Count > 0)
+        while (ViewModel.ItemList.Count > 0)
         {
-            viewModel.ItemList.FirstOrDefault().AddCount(false);
+            ViewModel.ItemList.FirstOrDefault().AddCount(false, _mediator);
         }
 
         Main.DataBase.SaveAll(DataTypes.All);
@@ -77,17 +72,15 @@ public partial class AutoCount : Window
 
     private void RemoveFromParentAll()
     {
-        foreach (AutoAddSingleItem item in viewModel.ItemList)
+        foreach (var item in ViewModel.ItemList)
         {
-            if (item._parent != viewModel)
-            {
-                item._parent = viewModel;
-            }
+            if (item._parent != ViewModel)
+                item._parent = ViewModel;
         }
 
-        while (viewModel.ItemList.Count > 0)
+        while (ViewModel.ItemList.Count > 0)
         {
-            viewModel.ItemList.FirstOrDefault().Remove.Execute(null);
+            ViewModel.ItemList.FirstOrDefault().Remove.Execute(null);
         }
     }
 
@@ -101,13 +94,22 @@ public partial class AutoCount : Window
     private void RedirectScrollToParent(object sender, MouseWheelEventArgs e)
     {
         object tmp = VisualTreeHelper.GetParent(sender as DependencyObject);
-        if (tmp is ScrollContentPresenter)
+
+        if (tmp is not ScrollContentPresenter scp)
+            return;
+
+        var eventArgs = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
         {
-            ScrollContentPresenter SCP = tmp as ScrollContentPresenter;
-            MouseWheelEventArgs eventArgs = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta);
-            eventArgs.RoutedEvent = MouseWheelEvent;
-            eventArgs.Source = sender;
-            SCP.RaiseEvent(eventArgs);
-        }
+            RoutedEvent = MouseWheelEvent,
+            Source = sender
+        };
+
+        scp.RaiseEvent(eventArgs);
+    }
+
+    public ValueTask Handle(AutoCountShow notification, CancellationToken cancellationToken)
+    {
+        Dispatcher.InvokeIfRequired(ShowAutoCount);
+        return ValueTask.CompletedTask;
     }
 }

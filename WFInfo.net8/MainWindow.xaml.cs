@@ -186,7 +186,7 @@ public partial class MainWindow
     /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
     public void ChangeStatus(string status, StatusSeverity severity = StatusSeverity.None)
     {
-        if (Status == null)
+        if (Status is null)
             return;
 
         Logger.Debug("Status. message={Msg}", status);

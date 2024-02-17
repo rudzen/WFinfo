@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Windows;
 using DotNext;
 using Mediator;
 using Microsoft.Extensions.ObjectPool;
@@ -26,7 +27,8 @@ namespace WFInfo.Services;
 public sealed partial class Data :
     INotificationHandler<LogCapture.LogCaptureLineChange>,
     IRequestHandler<WebSocketAliveStatusRequest, WebSocketAliveStatusResponse>,
-    INotificationHandler<WebSocketSetStatus>
+    INotificationHandler<WebSocketSetStatus>,
+    IRequestHandler<DataRequest, DataResponse>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<Data>();
 
@@ -525,7 +527,7 @@ public sealed partial class Data :
 
         if (MarketData["timestamp"] == null)
         {
-            Main.RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 MainWindow.INSTANCE.MarketData.Content = "VERIFY";
                 MainWindow.INSTANCE.DropData.Content = "TIME";
@@ -598,8 +600,8 @@ public sealed partial class Data :
         catch (Exception ex)
         {
             Logger.Error(ex, "Market Update Failed");
-            Main.StatusUpdate("Market Update Failed", 0);
-            Main.RunOnUIThread(() =>
+            await _mediator.Publish(new UpdateStatus("Market Update Failed"));
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 _ = new ErrorDialogue(DateTime.Now, 0);
             });
@@ -657,8 +659,8 @@ public sealed partial class Data :
         catch (Exception ex)
         {
             Logger.Error(ex, "Prime Update Failed");
-            Main.StatusUpdate("Prime Update Failed", 0);
-            Main.RunOnUIThread(() =>
+            await _mediator.Publish(new UpdateStatus("Prime Update Failed"));
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 _ = new ErrorDialogue(DateTime.Now, 0);
             });
@@ -952,10 +954,10 @@ public sealed partial class Data :
 
                 if (_settings.AutoCount)
                 {
-                    Main.RunOnUIThread(() =>
+                    Application.Current.Dispatcher.InvokeIfRequired(() =>
                     {
-                        Main.AutoCount.viewModel.AddItem(new AutoAddSingleItem(rewardscreen,
-                            Main.ListingHelper.SelectedRewardIndex, Main.AutoCount.viewModel));
+                        Main.AutoCount.ViewModel.AddItem(new AutoAddSingleItem(rewardscreen,
+                            Main.ListingHelper.SelectedRewardIndex, Main.AutoCount.ViewModel, _mediator));
                     });
                 }
 
@@ -977,7 +979,7 @@ public sealed partial class Data :
             if (_settings.AutoCount)
             {
                 Logger.Debug("Opening AutoCount interface");
-                Main.RunOnUIThread(AutoCount.ShowAutoCount);
+                await _mediator.Publish(AutoCountShow.Instance);
             }
 
             if (_settings.AutoCSV)
@@ -991,7 +993,7 @@ public sealed partial class Data :
             if (_settings.AutoList)
             {
                 Logger.Debug("Opening AutoList interface");
-                Main.RunOnUIThread(() =>
+                Application.Current.Dispatcher.InvokeIfRequired(() =>
                 {
                     if (Main.ListingHelper.ScreensList.Count == 1)
                         Main.ListingHelper.SetScreen(0);
@@ -1002,7 +1004,7 @@ public sealed partial class Data :
             }
 
             Logger.Debug("Clearing listingHelper.PrimeRewards");
-            Main.RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 Main.ListingHelper.PrimeRewards.Clear();
             });
@@ -1046,8 +1048,8 @@ public sealed partial class Data :
         catch (Exception ex)
         {
             Logger.Error(ex, "Auto failed");
-            Main.StatusUpdate("Auto Detection Failed", 0);
-            Main.RunOnUIThread(() =>
+            await _mediator.Publish(new UpdateStatus("Auto Detection Failed"));
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 _ = new ErrorDialogue(DateTime.Now, 0);
             });
@@ -1580,5 +1582,11 @@ public sealed partial class Data :
     {
         Logger.Debug("Setting websocket status. status={Status}", notification.Status);
         await SetWebsocketStatus(notification.Status);
+    }
+
+    public ValueTask<DataResponse> Handle(DataRequest request, CancellationToken cancellationToken)
+    {
+        var data = _relicData[request.Type.Index()];
+        return new ValueTask<DataResponse>(new DataResponse(data));
     }
 }

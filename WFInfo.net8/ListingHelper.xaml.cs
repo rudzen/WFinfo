@@ -4,6 +4,7 @@ using System.Windows.Input;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using WFInfo.Domain.Types;
+using WFInfo.Extensions;
 using WFInfo.Services;
 
 namespace WFInfo;
@@ -345,7 +346,7 @@ public partial class ListingHelper : Window
             }
             catch (Exception e)
             {
-                Main.RunOnUIThread(() =>
+                Application.Current.Dispatcher.InvokeIfRequired(() =>
                 {
                     Main.SearchIt.placeholder.Content = $"Could not find {primeItem}";
                     Main.SearchIt.searchField.Text = string.Empty;

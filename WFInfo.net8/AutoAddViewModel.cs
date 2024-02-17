@@ -1,6 +1,9 @@
 ﻿using System.Collections.ObjectModel;
+using System.Windows;
+using Mediator;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Extensions;
 
 namespace WFInfo;
 
@@ -67,7 +70,11 @@ public class AutoAddSingleItem : INPC
 
     public SimpleCommand Remove { get; }
 
-    public AutoAddSingleItem(List<string> options, int activeIndex, AutoAddViewModel parent)
+    public AutoAddSingleItem(
+        List<string> options,
+        int activeIndex,
+        AutoAddViewModel parent,
+        IMediator mediator)
     {
         RewardOptions = new ObservableCollection<string>(options);
         activeIndex = Math.Min(RewardOptions.Count - 1, activeIndex);
@@ -82,19 +89,19 @@ public class AutoAddSingleItem : INPC
 
         _parent = parent;
         Remove = new SimpleCommand(RemoveFromParent);
-        Increment = new SimpleCommand(() => AddCount(true));
+        Increment = new SimpleCommand(() => AddCount(true, mediator));
     }
 
-    public async Task AddCount(bool save)
+    public async Task AddCount(bool save, IMediator mediator)
     {
         //get item count, increment, save
-        bool saveFailed = false;
-        string item = ActiveOption;
+        var saveFailed = false;
+        var item = ActiveOption;
         if (item.Contains("Prime"))
         {
-            string[] nameParts = item.Split(["Prime"], 2, StringSplitOptions.None);
-            string primeName = $"{nameParts[0]}Prime";
-            string partName = primeName + (nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow")
+            var nameParts = item.Split(["Prime"], 2, StringSplitOptions.None);
+            var primeName = $"{nameParts[0]}Prime";
+            var partName = primeName + (nameParts[1].Length > 10 && !nameParts[1].Contains("Kubrow")
                 ? nameParts[1].Replace(" Blueprint", string.Empty)
                 : nameParts[1]);
 
@@ -102,9 +109,9 @@ public class AutoAddSingleItem : INPC
 
             try
             {
-                int count = Main.DataBase.EquipmentData[primeName]["parts"][partName]["owned"].ToObject<int>();
-
-                Main.DataBase.EquipmentData[primeName]["parts"][partName]["owned"] = count + 1;
+                var primeDataPartsOwned = Main.DataBase.EquipmentData[primeName]["parts"][partName];
+                var count = primeDataPartsOwned["owned"].ToObject<int>();
+                primeDataPartsOwned["owned"] = count + 1;
             }
             catch (Exception ex)
             {
@@ -115,12 +122,11 @@ public class AutoAddSingleItem : INPC
 
         if (saveFailed)
         {
-            //shouldn't need Main.RunOnUIThread since this is already on the UI Thread
+            await mediator.Publish(new UpdateStatus("Failed to save one or more item, report to dev", StatusSeverity.Warning));
             //adjust for time diff between snap-it finishing and save being pressed, in case of long delay
-            Main.RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 Main.SpawnErrorPopup(DateTime.UtcNow);
-                Main.StatusUpdate("Failed to save one or more item, report to dev", StatusSeverity.Warning);
             });
         }
 
@@ -128,10 +134,7 @@ public class AutoAddSingleItem : INPC
         if (save)
         {
             Main.DataBase.SaveAll(DataTypes.All);
-            Main.RunOnUIThread(() =>
-            {
-                EquipmentWindow.INSTANCE.ReloadItems();
-            });
+            await mediator.Publish(EventWindowReloadItems.Instance);
         }
     }
 

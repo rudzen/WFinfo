@@ -96,7 +96,12 @@ public partial class App : Application
                     services.TryAddSingleton<GFNWarning>();
                     services.TryAddSingleton<FullscreenReminder>();
 
+                    // components
+                    services.TryAddSingleton<SnapItOverlay>();
+
+                    // view models
                     services.TryAddSingleton<SettingsViewModel>();
+                    services.TryAddSingleton<AutoAddViewModel>();
 
                     services.AddDataProtection();
 

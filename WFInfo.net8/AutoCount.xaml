@@ -133,7 +133,7 @@
         </Grid>
         <ScrollViewer Grid.Row="1">
 
-            <DataGrid ItemsSource="{Binding viewModel.ItemList}" AutoGenerateColumns="False" Margin="0"
+            <DataGrid ItemsSource="{Binding ViewModel.ItemList}" AutoGenerateColumns="False" Margin="0"
                       VerticalAlignment="Top" HorizontalAlignment="Stretch" HeadersVisibility="Column"
                       PreviewMouseWheel="RedirectScrollToParent">
                 <DataGrid.Resources>

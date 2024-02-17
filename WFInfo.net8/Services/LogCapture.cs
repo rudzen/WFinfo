@@ -1,8 +1,10 @@
 ﻿using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Text;
+using System.Windows;
 using Mediator;
 using Serilog;
+using WFInfo.Extensions;
 using WFInfo.Services.WarframeProcess;
 
 namespace WFInfo.Services;
@@ -108,7 +110,7 @@ public sealed class LogCapture
         catch (Exception ex)
         {
             Logger.Error(ex, "Error in LogCapture");
-            Main.RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 _ = new ErrorDialogue(DateTime.Now, 0);
             });

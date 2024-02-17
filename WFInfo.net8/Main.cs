@@ -90,6 +90,7 @@ public class Main
         SearchIt searchIt,
         GFNWarning gfnWarning,
         FullscreenReminder fullscreenReminder,
+        SnapItOverlay snapItOverlay,
         IServiceProvider sp
         )
     {
@@ -111,9 +112,9 @@ public class Main
         _gfnWarning = gfnWarning;
         _fullscreenReminder = fullscreenReminder;
 
+        SnapItOverlayWindow = snapItOverlay;
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
-            SnapItOverlayWindow = new SnapItOverlay(_windowInfoService);
             _overlays = [new(_settings), new(_settings), new(_settings), new(_settings)];
 
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
@@ -164,7 +165,7 @@ public class Main
                 : "Launch Failure - Please Restart";
             Logger.Error(ex, "Failed to initialize WFInfo. Message: {Message}", message);
             await _mediator.Publish(new UpdateStatus(message, StatusSeverity.Error));
-            RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 _ = new ErrorDialogue(DateTime.Now, 0);
             });
@@ -245,11 +246,6 @@ public class Main
         }
     }
 
-    public static void RunOnUIThread(Action act)
-    {
-        MainWindow.INSTANCE.Dispatcher.Invoke(act);
-    }
-
     private static void StartMessage()
     {
         Directory.CreateDirectory(ApplicationConstants.AppPath);
@@ -264,7 +260,7 @@ public class Main
     /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
     public static void StatusUpdate(string message, StatusSeverity severity)
     {
-        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
             MainWindow.INSTANCE.ChangeStatus(message, severity);
         });
@@ -342,7 +338,7 @@ public class Main
             Logger.Information("Starting master it");
             await _mediator.Publish(new UpdateStatus("Starting master it"));
             using var bigScreenshot = await OCR.CaptureScreenshot();
-            OCR.ProcessProfileScreen(bigScreenshot);
+            await OCR.ProcessProfileScreen(bigScreenshot);
         }
         else if (_settings.Debug || _processFinder.IsRunning)
         {
@@ -483,7 +479,7 @@ public class Main
 
                                 var image = new Bitmap(file);
                                 _windowInfoService.UseImage(image);
-                                OCR.ProcessProfileScreen(image);
+                                await OCR.ProcessProfileScreen(image);
                                 break;
                             }
                         }

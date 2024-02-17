@@ -2,14 +2,17 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Mediator;
 using Serilog;
+using WFInfo.Domain;
+using WFInfo.Extensions;
 
 namespace WFInfo;
 
 /// <summary>
 /// Interaction logic for RelicsWindow.xaml
 /// </summary>
-public partial class EquipmentWindow : Window
+public partial class EquipmentWindow : Window, INotificationHandler<EventWindowReloadItems>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<EquipmentWindow>();
 
@@ -39,7 +42,7 @@ public partial class EquipmentWindow : Window
     {
         if (primeTypes is null)
             return;
-        
+
         foreach (TreeNode category in primeTypes.Values)
         {
             foreach (TreeNode prime in category.Children)
@@ -156,13 +159,13 @@ public partial class EquipmentWindow : Window
             DragMove();
     }
 
-    public void SortBoxChanged(object sender, SelectionChangedEventArgs e)
+    private void SortBoxChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!IsLoaded)
             return;
-        
+
         EqmtTree.Items.SortDescriptions.Clear();
-        
+
         foreach (var (_, value) in primeTypes)
         {
             value.Sort(SortBox.SelectedIndex, false);
@@ -222,7 +225,9 @@ public partial class EquipmentWindow : Window
             RefreshVisibleRelics();
         }
         else
+        {
             ReapplyFilters();
+        }
     }
 
     /// <summary>
@@ -293,7 +298,7 @@ public partial class EquipmentWindow : Window
     {
         if (e.Handled)
             return;
-        
+
         TreeViewItem tvi = e.OriginalSource as TreeViewItem;
 
         if (tvi == null)
@@ -319,7 +324,7 @@ public partial class EquipmentWindow : Window
         foreach (KeyValuePair<string, TreeNode> primeType in primeTypes)
             primeType.Value.ChangeExpandedTo(expand);
     }
-    
+
     private void RefreshVisibleRelics()
     {
         int index = 0;
@@ -396,5 +401,11 @@ public partial class EquipmentWindow : Window
     private void WindowLoaded(object sender, RoutedEventArgs e)
     {
         Populate();
+    }
+
+    public ValueTask Handle(EventWindowReloadItems notification, CancellationToken cancellationToken)
+    {
+        Dispatcher.InvokeIfRequired(ReloadItems);
+        return ValueTask.CompletedTask;
     }
 }

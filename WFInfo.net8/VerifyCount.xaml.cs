@@ -72,7 +72,6 @@ public partial class VerifyCount : Window
         EquipmentWindow.INSTANCE.ReloadItems();
         if (saveFailed)
         {
-            //shouldn't need Main.RunOnUIThread since this is already on the UI Thread
             //adjust for time diff between snap-it finishing and save being pressed, in case of long delay
             Main.SpawnErrorPopup(DateTime.UtcNow, (int)((DateTime.UtcNow - triggerTime).TotalSeconds) + 30);
             Main.StatusUpdate("Failed to save one or more item, report to dev", StatusSeverity.Warning);

@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Mediator;
 using Serilog;
 using WFInfo.Domain;
 using WFInfo.Extensions;
@@ -22,10 +23,12 @@ public partial class SnapItOverlay : Window
     private System.Windows.Point _startDrag;
     private System.Drawing.Point _topLeft;
     private readonly IWindowInfoService _windowInfoService;
+    private readonly IPublisher _publisher;
 
-    public SnapItOverlay(IWindowInfoService windowInfoService)
+    public SnapItOverlay(IWindowInfoService windowInfoService, IPublisher publisher)
     {
         _windowInfoService = windowInfoService;
+        _publisher = publisher;
         WindowStartupLocation = WindowStartupLocation.Manual;
 
         Left = 0;
@@ -96,7 +99,7 @@ public partial class SnapItOverlay : Window
             // Box is smaller than 10x10 and thus will never be able to have any text.
             // Also used as a fail save to prevent the program from crashing if the user makes a 0x0 selection
             Logger.Debug("User selected an area too small");
-            Main.StatusUpdate("Please select a larger area to scan", StatusSeverity.Warning);
+            await _publisher.Publish(new UpdateStatus("Please select a larger area to scan", StatusSeverity.Warning));
             return;
         }
 
@@ -114,7 +117,7 @@ public partial class SnapItOverlay : Window
         // try to hide the evidence as fast as possible
         rectangle.Visibility = Visibility.Hidden;
 
-        Task.Run(async () => await OCR.ProcessSnapIt(cutout, tempImage, _topLeft));
+        await OCR.ProcessSnapIt(cutout, tempImage, _topLeft);
 
         CloseOverlay();
     }

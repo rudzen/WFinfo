@@ -206,7 +206,7 @@ internal partial class OCR
             if (_firstChecks == null)
             {
                 // TODO (rudzen) : Add event
-                Main.RunOnUIThread(() =>
+                Application.Current.Dispatcher.InvokeIfRequired(() =>
                 {
                     Main.SpawnErrorPopup(time);
                 });
@@ -240,6 +240,9 @@ internal partial class OCR
             var startY = (int)(_window.Center.Y / _window.DpiScaling - 20 * _window.ScreenScaling * UiScaling);
             var partNumber = 0;
             var hideRewardInfo = false;
+
+            var marketData = await _mediator.Send(new DataRequest(DataTypes.MarketData));
+
             for (var i = 0; i < _firstChecks.Length; i++)
             {
                 var part = _firstChecks[i];
@@ -248,18 +251,18 @@ internal partial class OCR
 
                 var correctName = Main.DataBase.GetPartName(part, out _firstProximity.Span[i], false, out _);
                 var primeSetName = Data.GetSetName(correctName);
-                var job = (JObject)Main.DataBase.MarketData.GetValue(correctName);
-                var primeSet = (JObject)Main.DataBase.MarketData.GetValue(primeSetName);
+                var job = (JObject)marketData.Data.GetValue(correctName);
+                var primeSet = (JObject)marketData.Data.GetValue(primeSetName);
                 var ducats = job["ducats"].ToObject<string>();
-                if (int.Parse(ducats, ApplicationConstants.Culture) == 0)
+                var duc = int.Parse(ducats, ApplicationConstants.Culture);
+                if (duc == 0)
                 {
                     hideRewardInfo = true;
                 }
 
-                //else if (correctName != "Kuva" || correctName != "Exilus Weapon Adapter Blueprint" || correctName != "Riven Sliver" || correctName != "Ayatan Amber Star")
                 primeRewards.Add(correctName);
                 var plat = job["plat"].ToObject<string>();
-                string primeSetPlat = null;
+                string primeSetPlat = null!;
                 if (primeSet != null)
                     primeSetPlat = (string)primeSet["plat"];
 
@@ -269,7 +272,6 @@ internal partial class OCR
                 var mastered = Main.DataBase.IsPartMastered(correctName);
                 var partsOwned = Main.DataBase.PartsOwned(correctName);
                 var partsCount = Main.DataBase.PartsCount(correctName);
-                var duc = int.Parse(ducats, ApplicationConstants.Culture);
 
                 #endregion
 
@@ -314,8 +316,6 @@ internal partial class OCR
                     : string.Empty;
 
                 #region display part
-
-                Overlay.RewardsDisplaying = true;
 
                 if (_settings.IsOverlaySelected)
                 {
@@ -599,7 +599,7 @@ internal partial class OCR
 
             var width = Math.Clamp((int)(part.Bounding.Width * _window.ScreenScaling), _settings.MinOverlayWidth, _settings.MaxOverlayWidth);
 
-            Main.RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 var itemOverlay = new Overlay(_settings);
                 itemOverlay.LoadTextData(name, plat, primeSetPlat, ducats, volume, vaulted, mastered, partsOwned,
@@ -615,7 +615,7 @@ internal partial class OCR
 
         // TODO (rudzen) : COnvert to notification event
         if (_settings.DoSnapItCount && resultCount > 0)
-            Main.RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 VerifyCount.ShowVerifyCount(foundParts);
             });
@@ -628,7 +628,7 @@ internal partial class OCR
         if (resultCount == 0)
         {
             await _mediator.Publish(new UpdateStatus($"Snap-it couldn't find any items to display. time={end}", StatusSeverity.Error));
-            Main.RunOnUIThread(() =>
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
                 Main.SpawnErrorPopup(DateTime.UtcNow);
             });
@@ -1409,15 +1409,14 @@ internal partial class OCR
     /// Process the profile screen to find owned items
     /// </summary>
     /// <param name="fullShot">Image to scan</param>
-    internal static void ProcessProfileScreen(Bitmap fullShot)
+    internal static async Task ProcessProfileScreen(Bitmap fullShot)
     {
         var start = Stopwatch.GetTimestamp();
 
         var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH-mm-ssff", ApplicationConstants.Culture);
         fullShot.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"ProfileImage {timestamp}.png"));
         var foundParts = FindOwnedItems(fullShot, timestamp, in start);
-        var parts = CollectionsMarshal.AsSpan(foundParts);
-        foreach (var part in parts)
+        foreach (var part in foundParts)
         {
             var partName = part.Name;
             if (!PartNameValid($"{partName} Blueprint"))
@@ -1452,20 +1451,18 @@ internal partial class OCR
         }
 
         Main.DataBase.SaveAll(DataTypes.All);
-        Main.RunOnUIThread(() =>
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
             EquipmentWindow.INSTANCE.ReloadItems();
         });
 
         var end = Stopwatch.GetElapsedTime(start);
-        if (end < TimeSpan.FromSeconds(10))
-        {
-            Main.StatusUpdate($"Completed Profile Scanning({end})", StatusSeverity.None);
-        }
-        else
-        {
-            Main.StatusUpdate($"Lower brightness may increase speed({end})", StatusSeverity.Error);
-        }
+
+        var status = end < TimeSpan.FromSeconds(10)
+            ? new UpdateStatus($"Completed Profile Scanning({end})")
+            : new UpdateStatus($"Lower brightness may increase speed({end})", StatusSeverity.Error);
+
+        await _mediator.Publish(status);
     }
 
     /// <summary>
@@ -1657,9 +1654,7 @@ internal partial class OCR
                         g.DrawRectangle(PinkPen, leftEdge, topEdge, width, height);
                         x = Math.Max(rightEdge, x);
                         if (Stopwatch.GetElapsedTime(start) > TimeSpan.FromSeconds(10))
-                        {
-                            Main.StatusUpdate("High noise, this might be slow", StatusSeverity.Warning);
-                        }
+                            StatusUpdate("High noise, this might be slow", StatusSeverity.Warning);
 
                         continue;
                     }
@@ -2121,13 +2116,7 @@ internal partial class OCR
 
         if (totalEven == 0 || totalOdd == 0)
         {
-            // TODO (rudzen) : move this bullcrap UI interaction the hell away from this deep within the code
-            Main.RunOnUIThread(() =>
-            {
-                Main.StatusUpdate(
-                    "Unable to detect reward from selection screen\nScanning inventory? Hold down snap-it modifier",
-                    StatusSeverity.Error);
-            });
+            StatusUpdate("Unable to detect reward from selection screen\nScanning inventory? Hold down snap-it modifier", StatusSeverity.Error);
             ProcessingActive.GetAndSet(false);
 
             // since we are about to freak out
@@ -2273,6 +2262,14 @@ internal partial class OCR
     public static async Task UpdateEngineAsync()
     {
         _tesseractService.ReloadEngines();
+    }
+
+    private static void StatusUpdate(string status, StatusSeverity severity)
+    {
+        Task.Run(async () =>
+        {
+            await _mediator.Publish(new UpdateStatus(status, severity));
+        });
     }
 
     [GeneratedRegex("[^a-z가-힣]", RegexOptions.IgnoreCase | RegexOptions.Compiled, "da-DK")]

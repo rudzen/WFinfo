@@ -508,7 +508,7 @@
                                        DockPanel.Dock="Left"
                                        FontSize="16"
                                        FontWeight="Regular" />
-                                <ComboBox SelectionChanged="localeComboboxSelectionChanged"
+                                <ComboBox SelectionChanged="LocaleComboboxSelectionChanged"
                                           DockPanel.Dock="Right"
                                           x:Name="localeCombobox"
                                           FontSize="14"

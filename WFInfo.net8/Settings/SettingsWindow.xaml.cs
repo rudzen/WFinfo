@@ -1,6 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Mediator;
+using WFInfo.Domain;
+using WFInfo.Extensions;
 using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
 
@@ -15,14 +18,18 @@ public partial class SettingsWindow : Window
 
     private bool IsActivationFocused => Activation_key_box.IsFocused;
 
+    private readonly ThemeAdjuster _themeAdjuster;
     private readonly Data _data;
+    private readonly IPublisher _publisher;
 
-    public SettingsWindow(SettingsViewModel settingsViewModel, Data data)
+    public SettingsWindow(SettingsViewModel settingsViewModel, Data data, IPublisher publisher, ThemeAdjuster themeAdjuster)
     {
         InitializeComponent();
         DataContext = this;
         SettingsViewModel = settingsViewModel;
         _data = data;
+        _publisher = publisher;
+        _themeAdjuster = themeAdjuster;
     }
 
     public void Populate()
@@ -194,7 +201,7 @@ public partial class SettingsWindow : Window
         Main.SpawnErrorPopup(DateTime.UtcNow, 1800);
     }
 
-    private void localeComboboxSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void LocaleComboboxSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         var item = (ComboBoxItem)localeCombobox.SelectedItem;
 
@@ -262,9 +269,12 @@ public partial class SettingsWindow : Window
         hidden.Focus();
     }
 
-    private void ConfigureTheme_button_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private async void ConfigureTheme_button_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        ThemeAdjuster.ShowThemeAdjuster();
+        Dispatcher.InvokeIfRequired(() =>
+        {
+            _themeAdjuster.ShowThemeAdjuster();
+        });
     }
 
     private void ThemeSelectionComboBox_OnDropDownClosed(object sender, EventArgs e)
