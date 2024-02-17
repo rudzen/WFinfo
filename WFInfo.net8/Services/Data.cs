@@ -1107,24 +1107,34 @@ public sealed partial class Data :
         if (marketSocket.IsAlive)
             return false;
 
-        marketSocket.OnMessage += (sender, e) =>
+        marketSocket.OnMessage += (_, e) =>
         {
-            if (e.Data.Contains("@WS/ERROR")) // error checking, report back to main.status
+            // Error checking, report back to main.status
+            if (!e.Data.Contains("@WS/ERROR"))
+                return;
+
+            Logger.Debug("warframe.market. error={Data}", e.Data);
+            Disconnect();
+            Task.Run(async () =>
             {
-                Logger.Debug(e.Data);
-                Disconnect();
-                Main.SignOut();
-            }
+                await _mediator.Publish(WarframeMarketSignOut.Instance);
+            });
         };
 
         marketSocket.OnMessage += (sender, e) =>
         {
             Logger.Debug("warframe.market. data={Data}", e.Data);
-            if (!e.Data.Contains("SET_STATUS")) return;
-            var message = JsonConvert.DeserializeObject<JObject>(e.Data);
-            Main.RunOnUIThread(() =>
+
+            if (!e.Data.Contains("SET_STATUS"))
+                return;
+
+            var marketMessage = JsonConvert.DeserializeObject<JObject>(e.Data);
+            var payload = marketMessage!.GetValue("payload")!.ToString();
+
+            Task.Run(async () =>
             {
-                Main.UpdateMarketStatus(message.GetValue("payload").ToString());
+                var awayStatus = await _mediator.Send(new WarframeMarketStatusAwayStatusRequest(payload));
+                await _mediator.Publish(new WarframeMarketStatusUpdate(payload));
             });
         };
 

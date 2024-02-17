@@ -23,7 +23,8 @@ public class Main
         INotificationHandler<OverlayUpdate>,
         INotificationHandler<OverlayUpdateData>,
         INotificationHandler<GnfWarningShow>,
-        INotificationHandler<FullscreenReminderShow>
+        INotificationHandler<FullscreenReminderShow>,
+        IRequestHandler<WarframeMarketStatusAwayStatusRequest, WarframeMarketStatusAwayStatusResponse>
 {
     private enum ScreenshotType
     {
@@ -45,18 +46,21 @@ public class Main
     public static SearchIt SearchIt { get; set; }
     public static Login Login { get; set; }
     public static ListingHelper ListingHelper { get; set; } = new ListingHelper();
-    private static bool UserAway { get; set; }
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
     private DateTime _latestActive;
+    private bool UserAway;
 
     // ReSharper disable once NotAccessedField.Local
     private System.Threading.Timer _timer;
 
     private Overlay[] _overlays;
     private readonly GFNWarning _gfnWarning;
+
+    // ReSharper disable once NotAccessedField.Local
     private UpdateDialogue _update;
+
     private readonly FullscreenReminder _fullscreenReminder;
 
     // Instance services
@@ -510,30 +514,6 @@ public class Main
         });
     }
 
-    public static void UpdateMarketStatus(string msg)
-    {
-        Logger.Debug("New market status received: {Msg}", msg);
-        if (!UserAway)
-        {
-            // AFK system only cares about a status that the user set
-            LastMarketStatus = msg;
-            Logger.Debug("User is not away. last known market status will be: {LastMarketStatus}", LastMarketStatus);
-        }
-
-        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
-        {
-            MainWindow.INSTANCE.UpdateMarketStatus(msg);
-        });
-    }
-
-    public static void SignOut()
-    {
-        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
-        {
-            MainWindow.INSTANCE.SignOut();
-        });
-    }
-
     /// <summary>
     /// Switch to logged in mode for warfrane.market systems
     /// </summary>
@@ -627,5 +607,18 @@ public class Main
         });
 
         return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<WarframeMarketStatusAwayStatusResponse> Handle(WarframeMarketStatusAwayStatusRequest request, CancellationToken cancellationToken)
+    {
+        if (!UserAway)
+        {
+            // AFK system only cares about a status that the user set
+            LastMarketStatus = request.Message;
+            Logger.Debug("User is not away. last known market status will be: {LastMarketStatus}", LastMarketStatus);
+        }
+
+        Logger.Debug("User is away: {UserAway}", UserAway);
+        return ValueTask.FromResult(new WarframeMarketStatusAwayStatusResponse(UserAway));
     }
 }

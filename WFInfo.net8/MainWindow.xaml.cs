@@ -25,7 +25,9 @@ public partial class MainWindow
     : Window,
         INotificationHandler<DataUpdatedAt>,
         INotificationHandler<UpdateStatus>,
-        INotificationHandler<LoggedIn>
+        INotificationHandler<LoggedIn>,
+        INotificationHandler<WarframeMarketStatusUpdate>,
+        INotificationHandler<WarframeMarketSignOut>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<MainWindow>();
 
@@ -39,7 +41,7 @@ public partial class MainWindow
     private Main Main { get; set; } //subscriber
     public static MainWindow INSTANCE { get; set; }
     public static WelcomeDialogue welcomeDialogue { get; set; }
-    private static bool updatesupression;
+    private bool updatesupression;
 
     private readonly IServiceProvider _sp;
     private readonly ApplicationSettings _applicationSettings;
@@ -323,24 +325,19 @@ public partial class MainWindow
     /// Changes the online selector. Used for websocket lisening to see if the status changed externally (i.e from the site)
     /// </summary>
     /// <param name="status">The status to change to</param>
-    public void UpdateMarketStatus(string status)
+    private void UpdateMarketStatus(string status)
     {
         updatesupression = true;
-        switch (status)
+        var selectionIndex = status switch
         {
-            case "online":
-                if (ComboBox.SelectedIndex == 1) break;
-                ComboBox.SelectedIndex = 1;
-                break;
-            case "invisible":
-                if (ComboBox.SelectedIndex == 2) break;
-                ComboBox.SelectedIndex = 2;
-                break;
-            case "ingame":
-                if (ComboBox.SelectedIndex == 0) break;
-                ComboBox.SelectedIndex = 0;
-                break;
-        }
+            "online"    => 1,
+            "invisible" => 2,
+            "ingame"    => 0,
+            _ => throw new ArgumentOutOfRangeException(nameof(status), status, null)
+        };
+
+        if (ComboBox.SelectedIndex != selectionIndex)
+            ComboBox.SelectedIndex = selectionIndex;
 
         updatesupression = false;
     }
@@ -510,6 +507,18 @@ public partial class MainWindow
             Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus("User logged in to warframe.market"));
         else
             Dispatcher.InvokeAsyncIfRequired(() => ChangeStatus($"User [{loggedIn.Email}] logged in to warframe.market"));
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(WarframeMarketStatusUpdate warframeMarketStatusUpdate, CancellationToken cancellationToken)
+    {
+        Dispatcher.InvokeAsyncIfRequired(() => UpdateMarketStatus(warframeMarketStatusUpdate.Message));
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(WarframeMarketSignOut notification, CancellationToken cancellationToken)
+    {
+        Dispatcher.InvokeAsyncIfRequired(SignOut);
         return ValueTask.CompletedTask;
     }
 }

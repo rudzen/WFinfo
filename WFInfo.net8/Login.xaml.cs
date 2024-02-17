@@ -116,7 +116,7 @@ public partial class Login : Window
                 statusSeverity = StatusSeverity.Error;
             }
 
-            Main.SignOut();
+            await _mediator.Publish(WarframeMarketSignOut.Instance);
             await _mediator.Publish(new UpdateStatus(statusMessage, statusSeverity));
 
             Error.Foreground = statusSeverity switch
