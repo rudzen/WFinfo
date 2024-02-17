@@ -341,18 +341,31 @@ internal partial class OCR
                     ));
                 }
 
-                Main.RunOnUIThread(() =>
+                if (_settings is { IsOverlaySelected: false, IsLightSelected: false })
                 {
-                    if (!_settings.IsOverlaySelected && !_settings.IsLightSelected)
-                    {
-                        // TODO (rudzen) : Add event
-                        Main.RewardWindow.loadTextData(correctName, plat, primeSetPlat, ducats, volume, vaulted, mastered,
-                            $"{partsOwned} / {partsCount}", partNumber, true, hideRewardInfo);
-                    }
+                    await _mediator.Publish(new LoadRewardTextData(
+                        Name: correctName,
+                        Plat: plat,
+                        PrimeSetPlat: primeSetPlat,
+                        Ducats: ducats,
+                        Volume: volume,
+                        Vaulted: vaulted,
+                        Mastered: mastered,
+                        Owned: $"{partsOwned} / {partsCount}",
+                        PartNumber: partNumber,
+                        Resize: true,
+                        HideReward: hideRewardInfo
+                    ));
+                }
 
-                    if (_settings.Clipboard && !string.IsNullOrEmpty(_clipboard))
+                if (_settings.Clipboard && !string.IsNullOrEmpty(_clipboard))
+                {
+                    Application.Current.Dispatcher.InvokeIfRequired(() =>
+                    {
                         Clipboard.SetText(_clipboard);
-                });
+                    });
+                }
+
                 partNumber++;
                 hideRewardInfo = false;
 

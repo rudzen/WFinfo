@@ -38,14 +38,13 @@ public class Main
     private static readonly TimeSpan TimeTillAfk = TimeSpan.FromMinutes(7);
 
     public static Data DataBase { get; private set; }
-    public static RewardWindow RewardWindow { get; set; }
     public static SettingsWindow SettingsWindow { get; private set; }
     public static AutoCount AutoCount { get; set; }
     public static ErrorDialogue ErrorDialogue { get; set; }
     public static SnapItOverlay SnapItOverlayWindow { get; private set; }
     public static SearchIt SearchIt { get; set; }
     public static Login Login { get; set; }
-    public static ListingHelper ListingHelper { get; set; } = new ListingHelper();
+    public static ListingHelper ListingHelper { get; set; } = new();
     private static string LastMarketStatus { get; set; } = "invisible";
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
@@ -57,6 +56,7 @@ public class Main
 
     private Overlay[] _overlays;
     private readonly GFNWarning _gfnWarning;
+    private readonly RewardWindow _rewardWindow;
 
     // ReSharper disable once NotAccessedField.Local
     private UpdateDialogue _update;
@@ -104,7 +104,7 @@ public class Main
         _mediator = mediator;
 
         DataBase = data;
-        RewardWindow = rewardWindow;
+        _rewardWindow = rewardWindow;
         SettingsWindow = settingsWindow;
         AutoCount = autoCount;
         SearchIt = searchIt;

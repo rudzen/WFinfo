@@ -1,42 +1,35 @@
 ﻿using System.Windows;
 using System.Windows.Input;
+using Mediator;
 using Serilog;
 using WFInfo.Domain;
+using WFInfo.Extensions;
 
 namespace WFInfo;
 
-/// <summary>
-/// Interaction logic for Window1.xaml
-/// </summary>
-public partial class RewardWindow : Window
+public partial class RewardWindow : Window, INotificationHandler<LoadRewardTextData>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<RewardWindow>();
+    private static readonly int[] Widths = [251, 501, 751, 1000];
 
-    public RewardWindow()
+    private readonly IMediator _mediator;
+
+    public RewardWindow(IMediator mediator)
     {
         InitializeComponent();
+        _mediator = mediator;
     }
 
-    public void loadTextData(
-        string name,
-        string plat,
-        string primeSetPlat,
-        string ducats,
-        string volume,
-        bool vaulted,
-        bool mastered,
-        string owned,
-        int partNumber,
-        bool resize = true,
-        bool hideReward = false)
+    private void LoadTextData(LoadRewardTextData notification, int width)
     {
         Show();
         Topmost = true;
-        switch (partNumber)
+
+        switch (notification.PartNumber)
         {
             case 0:
-                firstPartText.Text = name;
-                if (hideReward)
+                firstPartText.Text = notification.Name;
+                if (notification.HideReward)
                 {
                     platImage.Visibility = Visibility.Hidden;
                     setPlatImage.Visibility = Visibility.Hidden;
@@ -47,27 +40,27 @@ public partial class RewardWindow : Window
                     firstVolumeText.Text = string.Empty;
                     firstVaultedMargin.Visibility = Visibility.Hidden;
                     firstOwnedText.Text = string.Empty;
-                    if (resize)
-                        Width = 251;
+                    if (notification.Resize)
+                        Width = width;
                     break;
                 }
 
                 platImage.Visibility = Visibility.Visible;
                 setPlatImage.Visibility = Visibility.Visible;
                 firstDucatImage.Visibility = Visibility.Visible;
-                firstPlatText.Text = plat;
-                firstSetPlatText.Text = "Full set price: " + primeSetPlat;
-                firstDucatText.Text = ducats;
-                firstVolumeText.Text = volume + " sold last 48hrs";
-                firstVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                firstOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
-                if (resize)
-                    Width = 251;
+                firstPlatText.Text = notification.Plat;
+                firstSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                firstDucatText.Text = notification.Ducats;
+                firstVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                firstVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                firstOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
+                if (notification.Resize)
+                    Width = width;
                 break;
 
             case 1:
-                secondPartText.Text = name;
-                if (hideReward)
+                secondPartText.Text = notification.Name;
+                if (notification.HideReward)
                 {
                     platImage1.Visibility = Visibility.Hidden;
                     setPlatImage1.Visibility = Visibility.Hidden;
@@ -78,26 +71,26 @@ public partial class RewardWindow : Window
                     secondVolumeText.Text = string.Empty;
                     secondVaultedMargin.Visibility = Visibility.Hidden;
                     secondOwnedText.Text = string.Empty;
-                    if (resize)
-                        Width = 501;
+                    if (notification.Resize)
+                        Width = width;
                 }
 
                 platImage1.Visibility = Visibility.Visible;
                 setPlatImage1.Visibility = Visibility.Visible;
                 firstDucatImage1.Visibility = Visibility.Visible;
-                secondPlatText.Text = plat;
-                secondSetPlatText.Text = "Full set price: " + primeSetPlat;
-                secondDucatText.Text = ducats;
-                secondVolumeText.Text = volume + " sold last 48hrs";
-                secondVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                secondOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
-                if (resize)
-                    Width = 501;
+                secondPlatText.Text = notification.Plat;
+                secondSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                secondDucatText.Text = notification.Ducats;
+                secondVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                secondVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                secondOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
+                if (notification.Resize)
+                    Width = width;
                 break;
 
             case 2:
-                thirdPartText.Text = name;
-                if (hideReward)
+                thirdPartText.Text = notification.Name;
+                if (notification.HideReward)
                 {
                     platImage2.Visibility = Visibility.Hidden;
                     setPlatImage2.Visibility = Visibility.Hidden;
@@ -108,26 +101,26 @@ public partial class RewardWindow : Window
                     thirdVolumeText.Text = string.Empty;
                     thirdVaultedMargin.Visibility = Visibility.Hidden;
                     thirdOwnedText.Text = string.Empty;
-                    if (resize)
-                        Width = 751;
+                    if (notification.Resize)
+                        Width = width;
                 }
 
                 platImage2.Visibility = Visibility.Visible;
                 setPlatImage2.Visibility = Visibility.Visible;
                 firstDucatImage2.Visibility = Visibility.Visible;
-                thirdPlatText.Text = plat;
-                thirdSetPlatText.Text = "Full set price: " + primeSetPlat;
-                thirdDucatText.Text = ducats;
-                thirdVolumeText.Text = volume + " sold last 48hrs";
-                thirdVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                thirdOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
-                if (resize)
-                    Width = 751;
+                thirdPlatText.Text = notification.Plat;
+                thirdSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                thirdDucatText.Text = notification.Ducats;
+                thirdVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                thirdVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                thirdOwnedText.Text = notification.Owned.Length > 0 ? $"{(notification.Mastered ? "✓ " : string.Empty)}{notification.Owned} OWNED" : string.Empty;
+                if (notification.Resize)
+                    Width = width;
                 break;
 
             case 3:
-                fourthPartText.Text = name;
-                if (hideReward)
+                fourthPartText.Text = notification.Name;
+                if (notification.HideReward)
                 {
                     platImage3.Visibility = Visibility.Hidden;
                     setPlatImage3.Visibility = Visibility.Hidden;
@@ -138,26 +131,21 @@ public partial class RewardWindow : Window
                     fourthVolumeText.Text = string.Empty;
                     fourthVaultedMargin.Visibility = Visibility.Hidden;
                     fourthOwnedText.Text = string.Empty;
-                    if (resize)
-                        Width = 1000;
+                    if (notification.Resize)
+                        Width = width;
                 }
 
                 platImage3.Visibility = Visibility.Visible;
                 setPlatImage3.Visibility = Visibility.Visible;
                 firstDucatImage3.Visibility = Visibility.Visible;
-                fourthPlatText.Text = plat;
-                fourthSetPlatText.Text = "Full set price: " + primeSetPlat;
-                fourthDucatText.Text = ducats;
-                fourthVolumeText.Text = volume + " sold last 48hrs";
-                fourthVaultedMargin.Visibility = vaulted ? Visibility.Visible : Visibility.Hidden;
-                fourthOwnedText.Text = owned.Length > 0 ? (mastered ? "✓ " : string.Empty) + owned + " OWNED" : string.Empty;
-                if (resize)
-                    Width = 1000;
-                break;
-
-            default:
-                Logger.Error("something went wrong while displaying: {Name}", name);
-                Main.StatusUpdate("something went wrong while displaying: " + name + " in window", StatusSeverity.Error);
+                fourthPlatText.Text = notification.Plat;
+                fourthSetPlatText.Text = $"Full set price: {notification.PrimeSetPlat}";
+                fourthDucatText.Text = notification.Ducats;
+                fourthVolumeText.Text = $"{notification.Volume} sold last 48hrs";
+                fourthVaultedMargin.Visibility = notification.Vaulted ? Visibility.Visible : Visibility.Hidden;
+                fourthOwnedText.Text = notification.Owned.Length > 0 ? (notification.Mastered ? "✓ " : string.Empty) + notification.Owned + " OWNED" : string.Empty;
+                if (notification.Resize)
+                    Width = width;
                 break;
         }
     }
@@ -173,5 +161,21 @@ public partial class RewardWindow : Window
     {
         if (e.ChangedButton == MouseButton.Left)
             DragMove();
+    }
+
+    public async ValueTask Handle(LoadRewardTextData notification, CancellationToken cancellationToken)
+    {
+        if (notification.PartNumber is < 0 or > 3)
+        {
+            Logger.Error("Invalid part number: {PartNumber}", notification.PartNumber);
+            await _mediator.Publish(new UpdateStatus($"Invalid part number: {notification.PartNumber}", StatusSeverity.Error), cancellationToken);
+        }
+        else
+        {
+            Dispatcher.InvokeIfRequired(() =>
+            {
+                LoadTextData(notification, Widths[notification.PartNumber]);
+            });
+        }
     }
 }
