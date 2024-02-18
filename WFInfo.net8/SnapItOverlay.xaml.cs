@@ -16,7 +16,10 @@ namespace WFInfo;
 /// Interaction logic for SnapItOverlay.xaml
 /// Marching ant logic by: https://www.codeproject.com/Articles/27816/Marching-Ants-Selection
 /// </summary>
-public partial class SnapItOverlay : Window
+public partial class SnapItOverlay :
+    Window,
+    INotificationHandler<SnapItOverlayUpdate>,
+    INotificationHandler<SnapItOverloadDisposeImage>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<SnapItOverlay>();
 
@@ -43,10 +46,19 @@ public partial class SnapItOverlay : Window
 
     public Bitmap? tempImage { get; set; }
 
-    public void Populate(Bitmap screenshot)
+    private void Populate(SnapItOverlayUpdate snapItOverlayUpdate)
     {
-        tempImage = screenshot;
+        tempImage?.Dispose();
+        tempImage = snapItOverlayUpdate.Image;
         isEnabled = true;
+        Left = snapItOverlayUpdate.Window.Left / snapItOverlayUpdate.DpiScaling;
+        Top = snapItOverlayUpdate.Window.Top / snapItOverlayUpdate.DpiScaling;
+        Width = snapItOverlayUpdate.Window.Width / snapItOverlayUpdate.DpiScaling;
+        Height = snapItOverlayUpdate.Window.Height / snapItOverlayUpdate.DpiScaling;
+        Topmost = true;
+        Focusable = true;
+        Show();
+        Focus();
     }
 
     private void canvas_MouseDown(object sender, MouseButtonEventArgs e)
@@ -143,5 +155,21 @@ public partial class SnapItOverlay : Window
         // Set its size
         Rectangle.Width = Math.Abs(e.GetPosition(Canvas).X - _startDrag.X);
         Rectangle.Height = Math.Abs(e.GetPosition(Canvas).Y - _startDrag.Y);
+    }
+
+    public ValueTask Handle(SnapItOverlayUpdate notification, CancellationToken cancellationToken)
+    {
+        Dispatcher.InvokeIfRequired(() => Populate(notification));
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(SnapItOverloadDisposeImage notification, CancellationToken cancellationToken)
+    {
+        Dispatcher.InvokeIfRequired(() =>
+        {
+            tempImage?.Dispose();
+            tempImage = null;
+        });
+        return ValueTask.CompletedTask;
     }
 }

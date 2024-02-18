@@ -206,7 +206,7 @@ public partial class ThemeAdjuster : Window, INotificationHandler<ThemeAdjusterS
         filterTextBox.Text = JsonConvert.SerializeObject(exp, Formatting.None);
     }
 
-    private void ImportFilterJson(object sender, RoutedEventArgs e)
+    private async void ImportFilterJson(object sender, RoutedEventArgs e)
     {
         var input = filterTextBox.Text;
         try
@@ -281,7 +281,7 @@ public partial class ThemeAdjuster : Window, INotificationHandler<ThemeAdjusterS
         catch (Exception exc)
         {
             Logger.Error(exc, "Custom Filter Import failed. Input: {Input}", input);
-            Main.SpawnErrorPopup(DateTime.UtcNow);
+            await _publisher.Publish(new ErrorDialogShow(DateTime.UtcNow));
         }
     }
 

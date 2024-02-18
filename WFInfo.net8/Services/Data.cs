@@ -712,19 +712,20 @@ public sealed partial class Data :
         string lowestUnfiltered = null!;
         low = 9999;
         multipleLowest = false;
-        foreach (KeyValuePair<string, JToken> prop in NameData)
+        foreach (var (key, token) in NameData!)
         {
+            var value = token!.ToObject<string>();
             var val = _levenshteinDistanceService.LevenshteinDistance(
-                s: prop.Key,
+                s: key,
                 t: name,
                 locale: _settings.Locale,
-                marketItems: MarketItems
+                marketItems: MarketItems!
             );
             if (val < low)
             {
                 low = val;
-                lowest = prop.Value.ToObject<string>();
-                lowestUnfiltered = prop.Key;
+                lowest = value!;
+                lowestUnfiltered = key;
                 multipleLowest = false;
             }
             else if (val == low)
@@ -733,10 +734,10 @@ public sealed partial class Data :
             }
 
             //If both
-            if (val == low && lowest.StartsWith("Gara") && prop.Key.StartsWith("Ivara"))
+            if (val == low && lowest.StartsWith("Gara") && key.StartsWith("Ivara"))
             {
-                lowest = prop.Value.ToObject<string>();
-                lowestUnfiltered = prop.Key;
+                lowest = value!;
+                lowestUnfiltered = key;
             }
         }
 
@@ -1142,7 +1143,8 @@ public sealed partial class Data :
 
         marketSocket.OnOpen += (sender, e) =>
         {
-            marketSocket.Send(_process is { IsRunning: true, GameIsStreamed: false }
+            var isRunning = _process.IsRunning();
+            marketSocket.Send(isRunning && _process is { GameIsStreamed: false }
                 ? "{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"ingame\"}"
                 : "{\"type\":\"@WS/USER/SET_STATUS\",\"payload\":\"online\"}");
         };

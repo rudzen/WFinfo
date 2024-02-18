@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Mediator;
+using WFInfo.Domain;
 using WFInfo.Extensions;
 using WFInfo.Services;
 using WFInfo.Services.OpticalCharacterRecognition;
@@ -18,14 +20,20 @@ public partial class SettingsWindow
 
     private readonly ThemeAdjuster _themeAdjuster;
     private readonly Data _data;
+    private readonly IPublisher _publisher;
 
-    public SettingsWindow(SettingsViewModel settingsViewModel, Data data, ThemeAdjuster themeAdjuster)
+    public SettingsWindow(
+        SettingsViewModel settingsViewModel,
+        Data data,
+        ThemeAdjuster themeAdjuster,
+        IPublisher publisher)
     {
         InitializeComponent();
         DataContext = this;
         SettingsViewModel = settingsViewModel;
         _data = data;
         _themeAdjuster = themeAdjuster;
+        _publisher = publisher;
     }
 
     public void Populate()
@@ -192,12 +200,12 @@ public partial class SettingsWindow
         hidden.Focus();
     }
 
-    private void ClickCreateDebug(object sender, RoutedEventArgs e)
+    private async void ClickCreateDebug(object sender, RoutedEventArgs e)
     {
-        Main.SpawnErrorPopup(DateTime.UtcNow, 1800);
+        await _publisher.Publish(new ErrorDialogShow(DateTime.UtcNow));
     }
 
-    private void LocaleComboboxSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private async void LocaleComboboxSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         var item = (ComboBoxItem)localeCombobox.SelectedItem;
 
@@ -205,7 +213,7 @@ public partial class SettingsWindow
         SettingsViewModel.Locale = selectedLocale ?? string.Empty;
         Save();
 
-        _ = OCR.UpdateEngineAsync();
+        await _publisher.Publish(TesseractReloadEngines.Instance);
         _ = Task.Run(async () =>
         {
             await _data.ReloadItems();

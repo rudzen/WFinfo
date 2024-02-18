@@ -198,21 +198,14 @@ internal partial class OCR
         _firstChecks = _firstChecks
                        .Where(s => !string.IsNullOrEmpty(s) && s.Replace(" ", string.Empty).Length > 6)
                        .ToArray();
-        if (_firstChecks == null || _firstChecks.Length == 0 || CheckIfError())
+        if (_firstChecks.Length == 0 || CheckIfError())
         {
             ProcessingActive.GetAndSet(false);
             var end = Stopwatch.GetElapsedTime(start);
-            Logger.Debug(
-                "----  Partial Processing Time, couldn't find rewards {Time}", end);
+            Logger.Debug("----  Partial Processing Time, couldn't find rewards {Time}", end);
             await _mediator.Publish(new UpdateStatus("Couldn't find any rewards to display", StatusSeverity.Warning));
-            if (_firstChecks == null)
-            {
-                // TODO (rudzen) : Add event
-                Application.Current.Dispatcher.InvokeIfRequired(() =>
-                {
-                    Main.SpawnErrorPopup(time);
-                });
-            }
+            if (_firstChecks.Length == 0)
+                await _mediator.Publish(new ErrorDialogShow(time));
         }
 
         var bestPlat = 0D;
@@ -258,9 +251,7 @@ internal partial class OCR
                 var ducats = job["ducats"].ToObject<string>();
                 var duc = int.Parse(ducats, ApplicationConstants.Culture);
                 if (duc == 0)
-                {
                     hideRewardInfo = true;
-                }
 
                 primeRewards.Add(correctName);
                 var plat = job["plat"].ToObject<string>();
@@ -493,16 +484,24 @@ internal partial class OCR
 
     /// <summary>
     /// Checks if partName is close enough to valid to actually process
+    /// Using levenstein distance to check if the part name is close enough to a valid part name
     /// </summary>
     /// <param name="partName">Scanned part name</param>
     /// <returns>If part name is close enough to valid to actually process</returns>
     private static bool PartNameValid(string partName)
     {
         // if part name is smaller than "Bo prime handle" skip current part
-        //TODO: Add a min character for other locale here.
-        if ((partName.Length < 13 && _settings.Locale == "en") ||
-            (partName.Replace(" ", string.Empty).Length < 6 && _settings.Locale == "ko"))
+        const int minPartNameLength = 15;
+
+        var name = Main.DataBase.GetPartName(partName, out var levenDist, true, out var _);
+
+        if (name.Length < minPartNameLength && _settings.Locale == "en")
             return false;
+
+        //TODO: Add a min character for other locale here.
+        if (_settings.Locale == "ko" && name.Replace(" ", string.Empty).Length < 6)
+            return false;
+
         return true;
     }
 
@@ -529,8 +528,7 @@ internal partial class OCR
 
         snapItImageFiltered.Save(Path.Combine(ApplicationConstants.AppPathDebug, $"SnapItImageFiltered {timeStamp}.png"));
 
-        // TODO: (rudzen) : Convert foundParts to queue
-        var foundParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
+        var detectedParts = FindAllParts(snapItImageFiltered, snapItImage, rowHits, colHits);
         var end = Stopwatch.GetElapsedTime(start);
 
         snapItImage.Dispose();
@@ -540,22 +538,19 @@ internal partial class OCR
 
         var csvDate = now.ToString("yyyy-MM-dd", ApplicationConstants.Culture);
         var csv = string.Empty;
-        if (_settings.SnapitExport && !File.Exists(Path.Combine(ApplicationConstants.AppPath, "export " + csvDate + ".csv")))
-            csv += "ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected" +
-                   csvDate + Environment.NewLine;
+        if (_settings.SnapitExport && !File.Exists(Path.Combine(ApplicationConstants.AppPath, $"export {csvDate}.csv")))
+            csv += $"ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected{csvDate}{Environment.NewLine}";
 
+        var detectedPartsCount = detectedParts.Count;
+        var foundParts = detectedParts.Where(x => PartNameValid(x.Name)).ToList();
         var resultCount = foundParts.Count;
+
+        if (detectedPartsCount != resultCount)
+            Logger.Debug("Snap-it detected {Detected} parts, but only {Result} were valid", detectedPartsCount, resultCount);
+
         for (var i = 0; i < foundParts.Count; i++)
         {
             var part = foundParts[i];
-            if (!PartNameValid(part.Name))
-            {
-                // remove invalid part from list to not clog VerifyCount. Decrement to not skip any entries
-                foundParts.RemoveAt(i--);
-                resultCount--;
-                continue;
-            }
-
             Logger.Debug("Snap-it processing part {Part} out of {Count}", i, foundParts.Count);
 
             // TODO (rudzen) : Convert to request event?
@@ -578,7 +573,7 @@ internal partial class OCR
 
             var plat = job["plat"].ToObject<string>();
 
-            string primeSetPlat = null;
+            string primeSetPlat = null!;
             if (primeSet is not null)
                 primeSetPlat = (string)primeSet["plat"];
 
@@ -595,8 +590,7 @@ internal partial class OCR
             if (_settings.SnapitExport)
             {
                 var owned = string.IsNullOrEmpty(partsOwned) ? "0" : partsOwned;
-                csv += name + "," + plat + "," + ducats + "," + volume + "," + vaulted.ToString(ApplicationConstants.Culture) + "," +
-                       owned + "," + partsDetected + ", \"\"" + Environment.NewLine;
+                csv += $"{name},{plat},{ducats},{volume},{vaulted.ToString(ApplicationConstants.Culture)},{owned},{partsDetected}, \"\"{Environment.NewLine}";
             }
 
             var width = Math.Clamp((int)(part.Bounding.Width * _window.ScreenScaling), _settings.MinOverlayWidth, _settings.MaxOverlayWidth);
@@ -622,18 +616,14 @@ internal partial class OCR
                 VerifyCount.ShowVerifyCount(foundParts);
             });
 
-        if (Main.SnapItOverlayWindow.tempImage is not null)
-            Main.SnapItOverlayWindow.tempImage.Dispose();
+        await _mediator.Publish(SnapItOverloadDisposeImage.Instance);
 
         end = Stopwatch.GetElapsedTime(start);
 
         if (resultCount == 0)
         {
             await _mediator.Publish(new UpdateStatus($"Snap-it couldn't find any items to display. time={end}", StatusSeverity.Error));
-            Application.Current.Dispatcher.InvokeIfRequired(() =>
-            {
-                Main.SpawnErrorPopup(DateTime.UtcNow);
-            });
+            await _mediator.Publish(new ErrorDialogShow(DateTime.UtcNow));
         }
         else
         {
@@ -649,8 +639,10 @@ internal partial class OCR
     }
 
     private static List<TextWithBounds> GetTextWithBoundsFromImage(
-        TesseractEngine engine, Bitmap image,
-        int rectXOffset, int rectYOffset)
+        TesseractEngine engine,
+        Bitmap image,
+        int rectXOffset,
+        int rectYOffset)
     {
         List<TextWithBounds> data = [];
 
@@ -664,9 +656,11 @@ internal partial class OCR
             if (string.IsNullOrEmpty(currentWord))
                 continue;
 
-            currentWord = Re.Replace(currentWord, string.Empty).Trim();
+            currentWord = Re.Replace(currentWord, string.Empty);
 
-            if (currentWord.Length == 0)
+            var currentWordSpan = currentWord.AsSpan().Trim();
+
+            if (currentWordSpan.IsEmpty)
                 continue;
 
             iterator.TryGetBoundingBox(PageIteratorLevel.TextLine, out var boxBounds);
@@ -679,7 +673,7 @@ internal partial class OCR
             );
 
             //word is valid start comparing to others
-            data.Add(new TextWithBounds(currentWord, bounds));
+            data.Add(new TextWithBounds(currentWord.Trim(), bounds));
         } while (iterator.Next(PageIteratorLevel.TextLine));
 
         return data;
@@ -712,7 +706,6 @@ internal partial class OCR
         if (_settings.SnapMultiThreaded)
         {
             zones = _snapZoneDivider.DivideSnapZones(filteredImage, filteredImageClean, rowHits, colHits);
-            // zones = DivideSnapZones(filteredImage, filteredImageClean, rowHits, colHits);
             snapThreads = 4;
         }
         else
@@ -731,7 +724,7 @@ internal partial class OCR
             var tempI = i;
             snapTasks[i] = Task.Factory.StartNew(() =>
             {
-                List<TextWithBounds> taskResults = [];
+                var taskResults = new List<TextWithBounds>(zones.Count);
                 for (var j = tempI; j < zones.Count; j += snapThreads)
                 {
                     //process images
@@ -1500,6 +1493,7 @@ internal partial class OCR
         var probeInterval = profileImage.Width / 120;
         Logger.Debug("Using probe interval: {Interval}", probeInterval);
 
+        const int pixelWidth = 4;
         var imgWidth = profileImageClean.Width;
 
         var lockedBitmapData = profileImageClean.LockBits(
@@ -1526,7 +1520,6 @@ internal partial class OCR
                     var leftEdge = -1;
                     var hits = 0;
                     var areaWidth = 0;
-                    double hitRatio = 0;
                     for (var tempX = Math.Max(x - probeInterval, 0);
                          tempX < Math.Min(x + probeInterval, imgWidth);
                          tempX++)
@@ -1539,7 +1532,7 @@ internal partial class OCR
                         }
                     }
 
-                    hitRatio = (double)(hits) / areaWidth;
+                    var hitRatio = (double)(hits) / areaWidth;
                     if (hitRatio < 0.5) //skip if too low hit ratio
                     {
                         g.DrawLine(OrangePen, x - probeInterval, y, x + probeInterval, y);
@@ -1665,6 +1658,7 @@ internal partial class OCR
 
                     var cloneRect = new Rectangle(leftEdge, topEdge, width, height);
                     var cloneBitmap = new Bitmap(cloneRect.Width * 3, cloneRect.Height);
+
                     using (var g2 = Graphics.FromImage(cloneBitmap))
                     {
                         g2.FillRectangle(Brushes.White, 0, 0, cloneBitmap.Width, cloneBitmap.Height);
@@ -1771,7 +1765,7 @@ internal partial class OCR
 
             if (_themeDetector.ThemeThresholdFilter(in clr, active))
             {
-                black.CopyTo(lockedBitmapBytes.Slice(i, pixelSize));
+                black.CopyTo(colorBuffer);
                 var x = (i / pixelSize) % filtered.Width;
                 var y = (i / pixelSize - x) / filtered.Width;
                 rowHits[y]++;
@@ -1779,7 +1773,7 @@ internal partial class OCR
             }
             else //White
             {
-                lockedBitmapBytes.Slice(i, pixelSize).Fill(byte.MaxValue);
+                colorBuffer.Fill(byte.MaxValue);
             }
         }
 
@@ -1821,10 +1815,19 @@ internal partial class OCR
 
         Bitmap preFilter;
 
+        var preFilterRect = rectangle;
+
+        // check for image boundary crossings
+        if (!IsRectangleWithinImageBounds(fullScreen, in rectangle))
+        {
+            Logger.Error("Rectangle is out of bounds");
+            throw new ArgumentOutOfRangeException("Rectangle is out of bounds");
+        }
+
         try
         {
             Logger.Debug("Fullscreen is {FullScreen}:, trying to clone: {Size} at {Location}", fullScreen.Size, rectangle.Size, rectangle.Location);
-            preFilter = fullScreen.Clone(new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop), fullScreen.PixelFormat);
+            preFilter = fullScreen.Clone(rectangle, fullScreen.PixelFormat);
         }
         catch (Exception ex)
         {
@@ -1881,7 +1884,7 @@ internal partial class OCR
         {
             var yFromTop = preFilter.Height - (i * (topLine100 - topLine50) / 50 + topLine50);
 
-            var scale = (50 + i);
+            var scale = 50 + i;
             var scaleWidth = preFilter.Width * scale / 100;
 
             var textTop = (int)(_window.ScreenScaling * TextSegments[0] * scale / 100);
@@ -1930,23 +1933,25 @@ internal partial class OCR
             while (match != -1 && topFive[match] != -1 && percWeights[i] > percWeights[topFive[match]])
                 match--;
 
-            if (match != -1)
-            {
-                for (var move = 0; move < match; move++)
-                    topFive[move] = topFive[move + 1];
-                topFive[match] = i;
-            }
+            if (match == -1)
+                continue;
+
+            for (var move = 0; move < match; move++)
+                topFive[move] = topFive[move + 1];
+
+            topFive[match] = i;
         }
 
-        for (var i = 0; i < 5; i++)
+        for (var i = 0; i < topFive.Length; i++)
         {
+            var tFive = topFive[i];
             Logger.Debug("RANK {Rank} SCALE: {TopFive}%\t\t{PercW} -- {TopW}, {MidW}, {BotW}",
                 5 - i,
-                topFive[i] + 50,
-                percWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture),
-                topWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture),
-                midWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture),
-                botWeights[topFive[i]].ToString("F2", ApplicationConstants.Culture));
+                tFive + 50,
+                percWeights[tFive].ToString("F2", ApplicationConstants.Culture),
+                topWeights[tFive].ToString("F2", ApplicationConstants.Culture),
+                midWeights[tFive].ToString("F2", ApplicationConstants.Culture),
+                botWeights[tFive].ToString("F2", ApplicationConstants.Culture));
         }
 
         using (var g = Graphics.FromImage(fullScreen))
@@ -1976,18 +1981,22 @@ internal partial class OCR
         try
         {
             _partialScreenshot?.Dispose();
-            // var rect = new Rectangle(
-            //     x: cropLeft,
-            //     y: cropTop,
-            //     width: cropWidth,
-            //     height: cropHei
-            // );
             var rect = new Rectangle(
-                x: 0,
-                y: 0,
-                width: preFilter.Width,
-                height: preFilter.Height
+                x: cropLeft,
+                y: cropTop,
+                width: cropWidth,
+                height: cropHei
             );
+            // var rect = new Rectangle(
+            //     x: 0,
+            //     y: 0,
+            //     width: preFilter.Width,
+            //     height: preFilter.Height
+            // );
+
+            var isOutOfBounds = IsRectangleWithinImageBounds(preFilter, rect);
+            Logger.Debug("Is rectangle within bounds: {IsOutOfBounds}", isOutOfBounds);
+
             _partialScreenshot = preFilter.Clone(rect, PixelFormat.DontCare);
             if (_partialScreenshot.Height == 0 || _partialScreenshot.Width == 0)
                 throw new ArithmeticException("New image was null");
@@ -2021,31 +2030,34 @@ internal partial class OCR
     [SkipLocalsInit]
     private static unsafe List<Bitmap> FilterAndSeparatePartsFromPartBox(Bitmap partBox, WFtheme active)
     {
+        const int pixelSize = 4;
+
         var width = partBox.Width;
         var height = partBox.Height;
         var counts = new int[height];
         var filtered = new Bitmap(width, height);
 
-        const int pixelSize = 4; //ARGB, order in array is BGRA
+        //ARGB, order in array is BGRA
+
+        // Grab the image (new filtered) data and lock it
         var lockedFilteredData = filtered.LockBits(
-            rect: new Rectangle(0, 0, filtered.Width, filtered.Height),
+            rect: new Rectangle(0, 0, width, height),
             flags: ImageLockMode.WriteOnly,
             format: filtered.PixelFormat
         );
-        var filteredHeight = Math.Abs(lockedFilteredData.Stride) * filtered.Height;
-        //Format is ARGB, in order BGRA
-        var filteredBytes = new Span<byte>((void*)lockedFilteredData.Scan0, filteredHeight);
+        var filteredHeight = Math.Abs(lockedFilteredData.Stride) * height;
+        var filteredBytes = new Span<byte>(lockedFilteredData.Scan0.ToPointer(), filteredHeight);
 
+        // Grab the part box data and lock it
         var lockedPartBoxData = partBox.LockBits(
-            rect: new Rectangle(0, 0, partBox.Width, partBox.Height),
+            rect: new Rectangle(0, 0, width, height),
             flags: ImageLockMode.ReadOnly,
             format: partBox.PixelFormat
         );
-        //Format is ARGB, in order BGRA
-        var partBoxBytes = new Span<byte>((void*)lockedFilteredData.Scan0, filteredHeight);
+        var partBoxBytes = new Span<byte>(lockedPartBoxData.Scan0.ToPointer(), filteredHeight);
 
         // pixel buffer
-        Span<byte> buffer = stackalloc byte[pixelSize];
+        Span<byte> colorBuffer;
 
         // colors
         Span<byte> black = stackalloc byte[pixelSize] { 0, 0, 0, byte.MaxValue };
@@ -2065,7 +2077,8 @@ internal partial class OCR
                 var i = (y * width + x) * pixelSize;
 
                 // get color from buffer
-                var clr = Color.FromArgb(BinaryPrimitives.ReverseEndianness(MemoryMarshal.Read<int>(partBoxBytes.Slice(i, pixelSize))));
+                colorBuffer = partBoxBytes.Slice(i, pixelSize);
+                var clr = colorBuffer.FromBgra();
 
                 // if the color is within the theme threshold, create a black pixel,
                 // otherwise create a white pixel
@@ -2082,8 +2095,8 @@ internal partial class OCR
                 }
             }
 
-            count = Math.Min(count, partBox.Height / 3);
-            var sinVal = Math.Cos(8 * x * Math.PI / partBox.Width);
+            count = Math.Min(count, height / 3);
+            var sinVal = Math.Cos(8 * x * Math.PI / width);
             sinVal = sinVal * sinVal * sinVal;
             weight += sinVal * count;
 
@@ -2130,12 +2143,16 @@ internal partial class OCR
         var destRegion = new Rectangle(0, 0, boxWidth, boxHeight);
 
         var currLeft = 0;
-        var playerCount = 4;
+        int playerCount;
 
         if (totalOdd > totalEven)
         {
             currLeft = boxWidth / 2;
             playerCount = 3;
+        }
+        else
+        {
+            playerCount = 4;
         }
 
         var images = new List<Bitmap>(playerCount);
@@ -2223,16 +2240,13 @@ internal partial class OCR
             case HdrSupportEnum.On:
                 Logger.Debug("HDR capturing set, using window based capturing");
                 return _windowsScreenshot;
-                break;
             case HdrSupportEnum.Off:
                 Logger.Debug("HDR capturing *not* set, Using GDI based capturing (SDR)");
                 return _gdiScreenshot;
-                break;
             case HdrSupportEnum.Auto:
                 var isHdr = _hdrDetector.IsHdr();
                 Logger.Debug("Auto selecting capturing. HDR={Hdr}", isHdr);
                 return isHdr ? _windowsScreenshot : _gdiScreenshot;
-                break;
             default:
                 throw new NotImplementedException($"HDR support option '{_settings.HdrSupport}' does not have a corresponding screenshot service");
         }
@@ -2241,23 +2255,34 @@ internal partial class OCR
     internal static async Task SnapScreenshot()
     {
         var image = await CaptureScreenshot();
-        Application.Current.Dispatcher.InvokeIfRequired(() =>
-        {
-            Main.SnapItOverlayWindow.Populate(image);
-            Main.SnapItOverlayWindow.Left = _window.Window.Left / _window.DpiScaling;
-            Main.SnapItOverlayWindow.Top = _window.Window.Top / _window.DpiScaling;
-            Main.SnapItOverlayWindow.Width = _window.Window.Width / _window.DpiScaling;
-            Main.SnapItOverlayWindow.Height = _window.Window.Height / _window.DpiScaling;
-            Main.SnapItOverlayWindow.Topmost = true;
-            Main.SnapItOverlayWindow.Focusable = true;
-            Main.SnapItOverlayWindow.Show();
-            Main.SnapItOverlayWindow.Focus();
-        });
+        await _mediator.Publish(new SnapItOverlayUpdate(image, _window.Window, _window.DpiScaling));
+        // Application.Current.Dispatcher.InvokeIfRequired(() =>
+        // {
+        //     Main.SnapItOverlayWindow.Populate(image);
+        //     Main.SnapItOverlayWindow.Left = _window.Window.Left / _window.DpiScaling;
+        //     Main.SnapItOverlayWindow.Top = _window.Window.Top / _window.DpiScaling;
+        //     Main.SnapItOverlayWindow.Width = _window.Window.Width / _window.DpiScaling;
+        //     Main.SnapItOverlayWindow.Height = _window.Window.Height / _window.DpiScaling;
+        //     Main.SnapItOverlayWindow.Topmost = true;
+        //     Main.SnapItOverlayWindow.Focusable = true;
+        //     Main.SnapItOverlayWindow.Show();
+        //     Main.SnapItOverlayWindow.Focus();
+        // });
     }
 
-    public static async Task UpdateEngineAsync()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool IsRectangleWithinImageBounds(Image image, in Rectangle rectangle)
     {
-        _tesseractService.ReloadEngines();
+        // Check if the rectangle's X coordinate is within the image's width
+        if (rectangle.X < 0 || rectangle.X + rectangle.Width > image.Width)
+            return false;
+
+        // Check if the rectangle's Y coordinate is within the image's height
+        if (rectangle.Y < 0 || rectangle.Y + rectangle.Height > image.Height)
+            return false;
+
+        // If both conditions are met, the rectangle is within the image's bounds
+        return true;
     }
 
     private static void StatusUpdate(string status, StatusSeverity severity)

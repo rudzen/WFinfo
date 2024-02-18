@@ -1,8 +1,10 @@
 using System.Collections.Frozen;
 using System.IO;
 using System.Net.Http;
+using Mediator;
 using Serilog;
 using Tesseract;
+using WFInfo.Domain;
 using WFInfo.Extensions;
 using WFInfo.Settings;
 
@@ -12,10 +14,10 @@ namespace WFInfo.Services;
 /// Holds all the TesseractEngine instances and is responsible for loadind/reloading them
 /// They are all configured in the same way
 /// </summary>
-public class TesseractService : ITesseractService
+public sealed class TesseractService : ITesseractService, INotificationHandler<TesseractReloadEngines>
 {
     private static readonly ILogger Logger = Log.ForContext<TesseractService>();
-    
+
     private static string AppdataTessdataFolder => CustomEntrypoint.appdata_tessdata_folder;
 
     private static readonly string DataPath = Path.Combine(ApplicationConstants.AppPath, "tessdata");
@@ -65,19 +67,27 @@ public class TesseractService : ITesseractService
     private void Dispose(bool disposing)
     {
         ReleaseUnmanagedResources();
-        if (disposing)
-        {
-            FirstEngine.Dispose();
-            SecondEngine.Dispose();
-            foreach (var engine in Engines)
-                engine?.Dispose();
-        }
+
+        if (!disposing)
+            return;
+
+        FirstEngine.Dispose();
+        SecondEngine.Dispose();
+        Engines[0]?.Dispose();
+        Engines[1]?.Dispose();
+        Engines[2]?.Dispose();
+        Engines[3]?.Dispose();
     }
 
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    public async ValueTask Handle(TesseractReloadEngines notification, CancellationToken cancellationToken)
+    {
+        await ReloadEngines();
     }
 
     ~TesseractService()
@@ -97,11 +107,14 @@ public class TesseractService : ITesseractService
 
     private void LoadEngines()
     {
-        for (var i = 0; i < 4; i++)
-        {
-            Engines[i]?.Dispose();
-            Engines[i] = CreateEngine();
-        }
+        Engines[0]?.Dispose();
+        Engines[0] = CreateEngine();
+        Engines[1]?.Dispose();
+        Engines[1] = CreateEngine();
+        Engines[2]?.Dispose();
+        Engines[2] = CreateEngine();
+        Engines[3]?.Dispose();
+        Engines[3] = CreateEngine();
     }
 
     public async Task ReloadEngines()

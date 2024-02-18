@@ -24,6 +24,7 @@ public class Main
         INotificationHandler<OverlayUpdateData>,
         INotificationHandler<GnfWarningShow>,
         INotificationHandler<FullscreenReminderShow>,
+        INotificationHandler<ErrorDialogShow>,
         IRequestHandler<WarframeMarketStatusAwayStatusRequest, WarframeMarketStatusAwayStatusResponse>
 {
     private enum ScreenshotType
@@ -49,7 +50,7 @@ public class Main
     private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
     private DateTime _latestActive;
-    private bool UserAway;
+    private bool _userAway;
 
     // ReSharper disable once NotAccessedField.Local
     private System.Threading.Timer _timer;
@@ -180,7 +181,7 @@ public class Main
         var now = DateTime.UtcNow;
         Logger.Debug("Checking if the user has been inactive. Now={Now}, lastActive={LastActive}", now, _latestActive);
 
-        if (!_processFinder.IsRunning && LastMarketStatus != "invisible")
+        if (!_processFinder.IsRunning() && LastMarketStatus != "invisible")
         {
             //set user offline if Warframe has closed but no new game was found
             Logger.Debug("Warframe was detected as closed");
@@ -200,13 +201,13 @@ public class Main
         }
         else
         {
-            switch (UserAway)
+            switch (_userAway)
             {
                 case true when _latestActive > now:
                 {
                     Logger.Debug("User has returned. Last Status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
 
-                    UserAway = false;
+                    _userAway = false;
                     if (LastMarketStatusB4AFK != "invisible")
                     {
                         await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(ConfigureAwaitOptions.None);
@@ -226,7 +227,7 @@ public class Main
                     LastMarketStatusB4AFK = LastMarketStatus;
                     Logger.Debug("User is now away - Storing last known user status as {Status}", LastMarketStatusB4AFK);
 
-                    UserAway = true;
+                    _userAway = true;
                     if (LastMarketStatus != "invisible")
                     {
                         await _mediator.Publish(new WebSocketSetStatus("invisible"));
@@ -340,7 +341,7 @@ public class Main
             using var bigScreenshot = await OCR.CaptureScreenshot();
             await OCR.ProcessProfileScreen(bigScreenshot);
         }
-        else if (_settings.Debug || _processFinder.IsRunning)
+        else if (_settings.Debug || _processFinder.IsRunning())
         {
             await OCR.ProcessRewardScreen();
         }
@@ -427,7 +428,7 @@ public class Main
     }
 
     // timestamp is the time to look for, and gap is the threshold of seconds different
-    public static void SpawnErrorPopup(DateTime timeStamp, int gap = 30)
+    private static void SpawnErrorPopup(DateTime timeStamp, int gap)
     {
         ErrorDialogue = new ErrorDialogue(timeStamp, gap);
     }
@@ -607,14 +608,24 @@ public class Main
 
     public ValueTask<WarframeMarketStatusAwayStatusResponse> Handle(WarframeMarketStatusAwayStatusRequest request, CancellationToken cancellationToken)
     {
-        if (!UserAway)
+        if (!_userAway)
         {
             // AFK system only cares about a status that the user set
             LastMarketStatus = request.Message;
             Logger.Debug("User is not away. last known market status will be: {LastMarketStatus}", LastMarketStatus);
         }
 
-        Logger.Debug("User is away: {UserAway}", UserAway);
-        return ValueTask.FromResult(new WarframeMarketStatusAwayStatusResponse(UserAway));
+        Logger.Debug("User is away: {UserAway}", _userAway);
+        return ValueTask.FromResult(new WarframeMarketStatusAwayStatusResponse(_userAway));
+    }
+
+    public ValueTask Handle(ErrorDialogShow notification, CancellationToken cancellationToken)
+    {
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            SpawnErrorPopup(notification.TimeStamp, notification.Gap);
+        });
+
+        return ValueTask.CompletedTask;
     }
 }

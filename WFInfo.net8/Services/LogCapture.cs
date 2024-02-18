@@ -125,7 +125,7 @@ public sealed class LogCapture
 
     private void GetProcess()
     {
-        if (!_processFinder.IsRunning)
+        if (!_processFinder.IsRunning())
             return;
 
         _dataReadyEvent = new EventWaitHandle(false, EventResetMode.AutoReset, "DBWIN_DATA_READY", out var createdData);

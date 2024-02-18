@@ -225,7 +225,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
         set
         {
             var width = 2000; // presume bounding
-            if (_process.IsRunning)
+            if (_process.IsRunning())
             {
                 if (_windowInfo.Window == null || _windowInfo.Window.Width == 0 || _windowInfo.Window.Height == 0)
                 {
@@ -247,7 +247,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
         set
         {
             var height = 2000; // presume bounding
-            if (_process.IsRunning)
+            if (_process.IsRunning())
             {
                 if (_windowInfo.Window == null || _windowInfo.Window.Width == 0 || _windowInfo.Window.Height == 0)
                 {

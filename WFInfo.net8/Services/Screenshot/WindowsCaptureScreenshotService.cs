@@ -15,7 +15,7 @@ using Rectangle = System.Drawing.Rectangle;
 
 namespace WFInfo.Services.Screenshot;
 
-public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
+public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<WindowsCaptureScreenshotService>();
 
@@ -26,11 +26,11 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
     private readonly IDirect3DDevice? _device;
 
     private Direct3D11CaptureFramePool? _framePool;
-    private GraphicsCaptureSession _session;
-    private GraphicsCaptureItem _item;
+    private GraphicsCaptureSession? _session;
+    private GraphicsCaptureItem? _item;
 
     private readonly object _frameLock = new();
-    private Direct3D11CaptureFrame _frame;
+    private Direct3D11CaptureFrame? _frame;
 
     private DirectXPixelFormat pixelFormat =>
         _useHdr ? DirectXPixelFormat.R16G16B16A16Float : DirectXPixelFormat.R8G8B8A8UIntNormalized;
@@ -44,7 +44,7 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
         _d3dDevice = new Device(SharpDX.Direct3D.DriverType.Hardware, creationFlags);
         _device = _d3dDevice.CreateDirect3DDeviceFromSharpDxDevice();
 
-        if (_process.IsRunning)
+        if (_process.IsRunning())
             CreateCaptureSession(_process.Warframe);
 
         _process.OnProcessChanged += CreateCaptureSession;
@@ -98,21 +98,34 @@ public class WindowsCaptureScreenshotService : IScreenshotService, IDisposable
 
     private void CreateCaptureSession(Process process)
     {
-        _session?.Dispose();
-        if (_framePool is not null)
-        {
-            _framePool.FrameArrived -= FrameArrived;
-            _framePool.Dispose();
-        }
+        if (_session is not null
+            && _framePool is not null
+            && _item is not null)
+            return;
 
-        _item = process.MainWindowHandle.CreateItemForWindow();
-        _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(_device, pixelFormat, 2, _item.Size);
-        _framePool.FrameArrived += FrameArrived;
+        // Create a new thread to avoid STA issues,
+        // as the capture session needs to be created in an STA thread
+        // This can happen if there is some input being processed in the main thread
+        // Thx COMException!
+        var thread = new Thread(() => {
+            _session?.Dispose();
+            if (_framePool is not null)
+            {
+                _framePool.FrameArrived -= FrameArrived;
+                _framePool.Dispose();
+            }
 
-        _session = _framePool.CreateCaptureSession(_item);
-        _session.IsBorderRequired = false;
-        _session.IsCursorCaptureEnabled = false;
-        _session.StartCapture();
+            _item = process.MainWindowHandle.CreateItemForWindow();
+            _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(_device, pixelFormat, 2, _item.Size);
+            _framePool.FrameArrived += FrameArrived;
+
+            _session = _framePool.CreateCaptureSession(_item);
+            _session.IsBorderRequired = false;
+            _session.IsCursorCaptureEnabled = false;
+            _session.StartCapture();
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
     private void FrameArrived(Direct3D11CaptureFramePool sender, object args)

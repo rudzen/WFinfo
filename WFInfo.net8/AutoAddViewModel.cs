@@ -124,10 +124,7 @@ public class AutoAddSingleItem : INPC
         {
             await mediator.Publish(new UpdateStatus("Failed to save one or more item, report to dev", StatusSeverity.Warning));
             //adjust for time diff between snap-it finishing and save being pressed, in case of long delay
-            Application.Current.Dispatcher.InvokeIfRequired(() =>
-            {
-                Main.SpawnErrorPopup(DateTime.UtcNow);
-            });
+            await mediator.Publish(new ErrorDialogShow(DateTime.UtcNow));
         }
 
         RemoveFromParent();

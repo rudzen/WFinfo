@@ -2,6 +2,7 @@ using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using Mediator;
 using Serilog;
 using WFInfo.Domain;
 using WFInfo.Services;
@@ -16,19 +17,20 @@ public partial class VerifyCount
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<VerifyCount>();
 
-    private static string itemPath = ApplicationConstants.AppPath   + @"\eqmt_data.json";
-    private static string backupPath = ApplicationConstants.AppPath + @"\eqmt_data.json.bak";
+    private static string itemPath = Path.Combine(ApplicationConstants.AppPath, "eqmt_data.json");
+    private static string backupPath = Path.Combine(ApplicationConstants.AppPath, "eqmt_data.json.bak");
 
-    private List<InventoryItem> latestSnap;
     private static VerifyCount? INSTANCE;
-    private DateTime triggerTime;
+    private List<InventoryItem> _latestSnap;
+    private DateTime _triggerTime;
+    private readonly IPublisher _publisher;
 
-    public VerifyCount()
+    public VerifyCount(IPublisher publisher)
     {
         InitializeComponent();
-        INSTANCE = this;
-        latestSnap = [];
-        triggerTime = DateTime.UtcNow;
+        _latestSnap = [];
+        _triggerTime = DateTime.UtcNow;
+        _publisher = publisher;
     }
 
     public static void ShowVerifyCount(List<InventoryItem> itemList)
@@ -36,18 +38,18 @@ public partial class VerifyCount
         if (INSTANCE == null)
             return;
 
-        INSTANCE.latestSnap = itemList;
-        INSTANCE.triggerTime = DateTime.UtcNow;
+        INSTANCE._latestSnap = itemList;
+        INSTANCE._triggerTime = DateTime.UtcNow;
         INSTANCE.BackupButton.Visibility = Visibility.Visible;
         INSTANCE.Show();
         INSTANCE.Focus();
     }
 
-    private void SaveClick(object sender, RoutedEventArgs e)
+    private async void SaveClick(object sender, RoutedEventArgs e)
     {
         var saveFailed = false;
         const string prime = "Prime";
-        var primes = latestSnap.Where(x => x.Name.Contains(prime));
+        var primes = _latestSnap.Where(x => x.Name.Contains(prime));
         foreach (var item in primes)
         {
             var nameParts = item.Name.Split([prime], 2, StringSplitOptions.RemoveEmptyEntries);
@@ -73,8 +75,9 @@ public partial class VerifyCount
         if (saveFailed)
         {
             //adjust for time diff between snap-it finishing and save being pressed, in case of long delay
-            Main.SpawnErrorPopup(DateTime.UtcNow, (int)((DateTime.UtcNow - triggerTime).TotalSeconds) + 30);
-            Main.StatusUpdate("Failed to save one or more item, report to dev", StatusSeverity.Warning);
+            var gab = DateTime.UtcNow.Subtract(_triggerTime);
+            await _publisher.Publish(new ErrorDialogShow(DateTime.UtcNow, (int)gab.TotalSeconds + 30));
+            await _publisher.Publish(new UpdateStatus("Failed to save one or more item, report to dev", StatusSeverity.Warning));
         }
 
         Hide();
@@ -83,9 +86,7 @@ public partial class VerifyCount
     private void BackupClick(object sender, RoutedEventArgs e)
     {
         if (File.Exists(backupPath))
-        {
             File.Delete(backupPath);
-        }
 
         File.Copy(itemPath, backupPath);
         foreach (KeyValuePair<string, JToken> prime in Main.DataBase.EquipmentData)

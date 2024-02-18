@@ -25,14 +25,14 @@ public interface IProcessFinder
     HandleRef HandleRef { get; }
 
     /// <summary>
-    /// Determines whether the game process is running, accessing this property will automatically check if the process is still valid.
-    /// </summary>
-    bool IsRunning { get; }
-
-    /// <summary>
     /// Determines whather the game is being streamed.
     /// </summary>
     bool GameIsStreamed { get; }
+
+    /// <summary>
+    /// Determines whether the game process is running, accessing this property will automatically check if the process is still valid.
+    /// </summary>
+    bool IsRunning();
 
     /// <summary>
     /// Invoked whenever the game process state changes.

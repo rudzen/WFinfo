@@ -39,7 +39,7 @@ public class Win32WindowInfoService(
 
     public async Task UpdateWindow()
     {
-        if (!process.IsRunning && !settings.Debug)
+        if (!process.IsRunning() && !settings.Debug)
         {
             Logger.Debug("Failed to find warframe process for window info");
             await publisher.Publish(new UpdateStatus("Failed to find warframe process for window info", StatusSeverity.Error));

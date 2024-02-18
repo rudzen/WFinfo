@@ -164,7 +164,7 @@ public sealed class LevenshteinDistanceService : ILevenshteinDistanceService
         // For example: Nuvo Prime is closer to Nova Prime (2) then Ash Prime (4)
         // For more info see: https://en.wikipedia.org/wiki/Levenshtein_distance
         var s = sIn.AsSpan();
-        var t = tIn.AsSpan(); // .ToLower(ApplicationConstants.Culture);
+        var t = tIn.AsSpan();
         var n = s.Length;
         var m = t.Length;
 
@@ -177,11 +177,11 @@ public sealed class LevenshteinDistanceService : ILevenshteinDistanceService
 
         var count = 0;
         for (var i = 1; i <= n; i++)
-            d[i, 0] = (s[i - 1] == ' ' ? count : ++count);
+            d[i, 0] = s[i - 1] == ' ' ? count : ++count;
 
         count = 0;
         for (var j = 1; j <= m; j++)
-            d[0, j] = (t[j - 1] == ' ' ? count : ++count);
+            d[0, j] = t[j - 1] == ' ' ? count : ++count;
 
         for (var i = 1; i <= n; i++)
         {
