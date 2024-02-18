@@ -521,7 +521,7 @@ public partial class OCR : IOCR
         for (var i = 0; i < foundParts.Count; i++)
         {
             var part = foundParts[i];
-            Logger.Debug("Snap-it processing part {Part} out of {Count}", i, foundParts.Count);
+            Logger.Debug("Snap-it processing part {Part} out of {Count}", i + 1, foundParts.Count);
 
             // TODO (rudzen) : Convert to request event?
             var name = Main.DataBase.GetPartName(part.Name, out var levenDist, false, out var multipleLowest);
