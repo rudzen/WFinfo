@@ -85,6 +85,8 @@ public partial class OCR : IOCR
     private readonly IThemeDetector _themeDetector;
     private readonly ISnapZoneDivider _snapZoneDivider;
     private readonly IMediator _mediator;
+    private readonly ICsvCollection _csvCollection;
+    private readonly IOverlayFactory _overlayFactory;
 
     private readonly IScreenshotService _gdiScreenshot;
     private readonly IScreenshotService? _windowsScreenshot;
@@ -98,9 +100,12 @@ public partial class OCR : IOCR
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
         IMediator mediator,
-        [FromKeyedServices(ScreenshotTypes.Gdi)] IScreenshotService gdiScreenshot,
-        [FromKeyedServices(ScreenshotTypes.WindowCapture)] IScreenshotService windowsScreenshot
-        )
+        [FromKeyedServices(ScreenshotTypes.Gdi)]
+        IScreenshotService gdiScreenshot,
+        [FromKeyedServices(ScreenshotTypes.WindowCapture)]
+        IScreenshotService windowsScreenshot,
+        ICsvCollection csvCollection,
+        IOverlayFactory overlayFactory)
     {
         Directory.CreateDirectory(ApplicationConstants.AppPathDebug);
         _tesseractService = tesseractService;
@@ -114,6 +119,8 @@ public partial class OCR : IOCR
 
         _gdiScreenshot = gdiScreenshot;
         _windowsScreenshot = windowsScreenshot;
+        _csvCollection = csvCollection;
+        _overlayFactory = overlayFactory;
     }
 
     public async Task ProcessRewardScreen(Bitmap? file = null)
@@ -506,10 +513,7 @@ public partial class OCR : IOCR
 
         await _mediator.Publish(new UpdateStatus($"Snap-it completed processing. time={end}"));
 
-        var csvDate = now.ToString("yyyy-MM-dd", ApplicationConstants.Culture);
-        var csv = string.Empty;
-        if (_settings.SnapitExport && !File.Exists(Path.Combine(ApplicationConstants.AppPath, $"export {csvDate}.csv")))
-            csv += $"ItemName,Plat,Ducats,Volume,Vaulted,Owned,partsDetected{csvDate}{Environment.NewLine}";
+        var csvFileName = Path.Combine(ApplicationConstants.AppPath, $"export {now.ToString("yyyy-MM-dd", ApplicationConstants.Culture)}.csv");
 
         var detectedPartsCount = detectedParts.Count;
         var foundParts = detectedParts.Where(x => PartNameValid(x.Name)).ToList();
@@ -559,17 +563,36 @@ public partial class OCR : IOCR
 
             if (_settings.SnapitExport)
             {
-                var owned = string.IsNullOrEmpty(partsOwned) ? "0" : partsOwned;
-                csv += $"{name},{plat},{ducats},{volume},{vaulted.ToString(ApplicationConstants.Culture)},{owned},{partsDetected}, \"\"{Environment.NewLine}";
+                _csvCollection.AddRow(
+                    fileName: csvFileName,
+                    itemName: name,
+                    plat: plat!,
+                    ducats: ducats!,
+                    volume: volume!,
+                    vaulted: vaulted,
+                    owned: string.IsNullOrEmpty(partsOwned) ? "0" : partsOwned,
+                    partsDetected: partsDetected
+                );
             }
 
             var width = Math.Clamp((int)(part.Bounding.Width * _window.ScreenScaling), _settings.MinOverlayWidth, _settings.MaxOverlayWidth);
 
             Application.Current.Dispatcher.InvokeIfRequired(() =>
             {
-                var itemOverlay = new Overlay(_settings);
-                itemOverlay.LoadTextData(name, plat, primeSetPlat, ducats, volume, vaulted, mastered, partsOwned,
-                    partsDetected, false, doWarn);
+                var itemOverlay = _overlayFactory.Create();
+                itemOverlay.LoadTextData(
+                    name: name,
+                    plat: plat,
+                    primeSetPlat: primeSetPlat,
+                    ducats: ducats,
+                    volume: volume,
+                    vaulted: vaulted,
+                    mastered: mastered,
+                    owned: partsOwned,
+                    detected: partsDetected,
+                    hideRewardInfo: false,
+                    showWarningTriangle: doWarn
+                );
                 itemOverlay.toSnapit();
                 itemOverlay.Resize(width);
                 itemOverlay.Display(
@@ -601,11 +624,6 @@ public partial class OCR : IOCR
         }
 
         Logger.Debug("Snap-it finished, displayed reward. count={Count},time={Time}", resultCount, end);
-        if (_settings.SnapitExport)
-        {
-            var file = Path.Combine(ApplicationConstants.AppPath, $"export {csvDate}.csv");
-            await File.AppendAllTextAsync(file, csv);
-        }
     }
 
     private static List<TextWithBounds> GetTextWithBoundsFromImage(
@@ -1939,23 +1957,23 @@ public partial class OCR : IOCR
         var cropLeft = (preFilter.Width / 2) - (cropWidth / 2);
         var cropTop = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight + PixelRewardLineHeight) * _window.ScreenScaling * highScaling);
         var cropBot = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight) * _window.ScreenScaling * lowScaling);
-        var cropHei = cropBot - cropTop;
+        var cropHei = (cropBot - cropTop);
         cropTop -= mostTop;
         try
         {
             _partialScreenshot?.Dispose();
-            var rect = new Rectangle(
-                x: cropLeft,
-                y: cropTop,
-                width: cropWidth,
-                height: cropHei
-            );
             // var rect = new Rectangle(
-            //     x: 0,
-            //     y: 0,
-            //     width: preFilter.Width,
-            //     height: preFilter.Height
+            //     x: cropLeft,
+            //     y: cropTop,
+            //     width: cropWidth,
+            //     height: cropHei
             // );
+            var rect = new Rectangle(
+                x: 0,
+                y: 0,
+                width: preFilter.Width,
+                height: preFilter.Height
+            );
 
             var isOutOfBounds = IsRectangleWithinImageBounds(preFilter, rect);
             Logger.Debug("Is rectangle within bounds: {IsOutOfBounds}", isOutOfBounds);
@@ -2020,7 +2038,7 @@ public partial class OCR : IOCR
         var partBoxBytes = new Span<byte>(lockedPartBoxData.Scan0.ToPointer(), filteredHeight);
 
         // pixel buffer
-        Span<byte> colorBuffer;
+        Span<byte> colorBuffer = stackalloc byte[4];
 
         // colors
         Span<byte> black = stackalloc byte[pixelSize] { 0, 0, 0, byte.MaxValue };
@@ -2040,7 +2058,7 @@ public partial class OCR : IOCR
                 var i = (y * width + x) * pixelSize;
 
                 // get color from buffer
-                colorBuffer = partBoxBytes.Slice(i, pixelSize);
+                partBoxBytes.Slice(i, pixelSize).CopyTo(colorBuffer);
                 var clr = colorBuffer.FromBgra();
 
                 // if the color is within the theme threshold, create a black pixel,
@@ -2242,6 +2260,9 @@ public partial class OCR : IOCR
 
         // Check if the rectangle's Y coordinate is within the image's height
         if (rectangle.Y < 0 || rectangle.Y + rectangle.Height > image.Height)
+            return false;
+
+        if (rectangle.Width == 0 || rectangle.Height == 0)
             return false;
 
         // If both conditions are met, the rectangle is within the image's bounds

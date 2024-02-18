@@ -78,6 +78,7 @@ public partial class App : Application
                     services.TryAddSingleton<ILevenshteinDistanceService, LevenshteinDistanceService>();
                     services.TryAddSingleton<ICaptureItemService, CaptureItemService>();
                     services.TryAddSingleton<IDirect3D11Service, Direct3D11Service>();
+                    services.TryAddSingleton<ICsvCollection, CsvCollection>();
 
                     services.TryAddSingleton<Main>();
                     services.TryAddSingleton<Data>();

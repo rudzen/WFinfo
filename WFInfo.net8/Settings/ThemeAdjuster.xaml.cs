@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Mediator;
+using Microsoft.IO;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -22,6 +23,7 @@ namespace WFInfo.Settings;
 public partial class ThemeAdjuster : Window, INotificationHandler<ThemeAdjusterShow>
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ThemeAdjuster>();
+    private static readonly RecyclableMemoryStreamManager StreamManager = new();
 
     private readonly SettingsViewModel _settingsViewModel;
     private readonly IPublisher _publisher;
@@ -48,7 +50,7 @@ public partial class ThemeAdjuster : Window, INotificationHandler<ThemeAdjusterS
     private static BitmapImage BitmapToImageSource(Image bitmap)
     {
         //from https://stackoverflow.com/questions/22499407/how-to-display-a-bitmap-in-a-wpf-image
-        using var memory = new MemoryStream();
+        using var memory = StreamManager.GetStream();
         bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
         memory.Position = 0;
         var bitmapImage = new BitmapImage();

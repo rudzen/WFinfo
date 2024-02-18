@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.IO;
 using System.Windows.Input;
 using AutoUpdaterDotNET;
 using System.Windows;
@@ -41,7 +40,6 @@ public class Main
     public static Data DataBase { get; private set; }
     public static SettingsWindow SettingsWindow { get; private set; }
     public static AutoCount AutoCount { get; set; }
-    public static ErrorDialogue ErrorDialogue { get; set; }
     public static SnapItOverlay SnapItOverlayWindow { get; private set; }
     public static SearchIt SearchIt { get; set; }
     public static Login Login { get; set; }
@@ -63,6 +61,7 @@ public class Main
     private UpdateDialogue _update;
 
     private readonly FullscreenReminder _fullscreenReminder;
+    private ErrorDialogue _errorDialogue;
 
     // Instance services
     private readonly ApplicationSettings _settings;
@@ -420,9 +419,9 @@ public class Main
     }
 
     // timestamp is the time to look for, and gap is the threshold of seconds different
-    private static void SpawnErrorPopup(DateTime timeStamp, int gap)
+    private void SpawnErrorPopup(DateTime timeStamp, int gap)
     {
-        ErrorDialogue = new ErrorDialogue(timeStamp, gap);
+        _errorDialogue = new ErrorDialogue(timeStamp, gap);
     }
 
     private async Task LoadScreenshot(ScreenshotType type)
@@ -574,10 +573,9 @@ public class Main
 
     public ValueTask Handle(GnfWarningShow gnfWarningShow, CancellationToken cancellationToken)
     {
-        var show = gnfWarningShow.Show;
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
-            if (show)
+            if (gnfWarningShow.Show)
                 _gfnWarning.Show();
             else
                 _gfnWarning.Hide();
