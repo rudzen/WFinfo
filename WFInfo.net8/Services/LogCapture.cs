@@ -136,7 +136,7 @@ public sealed class LogCapture
             return;
         }
 
-        Task.Factory.StartNew(Run, _token);
+        Task.Run(Run, _token);
         _timer.Change(Timeout.Infinite, Timeout.Infinite);
     }
 

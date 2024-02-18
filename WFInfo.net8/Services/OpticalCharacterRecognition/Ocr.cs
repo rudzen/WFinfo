@@ -186,7 +186,7 @@ internal partial class OCR
         for (var i = 0; i < parts.Count; i++)
         {
             var tempI = i;
-            tasks[i] = Task.Factory.StartNew(() =>
+            tasks[i] = Task.Run(() =>
             {
                 _firstChecks[tempI] = GetTextFromImage(parts[tempI], _tesseractService.Engines[tempI]);
             });
@@ -722,7 +722,7 @@ internal partial class OCR
         for (var i = 0; i < snapThreads; i++)
         {
             var tempI = i;
-            snapTasks[i] = Task.Factory.StartNew(() =>
+            snapTasks[i] = Task.Run(() =>
             {
                 var taskResults = new List<TextWithBounds>(zones.Count);
                 for (var j = tempI; j < zones.Count; j += snapThreads)
@@ -1786,7 +1786,8 @@ internal partial class OCR
     // we ignore the "tippy top" because it has a lot of variance, so we just look at the "bottom half of the top"
     private static readonly int[] TextSegments = [2, 4, 16, 21];
 
-    private static unsafe IEnumerable<Bitmap> ExtractPartBoxAutomatically(
+    [SkipLocalsInit]
+    private static unsafe List<Bitmap> ExtractPartBoxAutomatically(
         out WFtheme active,
         Bitmap fullScreen)
     {
@@ -1798,36 +1799,30 @@ internal partial class OCR
         var width = _window.Window.Width;
         var height = _window.Window.Height;
         var mostWidth = (int)(PixelRewardWidth * _window.ScreenScaling);
-        var mostLeft = (width / 2) - (mostWidth / 2);
+        var mostLeft = width / 2 - mostWidth / 2;
+
         // Most Top = pixleRewardYDisplay - pixleRewardHeight + pixelRewardLineHeight
         //                   (316          -        235        +       44)    *    1.1    =    137
         var mostTop = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight + PixelRewardLineHeight) * _window.ScreenScaling);
         var mostBot = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight) * _window.ScreenScaling * 0.5);
 
-        var rectangle = new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop);
+        var preFilterRectangle = new Rectangle(mostLeft, mostTop, mostWidth, mostBot - mostTop);
 
-        Logger.Debug("Extracting part box automatically. scaling={Scaling},rectangle={Rect}", _window.ScreenScaling, rectangle);
-
-        // TODO (rudzen) - replace the existing image manipulation with byte manipulation for performance
-        // var bitmapData = fullScreen.LockBits(new Rectangle(0, 0, fullScreen.Width, fullScreen.Height), ImageLockMode.ReadWrite, fullScreen.PixelFormat);
-        // var length = Math.Abs(bitmapData.Stride) * fullScreen.Height;
-        // var byteSpan = new Span<byte>((void*)bitmapData.Scan0, length);
-
-        Bitmap preFilter;
-
-        var preFilterRect = rectangle;
+        Logger.Debug("Extracting part box automatically. scaling={Scaling},rectangle={Rect}", _window.ScreenScaling, preFilterRectangle);
 
         // check for image boundary crossings
-        if (!IsRectangleWithinImageBounds(fullScreen, in rectangle))
+        if (!IsRectangleWithinImageBounds(fullScreen, in preFilterRectangle))
         {
             Logger.Error("Rectangle is out of bounds");
             throw new ArgumentOutOfRangeException("Rectangle is out of bounds");
         }
 
+        Bitmap preFilter;
+
         try
         {
-            Logger.Debug("Fullscreen is {FullScreen}:, trying to clone: {Size} at {Location}", fullScreen.Size, rectangle.Size, rectangle.Location);
-            preFilter = fullScreen.Clone(rectangle, fullScreen.PixelFormat);
+            Logger.Debug("Fullscreen is {FullScreen}:, trying to clone: {Size} at {Location}", fullScreen.Size, preFilterRectangle.Size, preFilterRectangle.Location);
+            preFilter = fullScreen.Clone(preFilterRectangle, fullScreen.PixelFormat);
         }
         catch (Exception ex)
         {
@@ -1956,7 +1951,7 @@ internal partial class OCR
 
         using (var g = Graphics.FromImage(fullScreen))
         {
-            g.DrawRectangle(Pens.Red, rectangle);
+            g.DrawRectangle(Pens.Red, preFilterRectangle);
             g.DrawRectangle(Pens.Chartreuse, uiDebug);
         }
 
@@ -1972,10 +1967,8 @@ internal partial class OCR
 
         var cropWidth = (int)(PixelRewardWidth * _window.ScreenScaling * highScaling);
         var cropLeft = (preFilter.Width / 2) - (cropWidth / 2);
-        var cropTop = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight + PixelRewardLineHeight) *
-                                         _window.ScreenScaling * highScaling);
-        var cropBot = height / 2 -
-                      (int)((PixelRewardYDisplay - PixelRewardHeight) * _window.ScreenScaling * lowScaling);
+        var cropTop = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight + PixelRewardLineHeight) * _window.ScreenScaling * highScaling);
+        var cropBot = height / 2 - (int)((PixelRewardYDisplay - PixelRewardHeight) * _window.ScreenScaling * lowScaling);
         var cropHei = cropBot - cropTop;
         cropTop -= mostTop;
         try

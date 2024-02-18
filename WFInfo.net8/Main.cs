@@ -124,7 +124,7 @@ public class Main
 
         StartMessage();
 
-        Task.Factory.StartNew(ThreadedDataLoad);
+        Task.Run(ThreadedDataLoad);
     }
 
     private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)

@@ -892,7 +892,7 @@ public sealed partial class Data :
 
         if (line.Contains("Pause countdown done") || line.Contains("Got rewards"))
         {
-            autoThread = Task.Factory.StartNew(AutoTriggered);
+            autoThread = Task.Run(AutoTriggered);
             Overlay.RewardsDisplaying = true;
         }
 

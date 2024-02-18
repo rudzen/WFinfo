@@ -16,6 +16,17 @@ public partial class ErrorDialogue : Window
     private static readonly ILogger Logger = Log.Logger.ForContext<ErrorDialogue>();
     private static readonly string ZipPath = Path.Combine(ApplicationConstants.AppPath, "generatedZip");
 
+    private static readonly string[] StaticFiles =
+    [
+        Path.Combine(ApplicationConstants.AppPath, "eqmt_data.json"),
+        Path.Combine(ApplicationConstants.AppPath, "market_data.json"),
+        Path.Combine(ApplicationConstants.AppPath, "market_items.json"),
+        Path.Combine(ApplicationConstants.AppPath, "name_data.json"),
+        Path.Combine(ApplicationConstants.AppPath, "relic_data.json"),
+        Path.Combine(ApplicationConstants.AppPath, "settings.json"),
+        Path.Combine(ApplicationConstants.AppPath, "debug.json")
+    ];
+
     private readonly int _distance;
     private readonly DateTime _closest;
 
@@ -38,16 +49,6 @@ public partial class ErrorDialogue : Window
                     .Where(f => f.CreationTimeUtc > _closest.AddSeconds(-1 * _distance))
                     .Where(f => f.CreationTimeUtc < _closest.AddSeconds(_distance));
 
-        var staticFiles = new[]
-        {
-            Path.Combine(ApplicationConstants.AppPath, "eqmt_data.json"),
-            Path.Combine(ApplicationConstants.AppPath, "market_data.json"),
-            Path.Combine(ApplicationConstants.AppPath, "market_items.json"),
-            Path.Combine(ApplicationConstants.AppPath, "name_data.json"),
-            Path.Combine(ApplicationConstants.AppPath, "relic_data.json"),
-            Path.Combine(ApplicationConstants.AppPath, "settings.json"),
-            Path.Combine(ApplicationConstants.AppPath, "debug.json"),
-        };
         var time = _closest.ToString("yyyy-MM-dd_HH-mm-ssff");
         var fullZipPath = Path.Combine(ZipPath, $"WFInfoError_{time}.zip");
         try
@@ -56,7 +57,7 @@ public partial class ErrorDialogue : Window
             foreach (var file in files)
                 zip.AddFile(file.FullName, string.Empty);
 
-            foreach (var staticFile in staticFiles)
+            foreach (var staticFile in StaticFiles)
             {
                 if (File.Exists(staticFile))
                     zip.AddFile(staticFile, string.Empty);

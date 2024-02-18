@@ -371,7 +371,7 @@ public partial class MainWindow
         ComboBox.Visibility = Visibility.Hidden;
         PlusOneButton.Visibility = Visibility.Hidden;
         CreateListing.Visibility = Visibility.Hidden;
-        Task.Factory.StartNew(() =>
+        Task.Run(() =>
         {
             Main.DataBase.Disconnect();
         });
