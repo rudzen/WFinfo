@@ -1,45 +1,36 @@
 ﻿using System.Drawing;
+using DotNext.Collections.Generic;
 using WFInfo.Services.WindowInfo;
 
 namespace WFInfo.Services.Screenshot;
 
-public class GdiScreenshotService : IScreenshotService
+public sealed class GdiScreenshotService(IWindowInfoService window) : IScreenshotService
 {
-    private static IWindowInfoService _window;
-
-    public GdiScreenshotService(IWindowInfoService window)
+    public Task<IReadOnlyList<Bitmap>> CaptureScreenshot()
     {
-        _window = window;
-    }
+        window.UpdateWindow();
 
-    public Task<List<Bitmap>> CaptureScreenshot()
-    {
-        _window.UpdateWindow();
+        var window1 = window.Window;
+        var width = window1.Width;
+        var height = window1.Height;
 
-        var window = _window.Window;
-        var center = _window.Center;
-
-        var width = window.Width;
-        var height = window.Height;
-
-        if (window == null || window.Width == 0 || window.Height == 0)
+        if (window1 == null || window1.Width == 0 || window1.Height == 0)
         {
-            window = _window.Screen.Bounds;
-            center = new Point(window.X + window.Width / 2, window.Y + window.Height / 2);
+            window1 = window.Screen.Bounds;
 
-            width *= (int)_window.DpiScaling;
-            height *= (int)_window.DpiScaling;
+            width *= (int)window.DpiScaling;
+            height *= (int)window.DpiScaling;
         }
 
         var image = new Bitmap(width, height);
-        var FullscreenSize = new Size(image.Width, image.Height);
+        var fullscreenSize = new Size(image.Width, image.Height);
 
         using (var graphics = Graphics.FromImage(image))
         {
-            graphics.CopyFromScreen(window.Left, window.Top, 0, 0, FullscreenSize, CopyPixelOperation.SourceCopy);
+            graphics.CopyFromScreen(window1.Left, window1.Top, 0, 0, fullscreenSize, CopyPixelOperation.SourceCopy);
         }
 
-        var result = new List<Bitmap> { image };
+        var result = List.Singleton(image);
         return Task.FromResult(result);
     }
 }

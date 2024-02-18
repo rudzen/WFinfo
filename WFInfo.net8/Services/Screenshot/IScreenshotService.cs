@@ -2,7 +2,7 @@
 
 namespace WFInfo.Services.Screenshot;
 
-public enum HdrSupportEnum
+public enum HdrSupport
 {
     Auto,
     On,
@@ -18,5 +18,5 @@ public interface IScreenshotService
     /// Captures one or more screenshots of the game. All screenshots are in SDR.
     /// </summary>
     /// <returns>Captured screenshots</returns>
-    Task<List<Bitmap>> CaptureScreenshot();
+    Task<IReadOnlyList<Bitmap>> CaptureScreenshot();
 }

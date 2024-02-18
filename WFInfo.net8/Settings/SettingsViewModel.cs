@@ -746,7 +746,7 @@ public class SettingsViewModel : INPC, INotifyDataErrorInfo
         }
     }
 
-    public HdrSupportEnum HdrSupport
+    public HdrSupport HdrSupport
     {
         get => _settings.HdrSupport;
         set

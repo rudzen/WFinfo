@@ -130,7 +130,7 @@ public sealed class ApplicationSettings
     public int CF_sBMin { get; set; } = 0;
     public long FixedAutoDelay { get; set; } = 2000L;
     public string Ignored { get; set; } = null;
-    public HdrSupportEnum HdrSupport { get; set; } = HdrSupportEnum.Auto;
+    public HdrSupport HdrSupport { get; set; } = HdrSupport.Auto;
 
     [OnError]
     internal void OnError(StreamingContext context, ErrorContext errorContext)

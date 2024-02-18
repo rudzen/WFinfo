@@ -1,17 +1,17 @@
 ﻿using System.Drawing;
 using System.Windows.Forms;
+using DotNext.Collections.Generic;
 using Mediator;
 using Serilog;
 using WFInfo.Domain;
 
 namespace WFInfo.Services.Screenshot;
 
-//TODO (rudzen) : convert to be fully event driven
-public class ImageScreenshotService(IMediator mediator) : IScreenshotService
+public sealed class ImageScreenshotService(IPublisher mediator) : IScreenshotService
 {
     private static readonly ILogger Logger = Log.Logger.ForContext<ImageScreenshotService>();
 
-    public async Task<List<Bitmap>> CaptureScreenshot()
+    public async Task<IReadOnlyList<Bitmap>> CaptureScreenshot()
     {
         // Using WinForms for the openFileDialog because it's simpler and much easier
         using var openFileDialog = new OpenFileDialog();

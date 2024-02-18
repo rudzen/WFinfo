@@ -8,6 +8,7 @@ using WFInfo.Services.WarframeProcess;
 using Windows.Graphics.Capture;
 using Windows.Graphics.DirectX;
 using Windows.Graphics.DirectX.Direct3D11;
+using DotNext.Collections.Generic;
 using Serilog;
 using WFInfo.Services.Screenshot.Composition.WindowsRuntimeHelpers;
 using Point = System.Drawing.Point;
@@ -21,6 +22,8 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
 
     private readonly bool _useHdr;
     private readonly IProcessFinder _process;
+    private readonly ICaptureItemService _captureItemService;
+    private readonly IDirect3D11Service _d3d11Service;
 
     private readonly Device _d3dDevice;
     private readonly IDirect3DDevice? _device;
@@ -32,17 +35,24 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
     private readonly object _frameLock = new();
     private Direct3D11CaptureFrame? _frame;
 
-    private DirectXPixelFormat pixelFormat =>
-        _useHdr ? DirectXPixelFormat.R16G16B16A16Float : DirectXPixelFormat.R8G8B8A8UIntNormalized;
+    private DirectXPixelFormat PixelFormat => _useHdr
+        ? DirectXPixelFormat.R16G16B16A16Float
+        : DirectXPixelFormat.R8G8B8A8UIntNormalized;
 
-    public WindowsCaptureScreenshotService(IProcessFinder process, bool useHdr = true)
+    public WindowsCaptureScreenshotService(
+        IProcessFinder process,
+        ICaptureItemService captureItemService,
+        IDirect3D11Service d3d11Service,
+        bool useHdr = true)
     {
         _process = process;
+        _captureItemService = captureItemService;
+        _d3d11Service = d3d11Service;
         _useHdr = useHdr;
 
         const DeviceCreationFlags creationFlags = DeviceCreationFlags.BgraSupport | DeviceCreationFlags.Debug;
         _d3dDevice = new Device(SharpDX.Direct3D.DriverType.Hardware, creationFlags);
-        _device = _d3dDevice.CreateDirect3DDeviceFromSharpDxDevice();
+        _device = _d3d11Service.CreateDirect3DDeviceFromSharpDxDevice(_d3dDevice);
 
         if (_process.IsRunning())
             CreateCaptureSession(_process.Warframe);
@@ -50,7 +60,7 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
         _process.OnProcessChanged += CreateCaptureSession;
     }
 
-    public Task<List<Bitmap>> CaptureScreenshot()
+    public unsafe Task<IReadOnlyList<Bitmap>> CaptureScreenshot()
     {
         Texture2D cpuTexture;
         int width;
@@ -62,7 +72,7 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
             height = _frame.ContentSize.Height;
 
             // Copy resource into memory that can be accessed by the CPU
-            using var capturedTexture = _frame.Surface.CreateSharpDXTexture2D();
+            using var capturedTexture = _d3d11Service.CreateSharpDXTexture2D(_frame.Surface);
             var desc = capturedTexture.Description;
             desc.CpuAccessFlags = CpuAccessFlags.Read;
             desc.BindFlags = BindFlags.None;
@@ -74,25 +84,26 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
         }
 
         var mapSource = _d3dDevice.ImmediateContext.MapSubresource(cpuTexture, 0, MapMode.Read, MapFlags.None);
-        Span<ushort> hdrSpan;
-        Span<byte> sdrSpan;
 
-        unsafe
+        Bitmap bitmap;
+
+        if (_useHdr)
         {
-            hdrSpan = new Span<ushort>(mapSource.DataPointer.ToPointer(), mapSource.SlicePitch / sizeof(ushort));
-            sdrSpan = new Span<byte>(mapSource.DataPointer.ToPointer(), mapSource.SlicePitch);
+            var hdrSpan = new Span<ushort>(mapSource.DataPointer.ToPointer(), mapSource.SlicePitch / sizeof(ushort));
+            bitmap = CaptureHdr(hdrSpan, width, height, mapSource.RowPitch / sizeof(ushort));
         }
-
-        var bitmap = _useHdr
-            ? CaptureHdr(hdrSpan, width, height, mapSource.RowPitch / sizeof(ushort))
-            : CaptureSdr(sdrSpan, width, height, mapSource.RowPitch);
+        else
+        {
+            var sdrSpan = new Span<byte>(mapSource.DataPointer.ToPointer(), mapSource.SlicePitch);
+            bitmap = CaptureSdr(sdrSpan, width, height, mapSource.RowPitch);
+        }
 
         _d3dDevice.ImmediateContext.UnmapSubresource(cpuTexture, 0);
         cpuTexture.Dispose();
 
-        Debug.Print("Captured screenshot " + bitmap.Size);
+        Logger.Debug("Captured screenshot. size={Size}", bitmap.Size);
 
-        var result = new List<Bitmap> { bitmap };
+        var result = List.Singleton(bitmap);
         return Task.FromResult(result);
     }
 
@@ -106,8 +117,9 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
         // Create a new thread to avoid STA issues,
         // as the capture session needs to be created in an STA thread
         // This can happen if there is some input being processed in the main thread
-        // Thx COMException!
-        var thread = new Thread(() => {
+        // Thx COMException! and fu.
+        var thread = new Thread(() =>
+        {
             _session?.Dispose();
             if (_framePool is not null)
             {
@@ -115,8 +127,8 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
                 _framePool.Dispose();
             }
 
-            _item = process.MainWindowHandle.CreateItemForWindow();
-            _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(_device, pixelFormat, 2, _item.Size);
+            _item = _captureItemService.CreateItemForWindow(process.MainWindowHandle);
+            _framePool = Direct3D11CaptureFramePool.CreateFreeThreaded(_device, PixelFormat, 2, _item.Size);
             _framePool.FrameArrived += FrameArrived;
 
             _session = _framePool.CreateCaptureSession(_item);
@@ -146,9 +158,9 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
 
     private Bitmap CaptureSdr(Span<byte> textureData, int width, int height, int rowPitch)
     {
-        var bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+        var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
         var imageRect = new Rectangle(Point.Empty, bitmap.Size);
-        var bitmapData = bitmap.LockBits(imageRect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+        var bitmapData = bitmap.LockBits(imageRect, ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
         Span<byte> bitmapSpan;
 
         unsafe
@@ -175,7 +187,7 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
 
     private Bitmap CaptureHdr(Span<ushort> textureData, int width, int height, int rowPitch)
     {
-        var bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+        var bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
         var floats = new float[textureData.Length / 4 * 3]; // Pixel components (RGB) as floats
         var luminances = new float[textureData.Length / 4]; // Luminance of individual pixels
         var largestLuminance = float.MinValue;
@@ -200,7 +212,7 @@ public sealed class WindowsCaptureScreenshotService : IScreenshotService, IDispo
         }
 
         var imageRect = new Rectangle(Point.Empty, bitmap.Size);
-        var bitmapData = bitmap.LockBits(imageRect, ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+        var bitmapData = bitmap.LockBits(imageRect, ImageLockMode.WriteOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
         var largestLuminanceSquared = largestLuminance * largestLuminance;
         Span<byte> bitmapSpan;
 

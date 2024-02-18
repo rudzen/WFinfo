@@ -18,6 +18,7 @@ using WFInfo.Services.HDRDetection;
 using WFInfo.Services.HDRDetection.Schemes;
 using WFInfo.Services.OpticalCharacterRecognition;
 using WFInfo.Services.Screenshot;
+using WFInfo.Services.Screenshot.Composition.WindowsRuntimeHelpers;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
 using WFInfo.Settings;
@@ -75,6 +76,8 @@ public partial class App : Application
                     services.TryAddSingleton<ILogCapture, LogCapture>();
                     services.TryAddSingleton<ILowLevelListener, LowLevelListener>();
                     services.TryAddSingleton<ILevenshteinDistanceService, LevenshteinDistanceService>();
+                    services.TryAddSingleton<ICaptureItemService, CaptureItemService>();
+                    services.TryAddSingleton<IDirect3D11Service, Direct3D11Service>();
 
                     services.TryAddSingleton<Main>();
                     services.TryAddSingleton<Data>();

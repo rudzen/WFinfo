@@ -141,8 +141,6 @@ public class Main
     {
         try
         {
-            await _mediator.Publish(new UpdateStatus("Initializing OCR engine..."));
-
             await _mediator.Publish(new UpdateStatus("Updating Databases..."));
             await DataBase.Update();
 

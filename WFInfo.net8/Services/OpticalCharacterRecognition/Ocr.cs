@@ -2200,13 +2200,13 @@ public partial class OCR : IOCR
 
         switch (_settings.HdrSupport)
         {
-            case HdrSupportEnum.On:
+            case HdrSupport.On:
                 Logger.Debug("HDR capturing set, using window based capturing");
                 return _windowsScreenshot;
-            case HdrSupportEnum.Off:
+            case HdrSupport.Off:
                 Logger.Debug("HDR capturing *not* set, Using GDI based capturing (SDR)");
                 return _gdiScreenshot;
-            case HdrSupportEnum.Auto:
+            case HdrSupport.Auto:
                 var isHdr = _hdrDetector.IsHdr();
                 Logger.Debug("Auto selecting capturing. HDR={Hdr}", isHdr);
                 return isHdr ? _windowsScreenshot : _gdiScreenshot;

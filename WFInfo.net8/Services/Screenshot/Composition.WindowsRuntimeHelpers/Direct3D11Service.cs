@@ -23,46 +23,46 @@
 //  ---------------------------------------------------------------------------------
 
 using System.Runtime.InteropServices;
-using Windows.Graphics.Capture;
+using Windows.Graphics.DirectX.Direct3D11;
+using WinRT;
 
 namespace WFInfo.Services.Screenshot.Composition.WindowsRuntimeHelpers;
 
-public static class CaptureHelper
+public sealed class Direct3D11Service : IDirect3D11Service
 {
-    private static readonly Guid GraphicsCaptureItemGuid = new("79C3F95B-31F7-4EC2-A464-632EF5D30760");
+    private static readonly Guid ID3D11Texture2D = new("6f15aaf2-d208-4e89-9ab4-489535d34f9c");
 
     [ComImport]
-    [Guid("3628E81B-3CAC-4C60-B7F4-23CE0E0C3356")]
+    [Guid("A9B3D012-3DF2-4EE3-B8D1-8695F457D3C1")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     [ComVisible(true)]
-    interface IGraphicsCaptureItemInterop
+    interface IDirect3DDxgiInterfaceAccess
     {
-        IntPtr CreateForWindow(
-            [In] IntPtr window,
-            [In] ref Guid iid);
+        IntPtr GetInterface([In] ref Guid iid);
+    };
 
-        IntPtr CreateForMonitor(
-            [In] IntPtr monitor,
-            [In] ref Guid iid);
+    [DllImport(
+        "d3d11.dll",
+        EntryPoint = "CreateDirect3D11DeviceFromDXGIDevice",
+        SetLastError = true,
+        CharSet = CharSet.Unicode,
+        ExactSpelling = true,
+        CallingConvention = CallingConvention.StdCall
+    )]
+    static extern uint CreateDirect3D11DeviceFromDXGIDevice(IntPtr dxgiDevice, out IntPtr graphicsDevice);
+
+    public IDirect3DDevice? CreateDirect3DDeviceFromSharpDxDevice(SharpDX.Direct3D11.Device sharpDxDevice)
+    {
+        return CreateDirect3D11DeviceFromDXGIDevice(sharpDxDevice.NativePointer, out var punk) != 0
+            ? null
+            : MarshalInterface<IDirect3DDevice>.FromAbi(punk);
     }
 
-    public static GraphicsCaptureItem CreateItemForWindow(this nint hWnd)
+    public SharpDX.Direct3D11.Texture2D CreateSharpDXTexture2D(IDirect3DSurface surface)
     {
-        var factory = GraphicsCaptureItem.As<IGraphicsCaptureItemInterop>();
-        var itemPointer = factory.CreateForWindow(hWnd, GraphicsCaptureItemGuid);
-        var item = GraphicsCaptureItem.FromAbi(itemPointer);
-        Marshal.Release(itemPointer);
-
-        return item;
-    }
-
-    public static GraphicsCaptureItem CreateItemForMonitor(this nint hMon)
-    {
-        var factory = GraphicsCaptureItem.As<IGraphicsCaptureItemInterop>();
-        var itemPointer = factory.CreateForMonitor(hMon, GraphicsCaptureItemGuid);
-        var item = GraphicsCaptureItem.FromAbi(itemPointer);
-        Marshal.Release(itemPointer);
-
-        return item;
+        var access = surface.As<IDirect3DDxgiInterfaceAccess>();
+        var d3dPointer = access.GetInterface(ID3D11Texture2D);
+        var d3dSurface = new SharpDX.Direct3D11.Texture2D(d3dPointer);
+        return d3dSurface;
     }
 }

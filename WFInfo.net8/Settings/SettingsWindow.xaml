@@ -28,9 +28,9 @@
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
         <ObjectDataProvider x:Key="enumHDRSupport" MethodName="GetValues"
-                            ObjectType="{x:Type screenshot:HdrSupportEnum}">
+                            ObjectType="{x:Type screenshot:HdrSupport}">
             <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="screenshot:HdrSupportEnum" />
+                <x:Type TypeName="screenshot:HdrSupport" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
     </Window.Resources>
