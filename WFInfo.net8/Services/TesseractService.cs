@@ -55,8 +55,10 @@ public sealed class TesseractService : ITesseractService, INotificationHandler<T
         _locale = applicationSettings.Locale;
         _httpClient = httpClientFactory.CreateClient(nameof(TesseractService));
         _hasherService = hasherService;
+        Logger.Debug("Initializing TesseractService...");
         FirstEngine = CreateEngine();
         SecondEngine = CreateEngine();
+        Init();
     }
 
     private void ReleaseUnmanagedResources()

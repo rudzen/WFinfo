@@ -1,6 +1,6 @@
 ﻿namespace WFInfo.Services;
 
-internal interface ISoundPlayer
+public interface ISoundPlayer
 {
     void Play();
 }

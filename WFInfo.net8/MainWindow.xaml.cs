@@ -56,6 +56,7 @@ public partial class MainWindow
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly ILowLevelListener _lowLevelListener;
     private readonly IMediator _mediator;
+    private readonly IOCR _ocr;
 
     public MainWindow(
         ApplicationSettings applicationSettings,
@@ -67,13 +68,15 @@ public partial class MainWindow
         IServiceProvider sp,
         ILowLevelListener lowLevelListener,
         Main main,
-        IMediator mediator)
+        IMediator mediator,
+        IOCR ocr)
     {
         _applicationSettings = applicationSettings;
         _sp = sp;
         INSTANCE = this;
         Main = main;
         _mediator = mediator;
+        _ocr = ocr;
 
         _settingsViewModel = settingsViewModel;
         _plusOne = plusOne;
@@ -384,7 +387,7 @@ public partial class MainWindow
 
     private void CreateListing_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (OCR.ProcessingActive)
+        if (_ocr.ProcessingActive)
         {
             Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;
@@ -428,7 +431,7 @@ public partial class MainWindow
 
     private void SearchItButton_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (OCR.ProcessingActive)
+        if (_ocr.ProcessingActive)
         {
             Dispatcher.InvokeAsync(() => ChangeStatus("Still Processing Reward Screen", StatusSeverity.Warning));
             return;

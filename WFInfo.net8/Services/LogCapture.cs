@@ -149,6 +149,12 @@ public sealed class LogCapture
 
     public ValueTask Handle(LogCaptureState logCaptureState, CancellationToken cancellationToken)
     {
+        if (IsRunning == logCaptureState.Enable)
+        {
+            Logger.Debug("LogCapture state already set. state={State}", logCaptureState.Enable);
+            return ValueTask.CompletedTask;
+        }
+
         IsRunning = logCaptureState.Enable;
         Logger.Debug("LogCapture state changed to {Enable}", logCaptureState.Enable);
 

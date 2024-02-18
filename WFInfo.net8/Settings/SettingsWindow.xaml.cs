@@ -114,10 +114,11 @@ public partial class SettingsWindow
         Save();
     }
 
-    private void AutoClicked(object sender, RoutedEventArgs e)
+    private async void AutoClicked(object sender, RoutedEventArgs e)
     {
         var isChecked = autoCheckbox.IsChecked;
         SettingsViewModel.Auto = isChecked.HasValue && isChecked.Value;
+        bool enableLogCapture;
         if (SettingsViewModel.Auto)
         {
             var message = "Do you want to enable the new auto mode?" + Environment.NewLine +
@@ -136,7 +137,7 @@ public partial class SettingsWindow
                 MessageBox.Show(message, "Automation Mode Opt-In", MessageBoxButton.YesNo);
             if (messageBoxResult == MessageBoxResult.Yes)
             {
-                _data.EnableLogCapture();
+                enableLogCapture = true;
                 Autolist.IsEnabled = true;
                 Autocsv.IsEnabled = true;
                 Autoadd.IsEnabled = true;
@@ -145,10 +146,10 @@ public partial class SettingsWindow
             {
                 SettingsViewModel.Auto = false;
                 autoCheckbox.IsChecked = false;
-                _data.DisableLogCapture();
                 Autolist.IsEnabled = false;
                 Autocsv.IsEnabled = false;
                 Autoadd.IsEnabled = false;
+                enableLogCapture = false;
             }
         }
         else
@@ -157,8 +158,10 @@ public partial class SettingsWindow
             Autolist.IsEnabled = false;
             Autocsv.IsEnabled = false;
             Autoadd.IsEnabled = false;
-            _data.DisableLogCapture();
+            enableLogCapture = false;
         }
+
+        await _publisher.Publish(new LogCaptureState(enableLogCapture));
 
         Save();
     }

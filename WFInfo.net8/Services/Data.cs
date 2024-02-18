@@ -95,6 +95,7 @@ public sealed partial class Data :
     private readonly IMediator _mediator;
     private readonly ILogCapture _logCapture;
     private readonly ILevenshteinDistanceService _levenshteinDistanceService;
+    private readonly IOCR _ocr;
 
     static Data()
     {
@@ -115,7 +116,8 @@ public sealed partial class Data :
         ObjectPool<StringBuilder> stringBuilderPool,
         IMediator mediator,
         ILogCapture logCapture,
-        ILevenshteinDistanceService levenshteinDistanceService)
+        ILevenshteinDistanceService levenshteinDistanceService,
+        IOCR ocr)
     {
         _settings = settings;
         _process = process;
@@ -125,6 +127,7 @@ public sealed partial class Data :
         _mediator = mediator;
         _logCapture = logCapture;
         _levenshteinDistanceService = levenshteinDistanceService;
+        _ocr = ocr;
 
         Logger.Debug("Initializing Databases");
 
@@ -133,36 +136,6 @@ public sealed partial class Data :
         _client = httpClientFactory.CreateClient(nameof(Data));
 
         marketSocket.SslConfiguration.EnabledSslProtocols = SslProtocols.None;
-    }
-
-    //TODO (rudzen) : to async
-    public void EnableLogCapture()
-    {
-        if (_logCapture.IsRunning)
-            return;
-
-        try
-        {
-            Logger.Debug("Starting log capture for EE");
-            Task.Run(async () => await _mediator.Publish(new LogCaptureState(true)));
-        }
-        catch (Exception ex)
-        {
-            Logger.Error(ex, "Failed to start log capture");
-            Task.Run(async () =>
-            {
-                await _mediator.Publish(new LogCaptureState(false));
-                await _mediator.Publish(new UpdateStatus("Failed to start capturing log", StatusSeverity.Error));
-            });
-        }
-    }
-
-    public void DisableLogCapture()
-    {
-        if (!_logCapture.IsRunning)
-            return;
-
-        Task.Run(async () => await _mediator.Publish(new LogCaptureState(false)));
     }
 
     private static void SaveDatabase<T>(string path, T db)
@@ -1029,11 +1002,11 @@ public sealed partial class Data :
                 {
                     if (watch.ElapsedMilliseconds <= wait) continue;
                     wait += _settings.AutoDelay;
-                    OCR.GetThemeWeighted(out var diff);
+                    _ocr.GetThemeWeighted(out var diff);
                     if (diff <= 40) continue;
                     while (watch.ElapsedMilliseconds < wait) ;
                     Logger.Debug("started auto processing");
-                    await OCR.ProcessRewardScreen();
+                    await _ocr.ProcessRewardScreen();
                     break;
                 }
             }
@@ -1041,7 +1014,7 @@ public sealed partial class Data :
             {
                 while (watch.ElapsedMilliseconds < fixedStop) ;
                 Logger.Debug("started auto processing (fixed delay)");
-                await OCR.ProcessRewardScreen();
+                await _ocr.ProcessRewardScreen();
             }
 
             watch.Stop();
@@ -1405,6 +1378,7 @@ public sealed partial class Data :
 
     /// <summary>
     /// Tries to get the profile page with the current JWT token
+    /// TODO (rudzen) : Move to own new JwtService class to reduce coupling
     /// </summary>
     /// <returns>bool of which answers the question "Is the user JWT valid?"</returns>
     public async Task<bool> IsJWTvalid()

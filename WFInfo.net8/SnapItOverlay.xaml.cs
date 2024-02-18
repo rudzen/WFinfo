@@ -27,11 +27,13 @@ public partial class SnapItOverlay :
     private System.Drawing.Point _topLeft;
     private readonly IWindowInfoService _windowInfoService;
     private readonly IPublisher _publisher;
+    private readonly IOCR _ocr;
 
-    public SnapItOverlay(IWindowInfoService windowInfoService, IPublisher publisher)
+    public SnapItOverlay(IWindowInfoService windowInfoService, IPublisher publisher, IOCR ocr)
     {
         _windowInfoService = windowInfoService;
         _publisher = publisher;
+        _ocr = ocr;
         WindowStartupLocation = WindowStartupLocation.Manual;
 
         Left = 0;
@@ -129,7 +131,7 @@ public partial class SnapItOverlay :
         // try to hide the evidence as fast as possible
         Rectangle.Visibility = Visibility.Hidden;
 
-        await OCR.ProcessSnapIt(cutout, tempImage, _topLeft);
+        await _ocr.ProcessSnapIt(cutout, tempImage, _topLeft);
 
         CloseOverlay();
     }

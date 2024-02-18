@@ -78,6 +78,7 @@ public partial class App : Application
 
                     services.TryAddSingleton<Main>();
                     services.TryAddSingleton<Data>();
+                    services.TryAddSingleton<IOCR, OCR>();
                     services.TryAddSingleton<ITesseractService, TesseractService>();
                     services.TryAddSingleton<ApplicationSettings>();
 

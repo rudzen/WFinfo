@@ -29,7 +29,7 @@ using Point = System.Drawing.Point;
 
 namespace WFInfo.Services.OpticalCharacterRecognition;
 
-internal partial class OCR
+public partial class OCR : IOCR
 {
     private static readonly ILogger Logger = Log.Logger.ForContext(typeof(OCR));
 
@@ -41,9 +41,9 @@ internal partial class OCR
                                         NumberStyles.AllowExponent;
 
     // UI - Scaling used in Warframe
-    public static double UiScaling { get; private set; }
+    public double UiScaling { get; private set; }
 
-    public static int NumberOfRewardsDisplayed { get; private set; }
+    public int NumberOfRewardsDisplayed { get; private set; }
 
     private static readonly Regex Re = WordTrimRegEx();
 
@@ -63,63 +63,33 @@ internal partial class OCR
     private static readonly Pen RedPen = new(Brushes.Red);
     private static readonly Pen CyanPen = new(Brushes.Cyan);
 
-    public static AtomicBoolean ProcessingActive { get; set; } = new();
+    public AtomicBoolean ProcessingActive { get; set; } = new();
 
-    private static Bitmap? _bigScreenshot;
-    private static Bitmap? _partialScreenshot;
-    private static Bitmap? _partialScreenshotExpanded;
+    private Bitmap? _bigScreenshot;
+    private Bitmap? _partialScreenshot;
+    private Bitmap? _partialScreenshotExpanded;
 
-    private static string[] _firstChecks = [];
-    private static Memory<int> _firstProximity = new([-1, -1, -1, -1]);
-    private static string _timestamp = null!;
+    private string[] _firstChecks = [];
+    private readonly Memory<int> _firstProximity = new([-1, -1, -1, -1]);
+    private string _timestamp = null!;
 
-    private static string _clipboard = null!;
+    private string _clipboard = null!;
 
     #endregion
 
-    private static ITesseractService _tesseractService = null!;
-    private static ISoundPlayer _soundPlayer = null!;
-    private static ApplicationSettings _settings = null!;
-    private static IWindowInfoService _window = null!;
-    private static IHDRDetectorService _hdrDetector = null!;
-    private static IThemeDetector _themeDetector = null!;
-    private static ISnapZoneDivider _snapZoneDivider = null!;
-    private static IMediator _mediator = null!;
+    private readonly ITesseractService _tesseractService;
+    private readonly ISoundPlayer _soundPlayer;
+    private readonly ApplicationSettings _settings;
+    private readonly IWindowInfoService _window;
+    private readonly IHDRDetectorService _hdrDetector;
+    private readonly IThemeDetector _themeDetector;
+    private readonly ISnapZoneDivider _snapZoneDivider;
+    private readonly IMediator _mediator;
 
-    private static IScreenshotService _gdiScreenshot = null!;
-    private static IScreenshotService? _windowsScreenshot;
+    private readonly IScreenshotService _gdiScreenshot;
+    private readonly IScreenshotService? _windowsScreenshot;
 
-    public static void Init(IServiceProvider sp)
-    {
-        var tesseractService = sp.GetRequiredService<ITesseractService>();
-        var soundPlayer = sp.GetRequiredService<ISoundPlayer>();
-        var settings = sp.GetRequiredService<ApplicationSettings>();
-        var window = sp.GetRequiredService<IWindowInfoService>();
-        var themeDetector = sp.GetRequiredService<IThemeDetector>();
-        var snapZoneDivider = sp.GetRequiredService<ISnapZoneDivider>();
-        var hdrDetector = sp.GetRequiredService<IHDRDetectorService>();
-        var mediator = sp.GetRequiredService<IMediator>();
-        var gdiScreenshot = sp.GetRequiredKeyedService<IScreenshotService>(ScreenshotTypes.Gdi);
-        var windowsScreenshot = sp.GetKeyedService<IScreenshotService>(ScreenshotTypes.WindowCapture);
-        Init(
-            tesseractService: tesseractService,
-            soundPlayer: soundPlayer,
-            settings: settings,
-            window: window,
-            themeDetector: themeDetector,
-            snapZoneDivider: snapZoneDivider,
-            hdrDetector: hdrDetector,
-            mediator: mediator,
-            gdiScreenshot: gdiScreenshot,
-            windowsScreenshot: windowsScreenshot
-        );
-    }
-
-    // You might be asking yourself "Why are you injecting specific services? That's not good practice at all!"
-    // Now I can either do this and switch between these two based on settings
-    // Or I can make this a scoped service, with each scope being a new screenshot request and dynamically choose the right service using a IScreenshotServiceFactory
-    // Unfortunately option 2 means rewriting like half of this thing so I'm sticking with a hack
-    private static void Init(
+    public OCR(
         ITesseractService tesseractService,
         ISoundPlayer soundPlayer,
         ApplicationSettings settings,
@@ -128,12 +98,12 @@ internal partial class OCR
         IWindowInfoService window,
         IHDRDetectorService hdrDetector,
         IMediator mediator,
-        IScreenshotService gdiScreenshot,
-        IScreenshotService? windowsScreenshot = null)
+        [FromKeyedServices(ScreenshotTypes.Gdi)] IScreenshotService gdiScreenshot,
+        [FromKeyedServices(ScreenshotTypes.WindowCapture)] IScreenshotService windowsScreenshot
+        )
     {
         Directory.CreateDirectory(ApplicationConstants.AppPathDebug);
         _tesseractService = tesseractService;
-        _tesseractService.Init();
         _soundPlayer = soundPlayer;
         _settings = settings;
         _themeDetector = themeDetector;
@@ -146,7 +116,7 @@ internal partial class OCR
         _windowsScreenshot = windowsScreenshot;
     }
 
-    internal static async Task ProcessRewardScreen(Bitmap? file = null)
+    public async Task ProcessRewardScreen(Bitmap? file = null)
     {
         #region initializers
 
@@ -414,7 +384,7 @@ internal partial class OCR
 
     #region clipboard
 
-    private static string RewardScreenClipboard(
+    private string RewardScreenClipboard(
         in double platinum,
         string correctName,
         string plat,
@@ -460,7 +430,7 @@ internal partial class OCR
 
     #endregion clipboard
 
-    private static bool CheckIfError()
+    private bool CheckIfError()
     {
         if (_firstChecks.Length == 0 || _firstProximity.Length == 0)
             return false;
@@ -475,7 +445,7 @@ internal partial class OCR
         return false;
     }
 
-    public static WFtheme GetThemeWeighted(out double closestThresh, Bitmap? image = null)
+    public WFtheme GetThemeWeighted(out double closestThresh, Bitmap? image = null)
     {
         image ??= CaptureScreenshot().GetAwaiter().GetResult();
         var theme = _themeDetector.GetThemeWeighted(out closestThresh, image);
@@ -488,7 +458,7 @@ internal partial class OCR
     /// </summary>
     /// <param name="partName">Scanned part name</param>
     /// <returns>If part name is close enough to valid to actually process</returns>
-    private static bool PartNameValid(string partName)
+    private bool PartNameValid(string partName)
     {
         // if part name is smaller than "Bo prime handle" skip current part
         const int minPartNameLength = 15;
@@ -511,7 +481,7 @@ internal partial class OCR
     /// <param name="snapItImage"></param>
     /// <param name="fullShot"></param>
     /// <param name="snapItOrigin"></param>
-    internal static async Task ProcessSnapIt(
+    public async Task ProcessSnapIt(
         Bitmap snapItImage,
         Bitmap fullShot,
         Point snapItOrigin)
@@ -683,7 +653,7 @@ internal partial class OCR
     /// Filters out any group of words and addes them all into a single InventoryItem, containing the found words as well as the bounds within they reside.
     /// </summary>
     /// <returns>List of found items</returns>
-    private static List<InventoryItem> FindAllParts(
+    private List<InventoryItem> FindAllParts(
         Bitmap filteredImage,
         Bitmap unfilteredImage,
         int[] rowHits,
@@ -866,7 +836,7 @@ internal partial class OCR
     /// <param name="threshold">If the amount of adjacent black pixels (including itself) is below this number, it will be converted to white before the number scanning</param>
     /// <param name="font">Font used for debug marking</param>
     /// <returns>Nothing, but if successful <c>foundItems</c> will be modified</returns>
-    private static unsafe void GetItemCounts(
+    private unsafe void GetItemCounts(
         Bitmap filteredImage,
         Bitmap filteredImageClean,
         Bitmap unfilteredImage,
@@ -1398,7 +1368,7 @@ internal partial class OCR
     /// Process the profile screen to find owned items
     /// </summary>
     /// <param name="fullShot">Image to scan</param>
-    internal static async Task ProcessProfileScreen(Bitmap fullShot)
+    public async Task ProcessProfileScreen(Bitmap fullShot)
     {
         var start = Stopwatch.GetTimestamp();
 
@@ -1485,7 +1455,7 @@ internal partial class OCR
     /// <param name="timestamp">Time started at, used for file name</param>
     /// <param name="start"></param>
     /// <returns>List of found items</returns>
-    private static unsafe List<InventoryItem> FindOwnedItems(Bitmap profileImage, string timestamp, in long start)
+    private unsafe List<InventoryItem> FindOwnedItems(Bitmap profileImage, string timestamp, in long start)
     {
         var font = new Font("Arial", 16);
         List<InventoryItem> foundItems = [];
@@ -1722,7 +1692,7 @@ internal partial class OCR
         return foundItems;
     }
 
-    public static unsafe Bitmap ScaleUpAndFilter(Bitmap image, WFtheme active, out int[] rowHits, out int[] colHits)
+    public unsafe Bitmap ScaleUpAndFilter(Bitmap image, WFtheme active, out int[] rowHits, out int[] colHits)
     {
         if (image.Height <= ScalingLimit)
         {
@@ -1787,7 +1757,7 @@ internal partial class OCR
     private static readonly int[] TextSegments = [2, 4, 16, 21];
 
     [SkipLocalsInit]
-    private static unsafe List<Bitmap> ExtractPartBoxAutomatically(
+    private unsafe List<Bitmap> ExtractPartBoxAutomatically(
         out WFtheme active,
         Bitmap fullScreen)
     {
@@ -2021,7 +1991,7 @@ internal partial class OCR
     /// <returns>List of bitmaps which contains the reward parts</returns>
     /// <exception cref="Exception"></exception>
     [SkipLocalsInit]
-    private static unsafe List<Bitmap> FilterAndSeparatePartsFromPartBox(Bitmap partBox, WFtheme active)
+    private unsafe List<Bitmap> FilterAndSeparatePartsFromPartBox(Bitmap partBox, WFtheme active)
     {
         const int pixelSize = 4;
 
@@ -2209,7 +2179,7 @@ internal partial class OCR
         return Re.Replace(ret, string.Empty).Trim();
     }
 
-    internal static async Task<Bitmap> CaptureScreenshot()
+    public async Task<Bitmap> CaptureScreenshot()
     {
         await _window.UpdateWindow();
 
@@ -2222,7 +2192,7 @@ internal partial class OCR
         return image;
     }
 
-    private static IScreenshotService GetScreenshotService()
+    private IScreenshotService GetScreenshotService()
     {
         // W8.1 and lower
         if (_windowsScreenshot is null)
@@ -2245,7 +2215,7 @@ internal partial class OCR
         }
     }
 
-    internal static async Task SnapScreenshot()
+    public async Task SnapScreenshot()
     {
         var image = await CaptureScreenshot();
         await _mediator.Publish(new SnapItOverlayUpdate(image, _window.Window, _window.DpiScaling));
@@ -2278,7 +2248,7 @@ internal partial class OCR
         return true;
     }
 
-    private static void StatusUpdate(string status, StatusSeverity severity)
+    private void StatusUpdate(string status, StatusSeverity severity)
     {
         Task.Run(async () =>
         {

@@ -25,16 +25,18 @@ public partial class ThemeAdjuster : Window, INotificationHandler<ThemeAdjusterS
 
     private readonly SettingsViewModel _settingsViewModel;
     private readonly IPublisher _publisher;
+    private readonly IOCR _ocr;
 
     private Bitmap? _unfiltered;
     private BitmapImage? _displayImage;
 
-    public ThemeAdjuster(SettingsViewModel settingsViewModel, IPublisher publisher)
+    public ThemeAdjuster(SettingsViewModel settingsViewModel, IPublisher publisher, IOCR ocr)
     {
         InitializeComponent();
         DataContext = this;
         _settingsViewModel = settingsViewModel;
         _publisher = publisher;
+        _ocr = ocr;
     }
 
     public void ShowThemeAdjuster()
@@ -64,7 +66,7 @@ public partial class ThemeAdjuster : Window, INotificationHandler<ThemeAdjusterS
         if (_unfiltered is null)
             return;
 
-        var filtered = OCR.ScaleUpAndFilter(_unfiltered, WFtheme.CUSTOM, out var rowHits, out var colHits);
+        var filtered = _ocr.ScaleUpAndFilter(_unfiltered, WFtheme.CUSTOM, out var rowHits, out var colHits);
         _displayImage = BitmapToImageSource(filtered);
         previewImage.Source = _displayImage;
         filtered.Dispose();

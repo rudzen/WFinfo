@@ -71,6 +71,7 @@ public class Main
     private readonly IEncryptedDataService _encryptedDataService;
     private readonly IRewardSelector _rewardSelector;
     private readonly IMediator _mediator;
+    private readonly IOCR _ocr;
 
     // hack, should not be here, but stuff is too intertwined for now
     // also, the auto updater needs this to allow for event to be used
@@ -92,8 +93,8 @@ public class Main
         GFNWarning gfnWarning,
         FullscreenReminder fullscreenReminder,
         SnapItOverlay snapItOverlay,
-        IServiceProvider sp
-        )
+        IOCR ocr,
+        IServiceProvider sp)
     {
         _sp = sp;
         Login = login;
@@ -104,6 +105,7 @@ public class Main
         _encryptedDataService = encryptedDataService;
         _rewardSelector = rewardSelector;
         _mediator = mediator;
+        _ocr = ocr;
 
         DataBase = data;
         _rewardWindow = rewardWindow;
@@ -137,13 +139,12 @@ public class Main
         try
         {
             await _mediator.Publish(new UpdateStatus("Initializing OCR engine..."));
-            OCR.Init(_sp); // fix for now until added to DI
 
             await _mediator.Publish(new UpdateStatus("Updating Databases..."));
             await DataBase.Update();
 
             if (_settings.Auto)
-                DataBase.EnableLogCapture();
+                await _mediator.Publish(new LogCaptureState(true));
 
             var validJwt = await DataBase.IsJWTvalid();
             if (validJwt)
@@ -173,7 +174,7 @@ public class Main
         }
     }
 
-    private async void TimeoutCheck()
+    private async Task TimeoutCheck()
     {
         if (!await DataBase.IsJWTvalid().ConfigureAwait(true) || _processFinder.GameIsStreamed)
             return;
@@ -186,18 +187,15 @@ public class Main
             //set user offline if Warframe has closed but no new game was found
             Logger.Debug("Warframe was detected as closed");
             //reset warframe process variables, and reset LogCapture so new game process gets noticed
-            DataBase.DisableLogCapture();
+            await _mediator.Publish(new LogCaptureState(false));
             if (_settings.Auto)
-                DataBase.EnableLogCapture();
+                await _mediator.Publish(new LogCaptureState(true));
 
-            await Task.Run(async () =>
-            {
-                if (!await DataBase.IsJWTvalid().ConfigureAwait(true))
-                    return;
-                //IDE0058 - computed value is never used.  Ever. Consider changing the return signature of SetWebsocketStatus to void instead
-                await _mediator.Publish(new WebSocketSetStatus("invisible"));
-                await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed"));
-            }).ConfigureAwait(false);
+            if (!await DataBase.IsJWTvalid().ConfigureAwait(true))
+                return;
+
+            await _mediator.Publish(new WebSocketSetStatus("invisible"));
+            await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed"));
         }
         else
         {
@@ -324,7 +322,7 @@ public class Main
             // Snap-it
             Logger.Information("Starting snap it");
             await _mediator.Publish(new UpdateStatus("Starting snap it"));
-            await OCR.SnapScreenshot();
+            await _ocr.SnapScreenshot();
         }
         else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
         {
@@ -338,12 +336,12 @@ public class Main
             //masterit
             Logger.Information("Starting master it");
             await _mediator.Publish(new UpdateStatus("Starting master it"));
-            using var bigScreenshot = await OCR.CaptureScreenshot();
-            await OCR.ProcessProfileScreen(bigScreenshot);
+            using var bigScreenshot = await _ocr.CaptureScreenshot();
+            await _ocr.ProcessProfileScreen(bigScreenshot);
         }
         else if (_settings.Debug || _processFinder.IsRunning())
         {
-            await OCR.ProcessRewardScreen();
+            await _ocr.ProcessRewardScreen();
         }
     }
 
@@ -385,8 +383,8 @@ public class Main
             await Task.Run(() =>
             {
                 var lastClick = System.Windows.Forms.Cursor.Position;
-                var uiScaling = OCR.UiScaling;
-                var displayed = OCR.NumberOfRewardsDisplayed;
+                var uiScaling = _ocr.UiScaling;
+                var displayed = _ocr.NumberOfRewardsDisplayed;
                 var index = _rewardSelector.GetSelectedReward(ref lastClick, in uiScaling, displayed);
                 Logger.Debug("Reward chosen. index={Index}", index);
                 if (index == -1)
@@ -462,7 +460,7 @@ public class Main
                                 //Get the path of specified file
                                 var image = new Bitmap(file);
                                 _windowInfoService.UseImage(image);
-                                await OCR.ProcessRewardScreen(image);
+                                await _ocr.ProcessRewardScreen(image);
                                 break;
                             }
                             case ScreenshotType.SNAPIT:
@@ -471,7 +469,7 @@ public class Main
 
                                 var image = new Bitmap(file);
                                 _windowInfoService.UseImage(image);
-                                await OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
+                                await _ocr.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
                                 break;
                             }
                             case ScreenshotType.MASTERIT:
@@ -480,7 +478,7 @@ public class Main
 
                                 var image = new Bitmap(file);
                                 _windowInfoService.UseImage(image);
-                                await OCR.ProcessProfileScreen(image);
+                                await _ocr.ProcessProfileScreen(image);
                                 break;
                             }
                         }
@@ -498,7 +496,7 @@ public class Main
             await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
             if (type == ScreenshotType.NORMAL)
             {
-                OCR.ProcessingActive.GetAndSet(false);
+                _ocr.ProcessingActive.GetAndSet(false);
             }
         }
     }
