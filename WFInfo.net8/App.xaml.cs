@@ -81,6 +81,7 @@ public partial class App : Application
                     services.TryAddSingleton<IOCR, OCR>();
                     services.TryAddSingleton<ITesseractService, TesseractService>();
                     services.TryAddSingleton<ApplicationSettings>();
+                    services.TryAddSingleton<IOverlayFactory, OverlayFactory>();
 
                     // windows
                     services.TryAddSingleton<MainWindow>();

@@ -59,6 +59,8 @@ public sealed class CustomEntrypoint
         currentDomain.UnhandledException += MyHandler;
 
         Logger.Information("Starting WFInfo V{Version}", ApplicationConstants.BuildVersion);
+        Directory.CreateDirectory(ApplicationConstants.AppPath);
+        Directory.CreateDirectory(ApplicationConstants.AppPathDebug);
 
         if (DetectInstance())
             return;

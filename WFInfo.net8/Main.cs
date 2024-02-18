@@ -94,6 +94,7 @@ public class Main
         FullscreenReminder fullscreenReminder,
         SnapItOverlay snapItOverlay,
         IOCR ocr,
+        IOverlayFactory overlayFactory,
         IServiceProvider sp)
     {
         _sp = sp;
@@ -116,15 +117,17 @@ public class Main
         _fullscreenReminder = fullscreenReminder;
 
         SnapItOverlayWindow = snapItOverlay;
+
+        _overlays =
+        [
+            overlayFactory.Create(), overlayFactory.Create(), overlayFactory.Create(), overlayFactory.Create()
+        ];
+
         Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
-            _overlays = [new Overlay(_settings), new Overlay(_settings), new Overlay(_settings), new Overlay(_settings)];
-
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
             AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
         });
-
-        StartMessage();
 
         Task.Run(ThreadedDataLoad);
     }
@@ -243,13 +246,6 @@ public class Main
                     break;
             }
         }
-    }
-
-    private static void StartMessage()
-    {
-        Directory.CreateDirectory(ApplicationConstants.AppPath);
-        Directory.CreateDirectory(ApplicationConstants.AppPathDebug);
-        Logger.Debug("   STARTING WFINFO {BuildVersion} at {DateTime}", ApplicationConstants.MajorBuildVersion, DateTime.UtcNow);
     }
 
     /// <summary>
