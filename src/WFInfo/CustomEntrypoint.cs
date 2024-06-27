@@ -25,6 +25,9 @@ public sealed class CustomEntrypoint
     private const string libtesseract = "tesseract50";
     private const string tesseract_version_folder = "tesseract5";
 
+    private const string libs_hotlink_prefix = "https://raw.githubusercontent.com/WFCD/WFinfo/libs";
+    private const string tesseract_hotlink_prefix = libs_hotlink_prefix + "/" + libtesseract + "/";
+
     private static string[] ListOfDlls =>
     [
         @"\x86\" + libtesseract + ".dll",
@@ -43,8 +46,6 @@ public sealed class CustomEntrypoint
         "528d4d1eb0e07cfe1370b592da6f49fd"  //  Tesseract
     ];
 
-    private static string libs_hotlink_prefix => "https://raw.githubusercontent.com/WFCD/WFinfo/libs";
-    private static string tesseract_hotlink_prefix => libs_hotlink_prefix + @"/" + libtesseract + @"/";
     private static string tesseract_hotlink_platform_specific_prefix;
     private static string app_data_tesseract_catalog => Path.Combine(ApplicationConstants.AppPath, tesseract_version_folder);
 
@@ -52,7 +53,7 @@ public sealed class CustomEntrypoint
 
     private static InitialDialogue? _dialogue;
 
-    public static CancellationTokenSource stopDownloadTask { get; private set; }
+    public static CancellationTokenSource StopDownloadTask { get; private set; }
 
     public static async Task Run(AppDomain currentDomain, IServiceProvider sp)
     {
@@ -84,7 +85,7 @@ public sealed class CustomEntrypoint
 
         await EnsureRequiredFilesExists(sp);
 
-        if (stopDownloadTask is not { IsCancellationRequested: true })
+        if (StopDownloadTask is not { IsCancellationRequested: true })
         {
             currentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve_Tesseract;
             currentDomain.AssemblyResolve += OnResolveAssembly;
@@ -136,18 +137,18 @@ public sealed class CustomEntrypoint
         if (filesNeeded <= 0)
             return;
 
-        stopDownloadTask = new CancellationTokenSource();
+        StopDownloadTask = new CancellationTokenSource();
         _dialogue = sp.GetRequiredService<InitialDialogue>();
         _dialogue.SetFilesNeed(filesNeeded);
 
         try
         {
             var httpClient = sp.GetRequiredService<IHttpClientFactory>().CreateClient("WFInfo");
-            await RefreshTesseractDlls(httpClient, hasher, stopDownloadTask.Token);
+            await RefreshTesseractDlls(httpClient, hasher, StopDownloadTask.Token);
         }
         catch (Exception ex)
         {
-            if (stopDownloadTask.IsCancellationRequested)
+            if (StopDownloadTask.IsCancellationRequested)
                 _dialogue.Dispatcher.Invoke(() =>
                 {
                     _dialogue.Close();
@@ -298,7 +299,8 @@ public sealed class CustomEntrypoint
                     var file = $"lib{dll}";
                     if (File.Exists(file))
                     {
-                        File.Copy(file, app_data_tesseract_catalog + dll);
+                        var destination = Path.Combine(app_data_tesseract_catalog, dll);
+                        File.Copy(file, destination);
                         success = true;
                     }
                 }
@@ -328,7 +330,7 @@ public sealed class CustomEntrypoint
                         await httpClient.DownloadFile(url, file);
                     }
                 }
-                catch (Exception e) when (stopDownloadTask.Token.IsCancellationRequested)
+                catch (Exception e) when (StopDownloadTask.Token.IsCancellationRequested)
                 {
                     Logger.Error(e, "Download canceled. file={Dll}", dll);
                 }
@@ -369,8 +371,8 @@ public sealed class CustomEntrypoint
         var executingAssembly = Assembly.GetExecutingAssembly();
         var assemblyName = new AssemblyName(args.Name);
 
-        var path = assemblyName.Name + ".dll";
-        if (!assemblyName.CultureInfo.Equals(CultureInfo.InvariantCulture))
+        var path = $"{assemblyName.Name}.dll";
+        if (!assemblyName.CultureInfo!.Equals(CultureInfo.InvariantCulture))
             path = $@"{assemblyName.CultureInfo}\{path}";
 
         using var stream = executingAssembly.GetManifestResourceStream(path);

@@ -25,7 +25,7 @@ public partial class InitialDialogue
 
     private void Exit(object sender, EventArgs e)
     {
-        CustomEntrypoint.stopDownloadTask.Cancel();
+        CustomEntrypoint.StopDownloadTask.Cancel();
     }
 
     internal void SetFilesNeed(int filesNeeded)
