@@ -1,158 +1,166 @@
-﻿using System;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
+using Mediator;
+using Serilog;
+using WFInfo.Domain;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Settings;
 
-namespace WFInfo.Services.WindowInfo
+namespace WFInfo.Services.WindowInfo;
+
+public class Win32WindowInfoService(
+    IProcessFinder process,
+    ApplicationSettings settings,
+    IPublisher publisher)
+    : IWindowInfoService
 {
-    public class Win32WindowInfoService : IWindowInfoService
+    private static readonly ILogger Logger = Log.Logger.ForContext<Win32WindowInfoService>();
+
+    public double DpiScaling { get; private set; }
+
+    public double ScreenScaling
     {
-        public double DpiScaling { get; private set; }
-        public double ScreenScaling 
-        { 
-            get
-            {
-                if (Window.Width * 9 > Window.Height * 16)  // image is less than 16:9 aspect
-                    return Window.Height / 1080.0;
-                else
-                    return Window.Width / 1920.0; //image is higher than 16:9 aspect
-            }
+        get
+        {
+            // Image is less than 16:9 aspect
+            if (Window.Width * 9 > Window.Height * 16)
+                return Window.Height / 1080.0;
+
+            // Image is higher than 16:9 aspect
+            return Window.Width / 1920.0;
+        }
+    }
+
+    public Rectangle Window { get; private set; }
+
+    public Point Center => new(Window.X + Window.Width / 2, Window.Y + Window.Height / 2);
+
+    public Screen Screen { get; private set; } = Screen.PrimaryScreen!;
+
+    public async Task UpdateWindow()
+    {
+        if (!process.IsRunning() && !settings.Debug)
+        {
+            Logger.Debug("Failed to find warframe process for window info");
+            await publisher.Publish(new UpdateStatus("Failed to find warframe process for window info", StatusSeverity.Error));
+            return;
         }
 
-        public Rectangle Window { get; private set; }
-        public Point Center => new Point(Window.X + Window.Width / 2, Window.Y + Window.Height / 2);
+        Screen = Screen.FromHandle(process.HandleRef.Handle);
+        var screenType = Screen.Primary ? "primary" : "secondary";
 
-        public Screen Screen { get; private set; } = Screen.PrimaryScreen;
+        if (process.GameIsStreamed)
+            Logger.Debug("GFN -- Warframe display: {DeviceName}, {ScreenType}", Screen.DeviceName, screenType);
+        else
+            Logger.Debug("Warframe display: {DeviceName}, {ScreenType}", Screen.DeviceName, screenType);
 
-        private readonly IProcessFinder _process;
-        private readonly IReadOnlyApplicationSettings _settings;
+        RefreshDPIScaling();
+        await GetWindowRect();
+    }
 
-        public Win32WindowInfoService(IProcessFinder process, IReadOnlyApplicationSettings settings)
+    public void UseImage(Bitmap? bitmap)
+    {
+        var width = bitmap?.Width ?? Screen.Bounds.Width;
+        var height = bitmap?.Height ?? Screen.Bounds.Height;
+
+        Window = new Rectangle(0, 0, width, height);
+        DpiScaling = 1;
+
+        if (bitmap is not null)
+            Logger.Debug("DETECTED LOADED IMAGE BOUNDS: {Window}", Window);
+        else
+            Logger.Debug("Couldn't Detect Warframe Process. Using Primary Screen Bounds. window={Window},named={Name}", Window, Screen.DeviceName);
+    }
+
+    private async Task GetWindowRect()
+    {
+        if (!Win32.GetWindowRect(process.HandleRef, out var osRect))
         {
-            _process = process;
-            _settings = settings;
-        }
-
-        public void UpdateWindow()
-        {
-            if (!_process.IsRunning && !_settings.Debug)
+            if (settings.Debug)
             {
-                Main.AddLog("Failed to find warframe process for window info");
-                Main.StatusUpdate("Failed to find warframe process for window info", 1);
+                // If debug is on AND warframe is not detected,
+                // silently ignore missing process and use main monitor center.
+                GetFullscreenRect();
                 return;
             }
 
-            Screen = Screen.FromHandle(_process.HandleRef.Handle);
-            string screenType = Screen.Primary ? "primary" : "secondary";
-
-            if (_process.GameIsStreamed) Main.AddLog($"GFN -- Warframe display: {Screen.DeviceName}, {screenType}");
-            else Main.AddLog($"Warframe display: {Screen.DeviceName}, {screenType}");
-
-            RefreshDPIScaling();
-            GetWindowRect();
+            Logger.Debug("Failed to get window bounds");
+            await publisher.Publish(new UpdateStatus("Failed to get window bounds", StatusSeverity.Error));
+            return;
         }
 
-        public void UseImage(Bitmap image)
+        if (osRect.Left < -20000 || osRect.Top < -20000)
         {
-            int width = image?.Width ?? Screen.Bounds.Width;
-            int height = image?.Height ?? Screen.Bounds.Height;
+            // If the window is in the VOID delete current process and re-set window to nothing
+            Window = Rectangle.Empty;
+        }
+        else if (Window != default || Window.Left != osRect.Left || Window.Right != osRect.Right ||
+                 Window.Top != osRect.Top || Window.Bottom != osRect.Bottom)
+        {
+            // Checks if old window size is the right size if not change it
+            // get Rectangle out of rect
+            Window = new Rectangle(osRect.Left, osRect.Top, osRect.Right - osRect.Left, osRect.Bottom - osRect.Top);
 
-            Window = new Rectangle(0, 0, width, height);
-            DpiScaling = 1;
+            // Rectangle is (x, y, width, height) RECT is (x, y, x+width, y+height)
+            const int GWL_style = -16;
+            const uint WS_BORDER = 0x00800000;
+            const uint WS_POPUP = 0x80000000;
 
-            if (image != null)
-                Main.AddLog("DETECTED LOADED IMAGE BOUNDS: " + Window.ToString());
+            var styles = Win32.GetWindowLongPtr(process.HandleRef, GWL_style);
+            if ((styles & WS_POPUP) != 0)
+            {
+                // Borderless, don't do anything
+                Logger.Debug("Borderless detected (0x{Styles:X8}, {Window})", styles, Window);
+            }
+            else if ((styles & WS_BORDER) != 0)
+            {
+
+                // Windowed, adjust for thick border
+                // TODO (rudzen) : Get real border sizes at some point
+                Window = new Rectangle(Window.Left + 8, Window.Top + 30, Window.Width - 16, Window.Height - 38);
+                Logger.Debug("Windowed detected (0x{Styles:X8}, adjusting window to: {Window})", styles, Window);
+            }
             else
-                Main.AddLog("Couldn't Detect Warframe Process. Using Primary Screen Bounds: " + Window.ToString() + " Named: " + Screen.DeviceName);
-        }
-
-        private void GetWindowRect()
-        {
-            if (!Win32.GetWindowRect(_process.HandleRef, out Win32.R osRect))
             {
-                if (_settings.Debug)
-                { //if debug is on AND warframe is not detected, sillently ignore missing process and use main monitor center.
-                    GetFullscreenRect();
-                    return;
-                }
-                else
+                // Assume Fullscreen, don't do anything
+                Logger.Debug("Fullscreen detected (0x{Styles:X8}, {Window})", styles, Window);
+                //Show the Fullscreen prompt
+                if (settings.IsOverlaySelected)
                 {
-                    Main.AddLog("Failed to get window bounds");
-                    Main.StatusUpdate("Failed to get window bounds", 1);
-                    return;
-                }
-            }
-
-            if (osRect.Left < -20000 || osRect.Top < -20000)
-            { // if the window is in the VOID delete current process and re-set window to nothing
-                Window = Rectangle.Empty;
-            }
-            else if (Window == null || Window.Left != osRect.Left || Window.Right != osRect.Right || Window.Top != osRect.Top || Window.Bottom != osRect.Bottom)
-            { // checks if old window size is the right size if not change it
-                Window = new Rectangle(osRect.Left, osRect.Top, osRect.Right - osRect.Left, osRect.Bottom - osRect.Top); // get Rectangle out of rect
-                                                                                                                         // Rectangle is (x, y, width, height) RECT is (x, y, x+width, y+height) 
-                int GWL_style = -16;
-                uint WS_BORDER = 0x00800000;
-                uint WS_POPUP = 0x80000000;
-
-                uint styles = Win32.GetWindowLongPtr(_process.HandleRef, GWL_style);
-                if ((styles & WS_POPUP) != 0)
-                {
-                    // Borderless, don't do anything
-                    Main.AddLog($"Borderless detected (0x{styles.ToString("X8", Main.culture)}, {Window.ToString()}");
-                }
-                else if ((styles & WS_BORDER) != 0)
-                {
-                    // Windowed, adjust for thicc border
-                    Window = new Rectangle(Window.Left + 8, Window.Top + 30, Window.Width - 16, Window.Height - 38);
-                    Main.AddLog($"Windowed detected (0x{styles.ToString("X8", Main.culture)}, adjusting window to: {Window.ToString()}");
-                }
-                else
-                {
-                    // Assume Fullscreen, don't do anything
-                    Main.AddLog($"Fullscreen detected (0x{styles.ToString("X8", Main.culture)}, {Window.ToString()}");
-                    //Show the Fullscreen prompt
-                    if (_settings.IsOverlaySelected)
-                    {
-                        Main.AddLog($"Showing the Fullscreen Reminder");
-                        Main.RunOnUIThread(() =>
-                        {
-                            Main.SpawnFullscreenReminder();
-                        });
-                    }
+                    Logger.Debug("Showing the Fullscreen Reminder");
+                    await publisher.Publish(new FullscreenReminderShow(new Point(Window.X, Window.Y), new Point(Window.Width, Window.Height)));
                 }
             }
         }
+    }
 
-        private void GetFullscreenRect()
+    private void GetFullscreenRect()
+    {
+        var width = Screen.Bounds.Width;
+        var height = Screen.Bounds.Height;
+
+        Window = new Rectangle(0, 0, width, height);
+        DpiScaling = 1;
+
+        Logger.Debug("Couldn't Detect Warframe Process. Using Primary Screen Bounds: {Window}, named: {Name}", Window, Screen.DeviceName);
+    }
+
+    private void RefreshDPIScaling()
+    {
+        try
         {
-            int width = Screen.Bounds.Width;
-            int height = Screen.Bounds.Height;
+            var mon = Win32.MonitorFromPoint(new Point(Screen.Bounds.Left + 1, Screen.Bounds.Top + 1), 2);
+            Win32.GetDpiForMonitor(mon, Win32.DpiType.Effective, out var dpiXEffective, out _);
 
-            Window = new Rectangle(0, 0, width, height);
+            Logger.Debug("Effective dpi, X: {DpiXEffective} Which is %: {DpiXEffectiveDiv / 96.0}", dpiXEffective, dpiXEffective / 96.0);
+
+            // assuming that y-axis and x-axis dpi scaling will be uniform. So only need to check one value
+            DpiScaling = dpiXEffective / 96.0;
+        }
+        catch (Exception e)
+        {
+            Logger.Error(e, "Was unable to set a new dpi scaling, defaulting to 100% zoom");
             DpiScaling = 1;
-
-            Main.AddLog("Couldn't Detect Warframe Process. Using Primary Screen Bounds: " + Window.ToString() + " Named: " + Screen.DeviceName);
-        }
-
-        private void RefreshDPIScaling()
-        {
-            try
-            {
-                var mon = Win32.MonitorFromPoint(new Point(Screen.Bounds.Left + 1, Screen.Bounds.Top + 1), 2);
-                Win32.GetDpiForMonitor(mon, Win32.DpiType.Effective, out var dpiXEffective, out _);
-
-                Main.AddLog($"Effective dpi, X:{dpiXEffective}\n Which is %: {dpiXEffective / 96.0}");
-                //Main.AddLog($"Raw dpi, X:{dpiXRaw}\n Which is %: {dpiXRaw / 96.0}");
-                //Main.AddLog($"Angular dpi, X:{dpiXAngular}\n Which is %: {dpiXAngular / 96.0}");
-                DpiScaling = dpiXEffective / 96.0; // assuming that y and x axis dpi scaling will be uniform. So only need to check one value
-            }
-            catch (Exception e)
-            {
-                Main.AddLog($"Was unable to set a new dpi scaling, defaulting to 100% zoom, exception: {e}");
-                DpiScaling = 1;
-            }
         }
     }
 }

@@ -64,7 +64,7 @@
                         Value="{StaticResource Roboto}" />
                 <Setter Property="components:SelectTextOnFocus.Active"
                         Value="True" />
-                <Setter Property="wfInfo:FocusAdvancement.AdvancesByEnterKey"
+                <Setter Property="components:FocusAdvancement.AdvancesByEnterKey"
                         Value="True" />
             </Style>
 
@@ -132,29 +132,34 @@
             </DockPanel>
         </Grid>
         <ScrollViewer Grid.Row="1">
-            
-        <DataGrid ItemsSource="{Binding viewModel.ItemList}" AutoGenerateColumns="False" Margin="0" VerticalAlignment="Top" HorizontalAlignment="Stretch" HeadersVisibility="Column" PreviewMouseWheel="RedirectScrollToParent">
-            <DataGrid.Resources>
-                <ResourceDictionary>
-                    <Style BasedOn="{StaticResource baseStyle}" TargetType="{x:Type DataGridColumnHeader}">
-                        <Setter Property="Background" Value="#FF1B1B1B" />
-                    </Style>
-                    <Style TargetType="{x:Type DataGridCell}">
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Foreground" Value="{Binding RelativeSource={RelativeSource Self}, Path=Foreground}"/>
-                                <Setter Property="Background" Value="{Binding RelativeSource={RelativeSource Self}, Path=Background}"/>
-                                <Setter Property="BorderBrush" Value="{Binding RelativeSource={RelativeSource Self}, Path=BorderBrush}"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ResourceDictionary>
-            </DataGrid.Resources>
-            <DataGrid.Columns>
+
+            <DataGrid ItemsSource="{Binding ViewModel.ItemList}" AutoGenerateColumns="False" Margin="0"
+                      VerticalAlignment="Top" HorizontalAlignment="Stretch" HeadersVisibility="Column"
+                      PreviewMouseWheel="RedirectScrollToParent">
+                <DataGrid.Resources>
+                    <ResourceDictionary>
+                        <Style BasedOn="{StaticResource baseStyle}" TargetType="{x:Type DataGridColumnHeader}">
+                            <Setter Property="Background" Value="#FF1B1B1B" />
+                        </Style>
+                        <Style TargetType="{x:Type DataGridCell}">
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Foreground"
+                                            Value="{Binding RelativeSource={RelativeSource Self}, Path=Foreground}" />
+                                    <Setter Property="Background"
+                                            Value="{Binding RelativeSource={RelativeSource Self}, Path=Background}" />
+                                    <Setter Property="BorderBrush"
+                                            Value="{Binding RelativeSource={RelativeSource Self}, Path=BorderBrush}" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ResourceDictionary>
+                </DataGrid.Resources>
+                <DataGrid.Columns>
                     <DataGridTemplateColumn Header=" Items" Width="*">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ComboBox 
+                                <ComboBox
                                     x:Name="themeSelectionComboBox"
                                     FontSize="14"
                                     FontFamily="{DynamicResource Roboto}"
@@ -163,7 +168,8 @@
                                     HorizontalAlignment="Stretch"
                                     ItemsSource="{Binding RewardOptions}"
                                     SelectedItem="{Binding ActiveOption, Mode=TwoWay}"
-                                    Margin="5,3" Template="{DynamicResource ComboBoxTemplate}" Style="{DynamicResource ComboBoxStyle1}">
+                                    Margin="5,3" Template="{DynamicResource ComboBoxTemplate}"
+                                    Style="{DynamicResource ComboBoxStyle1}">
                                 </ComboBox>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
@@ -171,7 +177,9 @@
                     <DataGridTemplateColumn Header="Save" Width="70">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Label Grid.Column="1" Content="✓" Foreground="#506464" FontSize="14" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"   Style="{StaticResource Label_Button}">
+                                <Label Grid.Column="1" Content="✓" Foreground="#506464" FontSize="14" Width="20"
+                                       Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Style="{StaticResource Label_Button}">
                                     <Label.InputBindings>
                                         <MouseBinding MouseAction="LeftClick" Command="{Binding Increment}" />
                                     </Label.InputBindings>
@@ -182,7 +190,9 @@
                     <DataGridTemplateColumn Header="Dismiss" Width="70">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Label Grid.Column="2" Content="X" Foreground="#506464" FontSize="14" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"   Style="{StaticResource Label_Button}">
+                                <Label Grid.Column="2" Content="X" Foreground="#506464" FontSize="14" Width="20"
+                                       Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Style="{StaticResource Label_Button}">
                                     <Label.InputBindings>
                                         <MouseBinding MouseAction="LeftClick" Command="{Binding Remove}" />
                                     </Label.InputBindings>
@@ -198,17 +208,19 @@
                 <ColumnDefinition></ColumnDefinition>
                 <ColumnDefinition></ColumnDefinition>
             </Grid.ColumnDefinitions>
-            <Label Grid.Column="0" Content="Save all" Foreground="#506464" FontSize="14" Style="{StaticResource Label_Button}">
+            <Label Grid.Column="0" Content="Save all" Foreground="#506464" FontSize="14"
+                   Style="{StaticResource Label_Button}">
                 <Label.InputBindings>
                     <MouseBinding MouseAction="LeftClick" Command="{Binding IncrementAll}" />
                 </Label.InputBindings>
             </Label>
 
-            <Label Grid.Column="1" Content="Dismiss all" Foreground="#506464" FontSize="14" Style="{StaticResource Label_Button}">
+            <Label Grid.Column="1" Content="Dismiss all" Foreground="#506464" FontSize="14"
+                   Style="{StaticResource Label_Button}">
                 <Label.InputBindings>
                     <MouseBinding MouseAction="LeftClick" Command="{Binding RemoveAll}" />
                 </Label.InputBindings>
             </Label>
         </Grid>
-        </Grid>
+    </Grid>
 </Window>

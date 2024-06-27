@@ -1,39 +1,30 @@
-﻿using AutoUpdaterDotNET;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Net;
-using System.Windows;
-using System.Windows.Controls;
+﻿using System.Windows;
 using System.Windows.Input;
-using WFInfo.Settings;
 
-namespace WFInfo
+namespace WFInfo;
+
+public partial class GFNWarning : Window
 {
-    /// <summary>
-    /// Interaction logic for errorDialogue.xaml
-    /// </summary>
-    public partial class GFNWarning : Window
+    public GFNWarning()
     {
+        InitializeComponent();
+    }
 
-        public GFNWarning()
-        {
-            InitializeComponent();
-            Show();
-            Focus();
-        }
+    public void Open()
+    {
+        Show();
+        Focus();
+    }
 
-        private void Exit(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
+    private void Exit(object sender, RoutedEventArgs e)
+    {
+        Hide();
+    }
 
-        // Allows the draging of the window
-        private new void MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left)
-                DragMove();
-        }
-
+    // Allows the dragging of the window
+    private new void MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left)
+            DragMove();
     }
 }

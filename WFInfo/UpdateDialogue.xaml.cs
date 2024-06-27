@@ -1,95 +1,142 @@
 ﻿using AutoUpdaterDotNET;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Net;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Mediator;
+using WFInfo.Domain;
+using WFInfo.Extensions;
+using WFInfo.Services;
 using WFInfo.Settings;
 
-namespace WFInfo
+namespace WFInfo;
+
+/// <summary>
+/// Interaction logic for errorDialogue.xaml
+/// </summary>
+public partial class UpdateDialogue : Window, INotificationHandler<UpdateWindowShow>
 {
-    /// <summary>
-    /// Interaction logic for errorDialogue.xaml
-    /// </summary>
-    public partial class UpdateDialogue : Window
+    private UpdateInfoEventArgs _updateInfo;
+
+    private readonly SettingsViewModel _settings;
+    private readonly IMediator _mediator;
+    private readonly IHttpClientFactory _httpFactory;
+
+    public UpdateDialogue(
+        SettingsViewModel settings,
+        IMediator mediator,
+        IHttpClientFactory httpFactory)
     {
-        UpdateInfoEventArgs updateInfo;
-        readonly WebClient WebClient;
-        private readonly SettingsViewModel settings = SettingsViewModel.Instance;
+        InitializeComponent();
+        _settings = settings;
+        _mediator = mediator;
+        _httpFactory = httpFactory;
+    }
 
-        public UpdateDialogue(UpdateInfoEventArgs args)
+    private async Task UpdateAndShow(UpdateInfoEventArgs args)
+    {
+        _updateInfo = args;
+
+        var version = args.CurrentVersion;
+
+        if (!args.IsUpdateAvailable || _settings.Ignored == version)
+            return;
+
+        version = version[..version.LastIndexOf('.')];
+
+        Dispatcher.InvokeIfRequired(() =>
         {
-            InitializeComponent();
-            updateInfo = args;
+            NewVersionText.Text = $"WFInfo version {version} has been released!";
+            OldVersionText.Text = $"You have version {ApplicationConstants.BuildVersion} installed.";
+            ReleaseNotes.Children.Clear();
+        });
 
-            string version = args.CurrentVersion.ToString();
-            if (!args.IsUpdateAvailable || (settings.Ignored == version))
-                return;
-            version = version.Substring(0, version.LastIndexOf("."));
+        var client = _httpFactory.CreateClient();
 
-            NewVersionText.Text = "WFInfo version " + version + " has been released!";
-            OldVersionText.Text = "You have version " + Main.BuildVersion + " installed.";
+        var response = await client.GetAsync("https://api.github.com/repos/WFCD/WFInfo/releases").ConfigureAwait(ConfigureAwaitOptions.None);
+        var data = await response.DecompressContent().ConfigureAwait(ConfigureAwaitOptions.None);
 
-            WebClient = CustomEntrypoint.createNewWebClient();
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            JArray releases = JsonConvert.DeserializeObject<JArray>(WebClient.DownloadString("https://api.github.com/repos/WFCD/WFInfo/releases"));
-            foreach (JObject prop in releases)
+        var releases = JsonConvert.DeserializeObject<JArray>(data);
+
+        foreach (JObject prop in releases)
+        {
+            if (prop["prerelease"].ToObject<bool>())
+                continue;
+
+            var tagName = prop["tag_name"].ToString();
+
+            if (tagName[1..] == ApplicationConstants.MajorBuildVersion)
+                break;
+
+            Dispatcher.InvokeIfRequired(() =>
             {
-                if (!prop["prerelease"].ToObject<bool>())
+                var tag = new TextBlock
                 {
-                    string tag_name = prop["tag_name"].ToString();
-                    if (tag_name.Substring(1) == Main.BuildVersion)
-                        break;
-                    TextBlock tag = new TextBlock();
-                    tag.Text = tag_name;
-                    tag.FontWeight = FontWeights.Bold;
-                    ReleaseNotes.Children.Add(tag);
-                    TextBlock body = new TextBlock();
-                    body.Text = prop["body"].ToString() + "\n";
-                    body.Padding = new Thickness(10, 0, 0, 0);
-                    body.TextWrapping = TextWrapping.Wrap;
-                    ReleaseNotes.Children.Add(body);
-                }
-            }
+                    Text = tagName,
+                    FontWeight = FontWeights.Bold
+                };
 
+                ReleaseNotes.Children.Add(tag);
+                var body = new TextBlock
+                {
+                    Text = $"{prop["body"]}\n",
+                    Padding = new Thickness(10, 0, 0, 0),
+                    TextWrapping = TextWrapping.Wrap
+                };
+                ReleaseNotes.Children.Add(body);
+            });
+        }
+
+        Dispatcher.InvokeIfRequired(() =>
+        {
             Show();
             Focus();
-        }
+        });
+    }
 
-        public void YesClick(object sender, RoutedEventArgs e)
+    private async void YesClick(object sender, RoutedEventArgs e)
+    {
+        try
         {
-            try
-            {
-                e.Handled = true;
-                if (AutoUpdater.DownloadUpdate(updateInfo))
-                    WFInfo.MainWindow.INSTANCE.Exit(null, null);
-            }
-            catch (Exception exception)
-            {
-                MessageBox.Show(exception.Message, exception.GetType().ToString(), MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            e.Handled = true;
+            await _mediator.Publish(new DownloadUpdate(_updateInfo));
         }
-
-        private void Skip(object sender, RoutedEventArgs e)
+        catch (Exception exception)
         {
-            settings.Ignored = updateInfo.CurrentVersion.ToString();
-            SettingsWindow.Save();
-            Close();
+            MessageBox.Show(
+                messageBoxText: exception.Message,
+                caption: exception.GetType().ToString(),
+                button: MessageBoxButton.OK,
+                icon: MessageBoxImage.Error
+            );
         }
 
-        private void Exit(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
+        Close();
+    }
 
-        // Allows the draging of the window
-        private new void MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left)
-                DragMove();
-        }
+    private void Skip(object sender, RoutedEventArgs e)
+    {
+        _settings.Ignored = _updateInfo.CurrentVersion;
+        _settings.Save();
+        Close();
+    }
 
+    private void Exit(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    // Allows the dragging of the window
+    private new void MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left)
+            DragMove();
+    }
+
+    public ValueTask Handle(UpdateWindowShow notification, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 }

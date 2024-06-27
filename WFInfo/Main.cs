@@ -1,582 +1,637 @@
-using System;
-using System.Diagnostics;
 using System.Drawing;
-using System.IO;
-using System.Reflection;
-using System.Threading.Tasks;
 using System.Windows.Input;
-using System.Text.RegularExpressions;
 using AutoUpdaterDotNET;
 using System.Windows;
 using System.Windows.Forms;
+using Mediator;
 using WebSocketSharp;
-using WFInfo.Resources;
 using WFInfo.Settings;
-using WFInfo.Services.Screenshot;
 using WFInfo.Services.WarframeProcess;
 using WFInfo.Services.WindowInfo;
-using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+using WFInfo.Domain;
+using WFInfo.Extensions;
 using WFInfo.Services;
-using WFInfo.Services.HDRDetection;
-using System.Linq;
-using Windows.Foundation.Metadata;
+using WFInfo.Services.OpticalCharacterRecognition;
+using Application = System.Windows.Application;
 
-namespace WFInfo
+namespace WFInfo;
+
+public class Main
+    : INotificationHandler<StartLoggedInTimer>,
+        INotificationHandler<OverlayUpdate>,
+        INotificationHandler<OverlayUpdateData>,
+        INotificationHandler<GnfWarningShow>,
+        INotificationHandler<FullscreenReminderShow>,
+        INotificationHandler<ErrorDialogShow>,
+        INotificationHandler<DownloadUpdate>,
+        IRequestHandler<WarframeMarketStatusAwayStatusRequest, WarframeMarketStatusAwayStatusResponse>
 {
-    class Main
+    private enum ScreenshotType
     {
-        public static Main INSTANCE;
-        public static string AppPath { get; } = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\WFInfo";
-        public static string buildVersion = Assembly.GetExecutingAssembly().GetName().Version.ToString();
-        public static Data dataBase;
-        public static RewardWindow window = new RewardWindow();
-        public static Overlay[] overlays = new Overlay[4] { new Overlay(), new Overlay(), new Overlay(), new Overlay() };
-        public static EquipmentWindow equipmentWindow = new EquipmentWindow();
-        public static SettingsWindow settingsWindow = new SettingsWindow();
-        public static ThemeAdjuster themeAdjuster = new ThemeAdjuster();
-        public static VerifyCount verifyCount = new VerifyCount();
-        public static AutoCount autoCount = new AutoCount();
-        public static ErrorDialogue popup;
-        public static FullscreenReminder fullscreenpopup;
-        public static GFNWarning gfnWarning;
-        public static UpdateDialogue update;
-        public static SnapItOverlay snapItOverlayWindow;
-        public static SearchIt searchBox = new SearchIt();
-        public static Login login = new Login();
-        public static ListingHelper listingHelper = new ListingHelper();
-        public static DateTime latestActive;
-        public static PlusOne plusOne = new PlusOne();
-        public static System.Threading.Timer timer;
-        public static System.Drawing.Point lastClick;
-        private const int minutesTillAfk = 7;
+        NORMAL,
+        SNAPIT,
+        MASTERIT
+    }
 
-        private static bool UserAway { get; set; }
-        private static string LastMarketStatus { get; set; } = "invisible";
-        private static string LastMarketStatusB4AFK { get; set; } = "invisible";
+    private static readonly ILogger Logger = Log.ForContext<Main>();
 
-        // Main service provider
-        // TODO: Move to CustomEntryPoint
-        private IServiceProvider _services;
+    private static readonly TimeSpan TimeTillAfk = TimeSpan.FromMinutes(7);
 
-        // Instance services
-        private IReadOnlyApplicationSettings _settings;
-        private IProcessFinder _process;
-        private IWindowInfoService _windowInfo;
-        private IHDRDetectorService _detector;
+    public static Data DataBase { get; private set; }
+    public static SettingsWindow SettingsWindow { get; private set; }
+    public static AutoCount AutoCount { get; set; }
+    public static SnapItOverlay SnapItOverlayWindow { get; private set; }
+    public static SearchIt SearchIt { get; set; }
+    public static Login Login { get; set; }
+    public static ListingHelper ListingHelper { get; } = new();
+    private static string LastMarketStatus { get; set; } = "invisible";
+    private static string LastMarketStatusB4AFK { get; set; } = "invisible";
 
-        // See comment on Ocr.Init for explanation
-        private GdiScreenshotService _gdiScreenshot;
-        private WindowsCaptureScreenshotService _windowsScreenshot;
+    private DateTime _latestActive;
+    private bool _userAway;
 
-        public Main()
+    // ReSharper disable once NotAccessedField.Local
+    private System.Threading.Timer _timer;
+
+    private Overlay[] _overlays;
+    private readonly GFNWarning _gfnWarning;
+    private readonly RewardWindow _rewardWindow;
+
+    // ReSharper disable once NotAccessedField.Local
+    private UpdateDialogue _update;
+
+    private readonly FullscreenReminder _fullscreenReminder;
+    private ErrorDialogue _errorDialogue;
+    private UpdateDialogue _updateDialogue;
+
+    // Instance services
+    private readonly ApplicationSettings _settings;
+    private readonly IProcessFinder _processFinder;
+    private readonly IWindowInfoService _windowInfo;
+    private readonly IEncryptedDataService _encryptedData;
+    private readonly IRewardSelector _rewardSelector;
+    private readonly IMediator _mediator;
+    private readonly IOCR _ocr;
+
+    public Main(
+        Login login,
+        ApplicationSettings applicationSettings,
+        IProcessFinder processFinder,
+        IWindowInfoService windowInfo,
+        IEncryptedDataService encryptedData,
+        IRewardSelector rewardSelector,
+        IMediator mediator,
+        Data data,
+        RewardWindow rewardWindow,
+        SettingsWindow settingsWindow,
+        AutoCount autoCount,
+        SearchIt searchIt,
+        GFNWarning gfnWarning,
+        FullscreenReminder fullscreenReminder,
+        SnapItOverlay snapItOverlay,
+        UpdateDialogue updateDialogue,
+        IOCR ocr,
+        IOverlayFactory overlayFactory)
+    {
+        Login = login;
+
+        _settings = applicationSettings;
+        _processFinder = processFinder;
+        _windowInfo = windowInfo;
+        _encryptedData = encryptedData;
+        _rewardSelector = rewardSelector;
+        _mediator = mediator;
+        _ocr = ocr;
+
+        DataBase = data;
+        _rewardWindow = rewardWindow;
+        SettingsWindow = settingsWindow;
+        AutoCount = autoCount;
+        SearchIt = searchIt;
+        _gfnWarning = gfnWarning;
+        _fullscreenReminder = fullscreenReminder;
+
+        SnapItOverlayWindow = snapItOverlay;
+        _updateDialogue = updateDialogue;
+
+        _overlays =
+        [
+            overlayFactory.Create(), overlayFactory.Create(), overlayFactory.Create(), overlayFactory.Create()
+        ];
+
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
         {
-            INSTANCE = this;
-            StartMessage();
-            buildVersion = buildVersion.Substring(0, buildVersion.LastIndexOf("."));
-
             AutoUpdater.CheckForUpdateEvent += AutoUpdaterOnCheckForUpdateEvent;
             AutoUpdater.Start("https://github.com/WFCD/WFinfo/releases/latest/download/update.xml");
+        });
 
-            _services = ConfigureServices(new ServiceCollection()).BuildServiceProvider();
-            InitializeLegacyServices(_services);
+        Task.Run(ThreadedDataLoad);
+    }
 
-            Task.Factory.StartNew(ThreadedDataLoad);
-        }
-
-        private IServiceCollection ConfigureServices(IServiceCollection services)
+    private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
+    {
+        Task.Run(async () =>
         {
-            services.AddSingleton(ApplicationSettings.GlobalReadonlySettings);
-            services.AddProcessFinder();
-            services.AddWin32WindowInfo();
-            services.AddHDRDetection();
+            await _mediator.Publish(new UpdateWindowShow(args));
+        }).ConfigureAwait(ConfigureAwaitOptions.None);
+    }
 
-            services.AddGDIScreenshots();
+    private async Task ThreadedDataLoad()
+    {
+        try
+        {
+            await _mediator.Publish(new UpdateStatus("Updating Databases..."));
+            await DataBase.Update();
 
-            // Only add windows capture on supported plarforms (W10+ 2004 / Build 20348 and above)
-            if (ApiInformation.IsTypePresent("Windows.Graphics.Capture.GraphicsCaptureSession") && ApiInformation.IsPropertyPresent("Windows.Graphics.Capture.GraphicsCaptureSession", "IsBorderRequired"))
+            if (_settings.Auto)
+                await _mediator.Publish(new LogCaptureState(true));
+
+            var validJwt = await DataBase.IsJWTvalid();
+            if (validJwt)
+                await Handle(new StartLoggedInTimer(string.Empty), CancellationToken.None);
+
+            await _mediator.Publish(new UpdateStatus("WFInfo Initialization Complete"));
+            Logger.Debug("WFInfo has launched successfully");
+            FinishedLoading();
+
+            if (_encryptedData.JWT != null) // if token is loaded in, connect to websocket
             {
-                services.AddWindowsCaptureScreenshots();
-            }
-
-            return services;
-        }
-
-        private void InitializeLegacyServices(IServiceProvider services)
-        {
-            // TODO: Ideally we also inject into Main
-            _settings = services.GetRequiredService<IReadOnlyApplicationSettings>();
-            _process = services.GetRequiredService<IProcessFinder>();
-            _windowInfo = services.GetRequiredService<IWindowInfoService>();
-            _detector = services.GetRequiredService<IHDRDetectorService>();
-
-            dataBase = new Data(ApplicationSettings.GlobalReadonlySettings, _process, _windowInfo);
-            SettingsViewModel.Instance.InjectServices(_windowInfo, _process);
-            snapItOverlayWindow = new SnapItOverlay(_windowInfo);
-
-            // See comment on Ocr.Init for explanation
-            var screenshotServices = services.GetServices<IScreenshotService>();
-            _gdiScreenshot = screenshotServices.First(ss => ss is GdiScreenshotService) as GdiScreenshotService;
-            _windowsScreenshot = screenshotServices.FirstOrDefault(ss => ss is WindowsCaptureScreenshotService) as WindowsCaptureScreenshotService;
-        }
-
-        private void AutoUpdaterOnCheckForUpdateEvent(UpdateInfoEventArgs args)
-        {
-            update = new UpdateDialogue(args);
-        }
-
-        public void ThreadedDataLoad()
-        {
-            try
-            {
-                //RelicsWindow.LoadNodesOnThread();
-
-                // Too many dependencies?
-                StatusUpdate("Initializing OCR engine...", 0);
-                OCR.Init(new TesseractService(), new SoundPlayer(), ApplicationSettings.GlobalReadonlySettings, _windowInfo, _detector, _gdiScreenshot, _windowsScreenshot);
-
-                StatusUpdate("Updating Databases...", 0);
-                dataBase.Update();
-
-                if (ApplicationSettings.GlobalReadonlySettings.Auto)
-                    dataBase.EnableLogCapture();
-                if (dataBase.IsJWTvalid().Result)
-                {
-                    LoggedIn();
-                }
-                StatusUpdate("WFInfo Initialization Complete", 0);
-                AddLog("WFInfo has launched successfully");
-                FinishedLoading();
-
-                if (dataBase.JWT != null)// if token is loaded in, connect to websocket
-                {
-                    bool result = dataBase.OpenWebSocket().Result;
-                    Debug.WriteLine("Logging into websocket success: " + result);
-                }
-            }
-            catch (Exception ex)
-            {
-                AddLog("LOADING FAILED");
-                AddLog(ex.ToString());
-                StatusUpdate(ex.ToString().Contains("invalid_grant") ? "System time out of sync with server\nResync system clock in windows settings": "Launch Failure - Please Restart", 0);
-                RunOnUIThread(() =>
-                {
-                    _ = new ErrorDialogue(DateTime.Now, 0);
-                });
+                var result = await DataBase.OpenWebSocket();
+                Logger.Debug("Logging into websocket success: {Result}", result);
             }
         }
-        private async void TimeoutCheck()
+        catch (Exception ex)
         {
-            if (!await dataBase.IsJWTvalid().ConfigureAwait(true) || _process.GameIsStreamed)
+            var message = ex.ToString().Contains("invalid_grant")
+                ? "System time out of sync with server\nResync system clock in windows settings"
+                : "Launch Failure - Please Restart";
+            Logger.Error(ex, "Failed to initialize WFInfo. Message: {Message}", message);
+            await _mediator.Publish(new UpdateStatus(message, StatusSeverity.Error));
+            Application.Current.Dispatcher.InvokeIfRequired(() =>
+            {
+                _ = new ErrorDialogue(DateTime.Now, 0);
+            });
+        }
+    }
+
+    private async Task TimeoutCheck()
+    {
+        if (!await DataBase.IsJWTvalid().ConfigureAwait(true) || _processFinder.GameIsStreamed)
+            return;
+
+        var now = DateTime.UtcNow;
+        Logger.Debug("Checking if the user has been inactive. Now={Now}, lastActive={LastActive}", now, _latestActive);
+
+        if (!_processFinder.IsRunning() && LastMarketStatus != "invisible")
+        {
+            //set user offline if Warframe has closed but no new game was found
+            Logger.Debug("Warframe was detected as closed");
+            //reset warframe process variables, and reset LogCapture so new game process gets noticed
+            await _mediator.Publish(new LogCaptureState(false));
+            if (_settings.Auto)
+                await _mediator.Publish(new LogCaptureState(true));
+
+            if (!await DataBase.IsJWTvalid().ConfigureAwait(true))
                 return;
-            DateTime now = DateTime.UtcNow;
-            Debug.WriteLine($"Checking if the user has been inactive \nNow: {now}, Lastactive: {latestActive}");
 
-            if (!_process.IsRunning && LastMarketStatus != "invisible")
-            {//set user offline if Warframe has closed but no new game was found
-                Debug.WriteLine($"Warframe was detected as closed");
-                //reset warframe process variables, and reset LogCapture so new game process gets noticed
-                dataBase.DisableLogCapture();
-                if (ApplicationSettings.GlobalReadonlySettings.Auto)
-                    dataBase.EnableLogCapture();
-
-                await Task.Run(async () =>
-                {
-                    if (!await dataBase.IsJWTvalid().ConfigureAwait(true))
-                        return;
-                    //IDE0058 - computed value is never used.  Ever. Consider changing the return signature of SetWebsocketStatus to void instead
-                    await dataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                    StatusUpdate("WFM status set offline, Warframe was closed", 0);
-                }).ConfigureAwait(false);
-            }
-            else if (UserAway && latestActive > now)
+            await _mediator.Publish(new WebSocketSetStatus("invisible"));
+            await _mediator.Publish(new UpdateStatus("WFM status set offline, Warframe was closed"));
+        }
+        else
+        {
+            switch (_userAway)
             {
-                Debug.WriteLine($"User has returned. Last Status was: {LastMarketStatusB4AFK}");
- 
-                UserAway = false;
-                if (LastMarketStatusB4AFK != "invisible")
+                case true when _latestActive > now:
                 {
-                    await Task.Run(async () =>
+                    Logger.Debug("User has returned. Last Status was: {LastMarketStatusB4AFK}", LastMarketStatusB4AFK);
+
+                    _userAway = false;
+                    if (LastMarketStatusB4AFK != "invisible")
                     {
-                        await dataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(false);
-                        string user = dataBase.inGameName.IsNullOrEmpty() ? "user" : dataBase.inGameName;
-                        StatusUpdate($"Welcome back {user}, restored as {LastMarketStatusB4AFK}", 0);
-                    }).ConfigureAwait(false);
-                }
-                else
-                {
-                    StatusUpdate($"Welcome back user", 0);
-                }
-            }
-            else if (!UserAway && latestActive <= now)
-            {//set users offline if afk for longer than set timer
-                LastMarketStatusB4AFK = LastMarketStatus;
-                Debug.WriteLine($"User is now away - Storing last known user status as: {LastMarketStatusB4AFK}");
-                
-                UserAway = true;
-                if (LastMarketStatus != "invisible")
-                {
-                    await Task.Run(async () =>
-                    {
-                        await dataBase.SetWebsocketStatus("invisible").ConfigureAwait(false);
-                        StatusUpdate($"User has been inactive for {minutesTillAfk} minutes", 0);
-                    }).ConfigureAwait(false);
-                }
-            }
-            else
-            {
-                if (UserAway)
-                {
-                    Debug.WriteLine($"User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}");
-                }
-                else
-                {
-                    Debug.WriteLine($"User is active - no status change needed");
-                }
-            }
-        }
-
-
-        public static void RunOnUIThread(Action act)
-        {
-            MainWindow.INSTANCE.Dispatcher.Invoke(act);
-        }
-
-        public static void StartMessage()
-        {
-            Directory.CreateDirectory(AppPath);
-            Directory.CreateDirectory(AppPath + @"\debug");
-            using (StreamWriter sw = File.AppendText(AppPath + @"\debug.log"))
-            {
-                sw.WriteLineAsync("--------------------------------------------------------------------------------------------------------------------------------------------");
-                sw.WriteLineAsync("   STARTING WFINFO " + buildVersion + " at " + DateTime.UtcNow);
-                sw.WriteLineAsync("--------------------------------------------------------------------------------------------------------------------------------------------");
-            }
-        }
-
-        public static void AddLog(string argm)
-        { //write to the debug file, includes version and UTCtime
-            Debug.WriteLine(argm);
-            Directory.CreateDirectory(AppPath);
-            try
-            {
-                using (StreamWriter sw = File.AppendText(AppPath + @"\debug.log"))
-                    sw.WriteLineAsync("[" + DateTime.UtcNow + " " + buildVersion + "]   " + argm);
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        /// <summary>
-        /// Sets the status on the main window
-        /// </summary>
-        /// <param name="message">The string to be displayed</param>
-        /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
-        public static void StatusUpdate(string message, int severity)
-        {
-            MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.ChangeStatus(message, severity); });
-        }
-
-        public void ActivationKeyPressed(Object key)
-        {
-            //Log activation. Can't set activation key to left or right mouse button via UI so not differentiating between MouseButton and Key should be fine
-            Main.AddLog($"User is activating with pressing key: {key} and is holding down:\n" +
-                $"Delete:{Keyboard.IsKeyDown(Key.Delete)}\n" +
-                $"Snapit, {_settings.SnapitModifierKey}:{Keyboard.IsKeyDown(_settings.SnapitModifierKey)}\n" +
-                $"Searchit, {_settings.SearchItModifierKey}:{Keyboard.IsKeyDown(_settings.SearchItModifierKey)}\n" +
-                $"Masterit, {_settings.MasterItModifierKey}:{Keyboard.IsKeyDown(_settings.MasterItModifierKey)}\n" +
-                $"debug, {_settings.DebugModifierKey}:{Keyboard.IsKeyDown(_settings.DebugModifierKey)}");
-
-            if (Keyboard.IsKeyDown(Key.Delete))
-            { 
-                //Close all overlays if hotkey + delete is held down
-                foreach (Window overlay in App.Current.Windows)
-                {
-                    if (overlay.GetType().ToString() == "WFInfo.Overlay")
-                    {
-                        overlay.Hide();
+                        await DataBase.SetWebsocketStatus(LastMarketStatusB4AFK).ConfigureAwait(ConfigureAwaitOptions.None);
+                        var user = DataBase.InGameName.IsNullOrEmpty() ? "user" : DataBase.InGameName;
+                        await _mediator.Publish(new UpdateStatus($"Welcome back {user}, restored as {LastMarketStatusB4AFK}"));
                     }
-                }
-                StatusUpdate("Overlays dismissed", 1);
-                return;
-            }
-
-            if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) && Keyboard.IsKeyDown(_settings.SnapitModifierKey))
-            { //snapit debug
-                AddLog("Loading screenshot from file for snapit");
-                StatusUpdate("Offline testing with screenshot for snapit", 0);
-                LoadScreenshot(ScreenshotType.SNAPIT);
-            } 
-            else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) && Keyboard.IsKeyDown(_settings.MasterItModifierKey))
-            { //master debug
-                AddLog("Loading screenshot from file for masterit");
-                StatusUpdate("Offline testing with screenshot for masterit", 0);
-                LoadScreenshot(ScreenshotType.MASTERIT);
-            }
-            else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
-            {//normal debug
-                AddLog("Loading screenshot from file");
-                StatusUpdate("Offline testing with screenshot", 0);
-                LoadScreenshot(ScreenshotType.NORMAL);
-            }
-            else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
-            {//snapit
-                AddLog("Starting snap it");
-                StatusUpdate("Starting snap it", 0);
-                OCR.SnapScreenshot();
-            }
-            else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
-            { //Searchit  
-                AddLog("Starting search it");
-                StatusUpdate("Starting search it", 0);
-                searchBox.Start();
-            }
-            else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
-            {//masterit
-                AddLog("Starting master it");
-                StatusUpdate("Starting master it", 0);
-                Task.Factory.StartNew(() => {
-                    Bitmap bigScreenshot = OCR.CaptureScreenshot();
-                    OCR.ProcessProfileScreen(bigScreenshot);
-                    bigScreenshot.Dispose();
-                });
-            }
-            else if (_settings.Debug || _process.IsRunning)
-            {
-                Task.Factory.StartNew(() => OCR.ProcessRewardScreen());
-            }
-        }
-
-        public void OnMouseAction(MouseButton key)
-        {
-            latestActive = DateTime.UtcNow.AddMinutes(minutesTillAfk);
-
-            if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
-            { //check if user pressed activation key
-
-
-                if (searchBox.IsInUse)
-                { //if key is pressed and searchbox is active then rederect keystokes to it.
-                    if (Keyboard.IsKeyDown(Key.Escape))
-                    { // close it if esc is used.
-                        searchBox.Finish();
-                        return;
-                    }
-                    searchBox.searchField.Focus();
-                    return;
-                }
-
-                ActivationKeyPressed(key);
-
-
-            }
-            else if (key == MouseButton.Left && _process.Warframe != null && !_process.Warframe.HasExited && !_process.GameIsStreamed && Overlay.rewardsDisplaying)
-            {
-                if (_settings.Display != Display.Overlay && !_settings.AutoList && !_settings.AutoCSV && !_settings.AutoCount)
-                {
-                    Overlay.rewardsDisplaying = false; //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
-                    return;
-                }
-                Task.Run((() =>
-                {
-                    lastClick = System.Windows.Forms.Cursor.Position;
-                    int index = OCR.GetSelectedReward(lastClick);
-                    Main.AddLog("Chosen reward index: " + index);
-                    if (index < 0) return;
-                    listingHelper.SelectedRewardIndex = (short)index;
-                }));
-            }
-        }
-
-        public void OnKeyAction(Key key)
-        {
-            latestActive = DateTime.UtcNow.AddMinutes(minutesTillAfk);
-
-            // close the snapit overlay when *any* key is pressed down
-            if (snapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
-            {
-                snapItOverlayWindow.closeOverlay();
-                StatusUpdate("Closed snapit", 0);
-                return;
-            }
-
-            if (searchBox.IsInUse)
-            { //if key is pressed and searchbox is active then rederect keystokes to it.
-                if (key == Key.Escape)
-                { // close it if esc is used.
-                    searchBox.Finish();
-                    return;
-                }
-                searchBox.searchField.Focus();
-                return;
-            }
-
-            
-            if (key == _settings.ActivationKeyKey)
-            { //check if user pressed activation key
-
-                ActivationKeyPressed(key);
-
-            }
-        }
-
-        // timestamp is the time to look for, and gap is the threshold of seconds different
-        public static void SpawnErrorPopup(DateTime timeStamp, int gap = 30)
-        {
-            popup = new ErrorDialogue(timeStamp, gap);
-        }
-        
-        public static void SpawnFullscreenReminder()
-        {
-            fullscreenpopup = new FullscreenReminder();
-        }
-
-        public static void SpawnGFNWarning()
-        {
-            gfnWarning = new GFNWarning();
-        }
-
-
-        public enum ScreenshotType 
-        {
-            NORMAL,
-            SNAPIT,
-            MASTERIT
-        }
-        private void LoadScreenshot(ScreenshotType type)
-        {
-            // Using WinForms for the openFileDialog because it's simpler and much easier
-            using (OpenFileDialog openFileDialog = new OpenFileDialog())
-            {
-                openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-                openFileDialog.Filter = "image files (*.png)|*.png|All files (*.*)|*.*";
-                openFileDialog.FilterIndex = 2;
-                openFileDialog.RestoreDirectory = true;
-                openFileDialog.Multiselect = true;
-
-                if (openFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    Task.Factory.StartNew(
-                        () =>
+                    else
                     {
-                        try
+                        await _mediator.Publish(new UpdateStatus("Welcome back user"));
+                    }
+
+                    break;
+                }
+                case false when _latestActive <= now:
+                {
+                    //set users offline if afk for longer than set timer
+                    LastMarketStatusB4AFK = LastMarketStatus;
+                    Logger.Debug("User is now away - Storing last known user status as {Status}", LastMarketStatusB4AFK);
+
+                    _userAway = true;
+                    if (LastMarketStatus != "invisible")
+                    {
+                        await _mediator.Publish(new WebSocketSetStatus("invisible"));
+                        await _mediator.Publish(new UpdateStatus($"User has been inactive for {TimeTillAfk} minutes"));
+                    }
+
+                    break;
+                }
+                case true:
+                    Logger.Debug("User is away - no status change needed.  Last known status was: {LastMarketStatusB4AFK}",
+                        LastMarketStatusB4AFK);
+                    break;
+                default:
+                    Logger.Debug("User is active - no status change needed");
+                    break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets the status on the main window
+    /// </summary>
+    /// <param name="message">The string to be displayed</param>
+    /// <param name="severity">0 = normal, 1 = red, 2 = orange, 3 =yellow</param>
+    public static void StatusUpdate(string message, StatusSeverity severity)
+    {
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            MainWindow.INSTANCE.ChangeStatus(message, severity);
+        });
+    }
+
+    private async Task ActivationKeyPressed(object key)
+    {
+        Logger.Information(
+            "User key press. key={Key},delete={Delete},snapit={SnapitKey}:{SnapPressed},searchit={SearchitKey}:{SearchItPressed},masterit={MasteritKey}:{MasteritPressed},debug={DebugKey}:{DebugPressed}",
+            key,
+            Keyboard.IsKeyDown(Key.Delete),
+            _settings.SnapitModifierKey, Keyboard.IsKeyDown(_settings.SnapitModifierKey),
+            _settings.SearchItModifierKey, Keyboard.IsKeyDown(_settings.SearchItModifierKey),
+            _settings.MasterItModifierKey, Keyboard.IsKeyDown(_settings.MasterItModifierKey),
+            _settings.DebugModifierKey, Keyboard.IsKeyDown(_settings.DebugModifierKey)
+        );
+
+        if (Keyboard.IsKeyDown(Key.Delete))
+        {
+            //Close all overlays if hotkey + delete is held down
+            foreach (Window overlay in Application.Current.Windows)
+            {
+                // TODO (rudzen) : this is a hack, we should not be checking for the type NAME of the window
+
+                if (overlay.GetType().ToString() == "WFInfo.Overlay")
+                {
+                    overlay.Hide();
+                }
+            }
+
+            await _mediator.Publish(new UpdateStatus("Overlays dismissed", StatusSeverity.Error));
+            return;
+        }
+
+        if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
+            Keyboard.IsKeyDown(_settings.SnapitModifierKey))
+        {
+            //snapit debug
+            Logger.Information("Loading screenshot from file for snapit");
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for snapit"));
+            await LoadScreenshot(ScreenshotType.SNAPIT);
+        }
+        else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey) &&
+                 Keyboard.IsKeyDown(_settings.MasterItModifierKey))
+        {
+            //master debug
+            Logger.Information("Loading screenshot from file for masterit");
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot for masterit"));
+            await LoadScreenshot(ScreenshotType.MASTERIT);
+        }
+        else if (_settings.Debug && Keyboard.IsKeyDown(_settings.DebugModifierKey))
+        {
+            //normal debug
+            Logger.Information("Loading screenshot from file");
+            await _mediator.Publish(new UpdateStatus("Offline testing with screenshot"));
+            await LoadScreenshot(ScreenshotType.NORMAL);
+        }
+        else if (Keyboard.IsKeyDown(_settings.SnapitModifierKey))
+        {
+            // Snap-it
+            Logger.Information("Starting snap it");
+            await _mediator.Publish(new UpdateStatus("Starting snap it"));
+            var image = await _ocr.CaptureScreenshot();
+            await _mediator.Publish(new SnapItOverlayUpdate(image, _windowInfo.Window, _windowInfo.DpiScaling));
+        }
+        else if (Keyboard.IsKeyDown(_settings.SearchItModifierKey))
+        {
+            //Searchit
+            Logger.Information("Starting search it");
+            await _mediator.Publish(new UpdateStatus("Starting search it"));
+            SearchIt.Start(() => _encryptedData.IsJwtLoggedIn());
+        }
+        else if (Keyboard.IsKeyDown(_settings.MasterItModifierKey))
+        {
+            //masterit
+            Logger.Information("Starting master it");
+            await _mediator.Publish(new UpdateStatus("Starting master it"));
+            using var bigScreenshot = await _ocr.CaptureScreenshot();
+            await _ocr.ProcessProfileScreen(bigScreenshot);
+        }
+        else if (_settings.Debug || _processFinder.IsRunning())
+        {
+            await _ocr.ProcessRewardScreen();
+        }
+    }
+
+    public async void OnMouseAction(MouseButton key)
+    {
+        _latestActive = DateTime.UtcNow.Add(TimeTillAfk);
+
+        if (_settings.ActivationMouseButton != null && key == _settings.ActivationMouseButton)
+        {
+            //check if user pressed activation key
+            if (SearchIt.IsInUse)
+            {
+                //if key is pressed and searchbox is active then rederect keystokes to it.
+                if (Keyboard.IsKeyDown(Key.Escape))
+                {
+                    // close it if esc is used.
+                    SearchIt.Finish();
+                    return;
+                }
+
+                SearchIt.SearchField.Focus();
+                return;
+            }
+
+            await ActivationKeyPressed(key);
+        }
+        else if (key == MouseButton.Left
+                 && Overlay.RewardsDisplaying
+                 && _processFinder is { Warframe.HasExited: false, GameIsStreamed: false })
+        {
+            if (_settings.Display != Display.Overlay
+                && _settings is { AutoList: false, AutoCSV: false, AutoCount: false })
+            {
+                //only "naturally" set to false on overlay disappearing and/or specific log message with auto-list enabled
+                Overlay.RewardsDisplaying = false;
+                return;
+            }
+
+            await Task.Run(() =>
+            {
+                var lastClick = System.Windows.Forms.Cursor.Position;
+                var uiScaling = _ocr.UiScaling;
+                var displayed = _ocr.NumberOfRewardsDisplayed;
+                var index = _rewardSelector.GetSelectedReward(ref lastClick, in uiScaling, displayed);
+                Logger.Debug("Reward chosen. index={Index}", index);
+                if (index == -1)
+                    return;
+                ListingHelper.SelectedRewardIndex = (short)index;
+            });
+        }
+    }
+
+    public async void OnKeyAction(Key key)
+    {
+        _latestActive = DateTime.UtcNow.Add(TimeTillAfk);
+
+        // close the snapit overlay when *any* key is pressed down
+        if (SnapItOverlayWindow.isEnabled && KeyInterop.KeyFromVirtualKey((int)key) != Key.None)
+        {
+            SnapItOverlayWindow.CloseOverlay();
+            await _mediator.Publish(new UpdateStatus("Snap-It closed"));
+            return;
+        }
+
+        if (SearchIt.IsInUse)
+        {
+            //if key is pressed and search box is active then redirect key stokes to it.
+            if (key == Key.Escape)
+            {
+                // close it if esc is used.
+                SearchIt.Finish();
+                return;
+            }
+
+            SearchIt.SearchField.Focus();
+            return;
+        }
+
+        // Check if user pressed activation key
+        if (key == _settings.ActivationKeyKey)
+            await ActivationKeyPressed(key);
+    }
+
+    // timestamp is the time to look for, and gap is the threshold of seconds different
+    private void SpawnErrorPopup(DateTime timeStamp, int gap)
+    {
+        _errorDialogue = new ErrorDialogue(timeStamp, gap);
+    }
+
+    private async Task LoadScreenshot(ScreenshotType type)
+    {
+        // Using WinForms for the openFileDialog because it's simpler and much easier
+        using var openFileDialog = new OpenFileDialog();
+        openFileDialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+        openFileDialog.Filter = "image files (*.png)|*.png|All files (*.*)|*.*";
+        openFileDialog.FilterIndex = 2;
+        openFileDialog.RestoreDirectory = true;
+        openFileDialog.Multiselect = true;
+
+        if (openFileDialog.ShowDialog() == DialogResult.OK)
+        {
+            await Task.Run(async
+                () =>
+            {
+                try
+                {
+                    // TODO: This
+                    foreach (var file in openFileDialog.FileNames)
+                    {
+                        switch (type)
                         {
-                            // TODO: This
-                            foreach (string file in openFileDialog.FileNames)
+                            case ScreenshotType.NORMAL:
                             {
-                                if (type == ScreenshotType.NORMAL)
-                                {
-                                    AddLog("Testing file: " + file);
+                                Logger.Debug("Testing file. name={File}", file);
 
-                                    //Get the path of specified file
-                                    Bitmap image = new Bitmap(file);
-                                    _windowInfo.UseImage(image);
-                                    OCR.ProcessRewardScreen(image);
-                                } else if (type == ScreenshotType.SNAPIT)
-                                {
-                                    AddLog("Testing snapit on file: " + file);
+                                //Get the path of specified file
+                                var image = new Bitmap(file);
+                                _windowInfo.UseImage(image);
+                                await _ocr.ProcessRewardScreen(image);
+                                break;
+                            }
+                            case ScreenshotType.SNAPIT:
+                            {
+                                Logger.Debug("Testing snapit on file. name={File}", file);
 
-                                    Bitmap image = new Bitmap(file);
-                                    _windowInfo.UseImage(image);
-                                    OCR.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
-                                } else if (type == ScreenshotType.MASTERIT)
-                                {
-                                    AddLog("Testing masterit on file: " + file);
+                                var image = new Bitmap(file);
+                                _windowInfo.UseImage(image);
+                                await _ocr.ProcessSnapIt(image, image, new System.Drawing.Point(0, 0));
+                                break;
+                            }
+                            case ScreenshotType.MASTERIT:
+                            {
+                                Logger.Debug("Testing masterit on file. name={File}", file);
 
-                                    Bitmap image = new Bitmap(file);
-                                    _windowInfo.UseImage(image);
-                                    OCR.ProcessProfileScreen(image);
-                                }
+                                var image = new Bitmap(file);
+                                _windowInfo.UseImage(image);
+                                await _ocr.ProcessProfileScreen(image);
+                                break;
                             }
                         }
-                        catch (Exception e)
-                        {
-                            AddLog(e.Message);
-                            AddLog(e.StackTrace);
-                            StatusUpdate("Failed to load image", 1);
-                        }
-                    });
-                }
-                else
-                {
-                    StatusUpdate("Failed to load image", 1);
-                    if (type == ScreenshotType.NORMAL)
-                    {
-                        OCR.processingActive = false;
                     }
                 }
-            }
-        }
-
-        // Switch to logged in mode for warfrane.market systems
-        public void LoggedIn()
-        { //this is bullshit, but I couldn't call it in login.xaml.cs because it doesn't properly get to the main window
-            MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.LoggedIn(); });
-
-            // start the AFK timer
-            latestActive = DateTime.UtcNow.AddMinutes(1);
-            TimeSpan startTimeSpan = TimeSpan.Zero;
-            TimeSpan periodTimeSpan = TimeSpan.FromMinutes(1);
-            
-            timer = new System.Threading.Timer((e) =>
-            {
-                TimeoutCheck();
-            }, null, startTimeSpan, periodTimeSpan);
-        }
-
-
-        public static void FinishedLoading()
-        {
-            MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.FinishedLoading(); });
-        }
-        public static void UpdateMarketStatus(string msg)
-        {
-            Debug.WriteLine($"New market status received: {msg}");
-            if (!UserAway)
-            {
-                // AFK system only cares about a status that the user set
-                LastMarketStatus = msg;
-                Debug.WriteLine($"User is not away. last known market status will be: {LastMarketStatus}");
-            }
-            MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.UpdateMarketStatus(msg); });
-        }
-
-        public static string BuildVersion { get => buildVersion; }
-
-        public static int VersionToInteger(string vers)
-        {
-            int ret = 0;
-            string[] versParts = Regex.Replace(vers, "[^0-9.]+", "").Split('.');
-            if (versParts.Length == 3)
-                for (int i = 0; i < versParts.Length; i++)
+                catch (Exception e)
                 {
-                    if (versParts[i].Length == 0)
-                        return -1;
-                    ret += Convert.ToInt32(int.Parse(versParts[i], Main.culture) * Math.Pow(100, 2 - i));
+                    Logger.Error(e, "Failed to load image");
+                    await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
                 }
-
-            return ret;
+            });
         }
-
-        // Glob
-        public static System.Globalization.CultureInfo culture = new System.Globalization.CultureInfo("en", false);
-
-        public static void SignOut()
+        else
         {
-            MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.SignOut(); });
+            await _mediator.Publish(new UpdateStatus("Failed to load image", StatusSeverity.Error));
+            if (type == ScreenshotType.NORMAL)
+            {
+                _ocr.ProcessingActive.GetAndSet(false);
+            }
         }
     }
 
-    public class Status
+    private static void FinishedLoading()
     {
-        public string Message { get; set; }
-        public int Severity { get; set; }
-
-        public Status(string msg, int ser)
+        MainWindow.INSTANCE.Dispatcher.Invoke(() =>
         {
-            Message = msg;
-            Severity = ser;
-        }
+            MainWindow.INSTANCE.FinishedLoading();
+        });
     }
 
+    /// <summary>
+    /// Switch to logged in mode for warfrane.market systems
+    /// </summary>
+    /// <param name="startLoggedInTimer"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    public async ValueTask Handle(StartLoggedInTimer startLoggedInTimer, CancellationToken cancellationToken)
+    {
+        //this is bullshit, but I couldn't call it in login.xaml.cs because it doesn't properly get to the main window
+        // MainWindow.INSTANCE.Dispatcher.Invoke(() => { MainWindow.INSTANCE.LoggedIn(); });
+
+        // (rudzen). yes, it was bullshit. this should be fine however
+        await _mediator.Publish(new LoggedIn(startLoggedInTimer.Email), cancellationToken);
+
+        // start the AFK timer
+        _latestActive = DateTime.UtcNow.AddMinutes(1);
+        _timer = new System.Threading.Timer((e) =>
+        {
+            TimeoutCheck();
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+    }
+
+    public ValueTask Handle(OverlayUpdate overlayUpdate, CancellationToken cancellationToken)
+    {
+        Logger.Debug("Updating overlay. index={Index}, type={Type}", overlayUpdate.Index, overlayUpdate.Tyoe);
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            var overlay = _overlays[overlayUpdate.Index];
+            if (overlayUpdate.Tyoe == OverlayUpdateType.Owned)
+                overlay.BestOwnedChoice();
+            else if (overlayUpdate.Tyoe == OverlayUpdateType.Ducat)
+                overlay.BestDucatChoice();
+            else if (overlayUpdate.Tyoe == OverlayUpdateType.Plat)
+                overlay.BestPlatChoice();
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(OverlayUpdateData overlayUpdateData, CancellationToken cancellationToken)
+    {
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            Overlay.RewardsDisplaying = true;
+            var overlay = _overlays[overlayUpdateData.Index];
+            overlay.LoadTextData(
+                name: overlayUpdateData.CorrectName,
+                plat: overlayUpdateData.Plat,
+                primeSetPlat: overlayUpdateData.PrimeSetPlat,
+                ducats: overlayUpdateData.Ducats,
+                volume: overlayUpdateData.Volume,
+                vaulted: overlayUpdateData.Vaulted,
+                mastered: overlayUpdateData.Mastered,
+                owned: $"{overlayUpdateData.PartsOwned} / {overlayUpdateData.PartsCount}",
+                detected: string.Empty,
+                hideRewardInfo: overlayUpdateData.HideRewardInfo,
+                showWarningTriangle: false
+            );
+            overlay.Resize(overlayUpdateData.OverWid);
+            overlay.Display(
+                x: overlayUpdateData.Position.X,
+                y: overlayUpdateData.Position.Y,
+                wait: _settings.Delay
+            );
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(GnfWarningShow gnfWarningShow, CancellationToken cancellationToken)
+    {
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            if (gnfWarningShow.Show)
+                _gfnWarning.Show();
+            else
+                _gfnWarning.Hide();
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(FullscreenReminderShow fullscreenReminderShow, CancellationToken cancellationToken)
+    {
+        Logger.Debug("Showing the Fullscreen Reminder. (window) x/y={Xy},h/w={Hw}",
+            fullscreenReminderShow.Xy, fullscreenReminderShow.Hw);
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            _fullscreenReminder.Show();
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<WarframeMarketStatusAwayStatusResponse> Handle(WarframeMarketStatusAwayStatusRequest request, CancellationToken cancellationToken)
+    {
+        if (!_userAway)
+        {
+            // AFK system only cares about a status that the user set
+            LastMarketStatus = request.Message;
+            Logger.Debug("User is not away. last known market status will be: {LastMarketStatus}", LastMarketStatus);
+        }
+
+        Logger.Debug("User is away: {UserAway}", _userAway);
+        return ValueTask.FromResult(new WarframeMarketStatusAwayStatusResponse(_userAway));
+    }
+
+    public ValueTask Handle(ErrorDialogShow notification, CancellationToken cancellationToken)
+    {
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            SpawnErrorPopup(notification.TimeStamp, notification.Gap);
+        });
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask Handle(DownloadUpdate notification, CancellationToken cancellationToken)
+    {
+        Application.Current.Dispatcher.InvokeIfRequired(() =>
+        {
+            if (AutoUpdater.DownloadUpdate(notification.UpdateInfoEventArgs))
+            {
+                Application.Current.Shutdown();
+            }
+        });
+
+        System.Windows.Forms.Application.Exit();
+        return ValueTask.CompletedTask;
+    }
 }

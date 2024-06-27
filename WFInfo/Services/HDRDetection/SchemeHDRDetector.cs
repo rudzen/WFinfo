@@ -1,28 +1,35 @@
-﻿using System.Collections.Generic;
-using WFInfo.Services.HDRDetection.Schemes;
+﻿using WFInfo.Services.HDRDetection.Schemes;
 
-namespace WFInfo.Services.HDRDetection
+namespace WFInfo.Services.HDRDetection;
+
+public sealed class SchemeHdrDetector(IEnumerable<IHDRDetectionScheme> schemes) : IHDRDetectorService
 {
-    public class SchemeHDRDetector : IHDRDetectorService
+    private readonly List<IHDRDetectionScheme> _schemes = schemes.ToList();
+
+    private bool _hasRun;
+    private bool _isHdr;
+
+    public bool IsHdr()
     {
-        private readonly List<IHDRDetectionScheme> _schemes = new List<IHDRDetectionScheme>
-        {
-            new GameSettingsHDRDetectionScheme()
-        };
+        return !_hasRun ? IsDetected() : _isHdr;
+    }
 
-        public bool IsHDR
+    private bool IsDetected()
+    {
+        var run = false;
+        foreach (var scheme in _schemes)
         {
-            get
+            var result = scheme.Detect();
+            if (result.IsGuaranteed)
             {
-                // Only return guaranteed results
-                foreach (var scheme in _schemes) 
-                {
-                    var result = scheme.Detect();
-                    if (result.IsGuaranteed) return result.IsDetected;
-                }
-
-                return false;
+                run = result.IsDetected;
+                break;
             }
         }
+
+        _hasRun = true;
+        _isHdr = run;
+
+        return run;
     }
 }

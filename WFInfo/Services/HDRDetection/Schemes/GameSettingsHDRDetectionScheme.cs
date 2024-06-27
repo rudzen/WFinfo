@@ -1,32 +1,37 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
+using Serilog;
 
-namespace WFInfo.Services.HDRDetection.Schemes
+namespace WFInfo.Services.HDRDetection.Schemes;
+
+public sealed class GameSettingsHDRDetectionScheme : IHDRDetectionScheme
 {
-    public class GameSettingsHDRDetectionScheme : IHDRDetectionScheme
+    private static readonly ILogger Logger = Log.ForContext<GameSettingsHDRDetectionScheme>();
+
+    private readonly string _configurationFile;
+
+    public GameSettingsHDRDetectionScheme()
     {
-        private string ConfigurationFile
+        var localAppdata = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        _configurationFile = Path.Combine(localAppdata, "Warframe", "EE.cfg");
+    }
+
+    public HDRDetectionSchemeResult Detect()
+    {
+        if (File.Exists(_configurationFile))
         {
-            get
-            {
-                var localAppdata = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                return Path.Combine(localAppdata, "Warframe", "EE.cfg");
-            }
+            var contents = File.ReadAllText(_configurationFile);
+            var containsEnable = contents.Contains("Graphics.HDROutput=1");
+
+            Logger.Debug("Found Warframe configuration. HDR={Hdr},file={ConfigurationFile}",
+                containsEnable, _configurationFile);
+
+            // if containsEnable is true, then it's 100% HDR, otherwise it could still be Auto HDR
+            return new HDRDetectionSchemeResult(containsEnable, containsEnable);
         }
 
-        public HDRDetectionSchemeResult Detect()
-        {
-            if (File.Exists(ConfigurationFile))
-            {
-                var contents = File.ReadAllText(ConfigurationFile);
-                var containsEnable = contents.Contains("Graphics.HDROutput=1");
+        Logger.Debug("Failed to find Warframe configuration file at {ConfigurationFile}", _configurationFile);
 
-                if (containsEnable) return new HDRDetectionSchemeResult(containsEnable, true); // 100% HDR
-                else return new HDRDetectionSchemeResult(containsEnable, false); // Could still be Auto HDR
-            }
-
-            // Could still be Auto HDR with old engine?
-            return new HDRDetectionSchemeResult(false, false);
-        }
+        // Could still be Auto HDR with old engine?
+        return new HDRDetectionSchemeResult(false, false);
     }
 }

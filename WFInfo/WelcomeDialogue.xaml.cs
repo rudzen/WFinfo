@@ -1,28 +1,27 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 
-namespace WFInfo
+namespace WFInfo;
+
+/// <summary>
+/// Interaction logic for errorDialogue.xaml
+/// </summary>
+public partial class WelcomeDialogue : Window
 {
-    /// <summary>
-    /// Interaction logic for errorDialogue.xaml
-    /// </summary>
-    public partial class WelcomeDialogue : Window
+    public WelcomeDialogue()
     {
-        public WelcomeDialogue()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+    }
 
-        // Allows the draging of the window
-        private new void MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left)
-                DragMove();
-        }
+    // Allows the dragging of the window
+    private new void MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Left)
+            DragMove();
+    }
 
-        private void Exit(object sender, RoutedEventArgs e)
-        {
-            Close();
-        }
+    private void Exit(object sender, RoutedEventArgs e)
+    {
+        Close();
     }
 }

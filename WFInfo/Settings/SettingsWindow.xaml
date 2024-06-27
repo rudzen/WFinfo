@@ -7,6 +7,7 @@
         xmlns:settings="clr-namespace:WFInfo.Settings"
         xmlns:components="clr-namespace:WFInfo.Components"
         xmlns:screenshot="clr-namespace:WFInfo.Services.Screenshot"
+        xmlns:opticalCharacterRecognition="clr-namespace:WFInfo.Services.OpticalCharacterRecognition"
         mc:Ignorable="d"
         Title="Settings"
         MaxWidth="334"
@@ -20,14 +21,16 @@
         AllowsTransparency="True"
         ResizeMode="CanResizeWithGrip">
     <Window.Resources>
-        <ObjectDataProvider x:Key="enumWFTheme" MethodName="GetValues" ObjectType="{x:Type wfInfo:WFtheme}">
+        <ObjectDataProvider x:Key="enumWFTheme" MethodName="GetValues"
+                            ObjectType="{x:Type opticalCharacterRecognition:WFtheme}">
             <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="wfInfo:WFtheme"/>
+                <x:Type TypeName="opticalCharacterRecognition:WFtheme" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
-        <ObjectDataProvider x:Key="enumHDRSupport" MethodName="GetValues" ObjectType="{x:Type screenshot:HdrSupportEnum}">
+        <ObjectDataProvider x:Key="enumHDRSupport" MethodName="GetValues"
+                            ObjectType="{x:Type screenshot:HdrSupport}">
             <ObjectDataProvider.MethodParameters>
-                <x:Type TypeName="screenshot:HdrSupportEnum"/>
+                <x:Type TypeName="screenshot:HdrSupport" />
             </ObjectDataProvider.MethodParameters>
         </ObjectDataProvider>
     </Window.Resources>
@@ -77,7 +80,7 @@
                         Value="{StaticResource Roboto}" />
                 <Setter Property="components:SelectTextOnFocus.Active"
                         Value="True" />
-                <Setter Property="wfInfo:FocusAdvancement.AdvancesByEnterKey"
+                <Setter Property="components:FocusAdvancement.AdvancesByEnterKey"
                         Value="True" />
             </Style>
 
@@ -248,17 +251,17 @@
                         </DockPanel>
                     </DockPanel>
                 </Border>
-                <Border DockPanel.Dock="Top" 
+                <Border DockPanel.Dock="Top"
                         Padding="15 5 25 5">
                     <UniformGrid>
-                        <Label Content="Min Width (snap)"/>
+                        <Label Content="Min Width (snap)" />
                         <TextBox x:Name="MinOverlayWidth_number_box"
                                  ToolTip="The minimum width in pixels snap-it overlays will be displayed on screen"
                                  Text="{Binding SettingsViewModel.MinOverlayWidth, Mode=TwoWay}"
                                  components:NumericOnlyEntry.RegexFilter="^[0-9\.,]+$"
                                  VerticalAlignment="Top" />
 
-                        <Label Content="Max Width (snap)"/>
+                        <Label Content="Max Width (snap)" />
                         <TextBox x:Name="MaxOverlayWidth_number_box"
                                  ToolTip="The maximum width in pixels snap-it overlays will be displayed on screen"
                                  Text="{Binding SettingsViewModel.MaxOverlayWidth, Mode=TwoWay}"
@@ -267,10 +270,10 @@
 
                     </UniformGrid>
                 </Border>
-                <Border DockPanel.Dock="Top" 
+                <Border DockPanel.Dock="Top"
                         Padding="15 5 25 5">
                     <UniformGrid>
-                        <Label Content="Display time (snap)"/>
+                        <Label Content="Display time (snap)" />
                         <TextBox x:Name="SnapItDisplaytime_number_box"
                                  ToolTip="The time in milliseconds the overlays will be displayed on screen"
                                  Text="{Binding SettingsViewModel.SnapItDelay, Mode=TwoWay}"
@@ -359,7 +362,7 @@
                                  Style="{StaticResource KeyBindTextboxStyle}"
                                  Grid.Row="3"
                                  Grid.Column="1"
-                                 ToolTip="Modifier to hold down to start Master it"
+                                 ToolTip="Modifier to hold down to start Snap it"
                                  Text="{Binding SettingsViewModel.MasterItModifierKey,
                                 Converter={StaticResource KeyStringConverter}}"
                                  IsReadOnly="True"
@@ -391,16 +394,20 @@
                     <DockPanel>
                         <Grid DockPanel.Dock="Top">
                             <Grid.RowDefinitions>
-                                <RowDefinition/>
-                                <RowDefinition/>
+                                <RowDefinition />
+                                <RowDefinition />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="3*"/>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="6*"/>
+                                <ColumnDefinition Width="3*" />
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="6*" />
                             </Grid.ColumnDefinitions>
-                            <Label Content="Theme" Grid.Column="0"/>
-                            <Label x:Name="ConfigureTheme_button" Grid.Column="1" MouseLeftButtonDown="ConfigureTheme_button_MouseLeftButtonDown" ToolTip="Configure Custom Theme" Margin="0,5,10,5" Padding="3"  HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Height="20" VerticalAlignment="Top" HorizontalAlignment="Right" Width="20">
+                            <Label Content="Theme" Grid.Column="0" />
+                            <Label x:Name="ConfigureTheme_button" Grid.Column="1"
+                                   MouseLeftButtonDown="ConfigureTheme_button_MouseLeftButtonDown"
+                                   ToolTip="Configure Custom Theme" Margin="0,5,10,5" Padding="3"
+                                   HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Height="20"
+                                   VerticalAlignment="Top" HorizontalAlignment="Right" Width="20">
                                 <Label.Style>
                                     <Style>
                                         <Setter Property="ContentControl.Content">
@@ -411,8 +418,8 @@
                                         <Style.Triggers>
                                             <MultiTrigger>
                                                 <MultiTrigger.Conditions>
-                                                    <Condition Property="UIElement.IsMouseOver" Value="True"/>
-                                                    <Condition Property="UIElement.IsEnabled" Value="True"/>
+                                                    <Condition Property="UIElement.IsMouseOver" Value="True" />
+                                                    <Condition Property="UIElement.IsEnabled" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="ContentControl.Content">
                                                     <Setter.Value>
@@ -424,19 +431,29 @@
                                     </Style>
                                 </Label.Style>
                             </Label>
-                            <ComboBox 
-                                          Grid.Column="2"
-                                          x:Name="themeSelectionComboBox"
-                                          FontSize="14"
-                                          FontFamily="{DynamicResource Roboto}"
-                                          Background="#FF1B1B1B"
-                                          BorderBrush="#FF0F0F0F"
-                                          ItemsSource="{Binding Source={StaticResource enumWFTheme}}"
-                                          SelectedItem="{Binding SettingsViewModel.ThemeSelection}"
-                                          Margin="5,4" Template="{DynamicResource ComboBoxTemplate}" Style="{DynamicResource ComboBoxStyle1}" DropDownClosed="ThemeSelectionComboBox_OnDropDownClosed"/>
+                            <ComboBox
+                                Grid.Column="2"
+                                x:Name="themeSelectionComboBox"
+                                FontSize="14"
+                                FontFamily="{DynamicResource Roboto}"
+                                Background="#FF1B1B1B"
+                                BorderBrush="#FF0F0F0F"
+                                ItemsSource="{Binding Source={StaticResource enumWFTheme}}"
+                                SelectedItem="{Binding SettingsViewModel.ThemeSelection}"
+                                Margin="5,4" Template="{DynamicResource ComboBoxTemplate}"
+                                Style="{DynamicResource ComboBoxStyle1}"
+                                DropDownClosed="ThemeSelectionComboBox_OnDropDownClosed" />
 
-                            <Label Visibility="{Binding SettingsViewModel.OsSupportsHDR, Converter={StaticResource BoolVisibilityConverter}}" Content="HDR" Grid.Column="0" Grid.Row="1"/>
-                            <Label Visibility="{Binding SettingsViewModel.OsSupportsHDR, Converter={StaticResource BoolVisibilityConverter}}" Grid.Row="1" Grid.Column="1" ToolTip="Auto - Detect based on game settings&#x0a;On - Always use HDR capture (will slightly change colors) &#x0a;Off - Always use SDR capture (will result in overblown HDR screenshots) &#x0a;&#x0a;It is recommended to use a custom theme with HDR enabled, this mode only compresses the dynamic color range." Margin="0,5,10,5" Padding="3"  HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Height="20" VerticalAlignment="Top" HorizontalAlignment="Right" Width="20">
+                            <Label
+                                Visibility="{Binding SettingsViewModel.OsSupportsHDR, Converter={StaticResource BoolVisibilityConverter}}"
+                                Content="HDR" Grid.Column="0" Grid.Row="1" />
+                            <Label
+                                Visibility="{Binding SettingsViewModel.OsSupportsHDR, Converter={StaticResource BoolVisibilityConverter}}"
+                                Grid.Row="1" Grid.Column="1"
+                                ToolTip="Auto - Detect based on game settings&#x0a;On - Always use HDR capture (will slightly change colors) &#x0a;Off - Always use SDR capture (will result in overblown HDR screenshots) &#x0a;&#x0a;It is recommended to use a custom theme with HDR enabled, this mode only compresses the dynamic color range."
+                                Margin="0,5,10,5" Padding="3" HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center" Height="20" VerticalAlignment="Top"
+                                HorizontalAlignment="Right" Width="20">
                                 <Label.Style>
                                     <Style>
                                         <Setter Property="ContentControl.Content">
@@ -447,8 +464,8 @@
                                         <Style.Triggers>
                                             <MultiTrigger>
                                                 <MultiTrigger.Conditions>
-                                                    <Condition Property="UIElement.IsMouseOver" Value="True"/>
-                                                    <Condition Property="UIElement.IsEnabled" Value="True"/>
+                                                    <Condition Property="UIElement.IsMouseOver" Value="True" />
+                                                    <Condition Property="UIElement.IsEnabled" Value="True" />
                                                 </MultiTrigger.Conditions>
                                                 <Setter Property="ContentControl.Content">
                                                     <Setter.Value>
@@ -460,18 +477,19 @@
                                     </Style>
                                 </Label.Style>
                             </Label>
-                            <ComboBox 
-                                          Grid.Column="2"
-                                          Grid.Row="1"
-                                          Visibility="{Binding SettingsViewModel.OsSupportsHDR, Converter={StaticResource BoolVisibilityConverter}}"
-                                          x:Name="hdrSelectionComboBox"
-                                          FontSize="14"
-                                          FontFamily="{DynamicResource Roboto}"
-                                          Background="#FF1B1B1B"
-                                          BorderBrush="#FF0F0F0F"
-                                          ItemsSource="{Binding Source={StaticResource enumHDRSupport}}"
-                                          SelectedItem="{Binding SettingsViewModel.HdrSupport}"
-                                          Margin="5,4" Template="{DynamicResource ComboBoxTemplate}" Style="{DynamicResource ComboBoxStyle1}">
+                            <ComboBox
+                                Grid.Column="2"
+                                Grid.Row="1"
+                                Visibility="{Binding SettingsViewModel.OsSupportsHDR, Converter={StaticResource BoolVisibilityConverter}}"
+                                x:Name="hdrSelectionComboBox"
+                                FontSize="14"
+                                FontFamily="{DynamicResource Roboto}"
+                                Background="#FF1B1B1B"
+                                BorderBrush="#FF0F0F0F"
+                                ItemsSource="{Binding Source={StaticResource enumHDRSupport}}"
+                                SelectedItem="{Binding SettingsViewModel.HdrSupport}"
+                                Margin="5,4" Template="{DynamicResource ComboBoxTemplate}"
+                                Style="{DynamicResource ComboBoxStyle1}">
 
                             </ComboBox>
                         </Grid>
@@ -490,14 +508,15 @@
                                        DockPanel.Dock="Left"
                                        FontSize="16"
                                        FontWeight="Regular" />
-                                <ComboBox SelectionChanged="localeComboboxSelectionChanged"
+                                <ComboBox SelectionChanged="LocaleComboboxSelectionChanged"
                                           DockPanel.Dock="Right"
                                           x:Name="localeCombobox"
                                           FontSize="14"
                                           FontFamily="{DynamicResource Roboto}"
                                           Background="#FF1B1B1B"
                                           BorderBrush="#FF0F0F0F"
-                                          Margin="0,4" Template="{DynamicResource ComboBoxTemplate}" Style="{DynamicResource ComboBoxStyle1}">
+                                          Margin="0,4" Template="{DynamicResource ComboBoxTemplate}"
+                                          Style="{DynamicResource ComboBoxStyle1}">
                                     <ComboBoxItem Tag="en"
                                                   Content="English"
                                                   FontSize="14"

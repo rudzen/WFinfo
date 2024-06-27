@@ -1,0 +1,3079 @@
+{
+  "Scindo Prime Handle": {
+    "plat": 8.4,
+    "ducats": 25,
+    "volume": 50
+  },
+  "Ember Prime Neuroptics": {
+    "plat": 14.8,
+    "ducats": 15,
+    "volume": 35
+  },
+  "Loki Prime Blueprint": {
+    "plat": 9.2,
+    "ducats": 15,
+    "volume": 111
+  },
+  "Ember Prime Chassis": {
+    "plat": 23.9,
+    "ducats": 15,
+    "volume": 117
+  },
+  "Wyrm Prime Blueprint": {
+    "plat": 10.8,
+    "ducats": 15,
+    "volume": 41
+  },
+  "Wyrm Prime Carapace": {
+    "plat": 14.2,
+    "ducats": 15,
+    "volume": 77
+  },
+  "Nekros Prime Chassis": {
+    "plat": 9.4,
+    "ducats": 15,
+    "volume": 143
+  },
+  "Nekros Prime Neuroptics": {
+    "plat": 26.0,
+    "ducats": 45,
+    "volume": 135
+  },
+  "Hydroid Prime Neuroptics": {
+    "plat": 10.5,
+    "ducats": 45,
+    "volume": 116
+  },
+  "Oberon Prime Neuroptics": {
+    "plat": 30.2,
+    "ducats": 100,
+    "volume": 135
+  },
+  "Sybaris Prime Blueprint": {
+    "plat": 5.1,
+    "ducats": 15,
+    "volume": 22
+  },
+  "Ballistica Prime Lower Limb": {
+    "plat": 6.9,
+    "ducats": 15,
+    "volume": 40
+  },
+  "Helios Prime Cerebrum": {
+    "plat": 40.3,
+    "ducats": 100,
+    "volume": 78
+  },
+  "Helios Prime Carapace": {
+    "plat": 5.5,
+    "ducats": 15,
+    "volume": 36
+  },
+  "Ballistica Prime String": {
+    "plat": 9.5,
+    "ducats": 45,
+    "volume": 43
+  },
+  "Silva & Aegis Prime Guard": {
+    "plat": 20.7,
+    "ducats": 100,
+    "volume": 62
+  },
+  "Ankyros Prime Blade": {
+    "plat": 10.2,
+    "ducats": 65,
+    "volume": 59
+  },
+  "Ankyros Prime Gauntlet": {
+    "plat": 13.7,
+    "ducats": 15,
+    "volume": 108
+  },
+  "Bo Prime Blueprint": {
+    "plat": 9.4,
+    "ducats": 15,
+    "volume": 48
+  },
+  "Bo Prime Handle": {
+    "plat": 8.6,
+    "ducats": 45,
+    "volume": 50
+  },
+  "Bo Prime Ornament": {
+    "plat": 14.6,
+    "ducats": 15,
+    "volume": 75
+  },
+  "Fang Prime Handle": {
+    "plat": 2.3,
+    "ducats": 25,
+    "volume": 28
+  },
+  "Latron Prime Barrel": {
+    "plat": 13.6,
+    "ducats": 15,
+    "volume": 57
+  },
+  "Orthos Prime Blade": {
+    "plat": 3.6,
+    "ducats": 45,
+    "volume": 59
+  },
+  "Paris Prime Lower Limb": {
+    "plat": 2.7,
+    "ducats": 15,
+    "volume": 23
+  },
+  "Nyx Prime Blueprint": {
+    "plat": 8.7,
+    "ducats": 15,
+    "volume": 141
+  },
+  "Loki Prime Systems": {
+    "plat": 24.4,
+    "ducats": 100,
+    "volume": 88
+  },
+  "Nyx Prime Systems": {
+    "plat": 9.2,
+    "ducats": 45,
+    "volume": 160
+  },
+  "Rhino Prime Chassis": {
+    "plat": 15.0,
+    "ducats": 65,
+    "volume": 182
+  },
+  "Ember Prime Systems": {
+    "plat": 13.0,
+    "ducats": 45,
+    "volume": 78
+  },
+  "Frost Prime Chassis": {
+    "plat": 10.0,
+    "ducats": 15,
+    "volume": 70
+  },
+  "Rhino Prime Systems": {
+    "plat": 9.4,
+    "ducats": 15,
+    "volume": 204
+  },
+  "Ember Prime Blueprint": {
+    "plat": 30.0,
+    "ducats": 100,
+    "volume": 71
+  },
+  "Wyrm Prime Systems": {
+    "plat": 25.2,
+    "ducats": 45,
+    "volume": 100
+  },
+  "Volt Prime Neuroptics": {
+    "plat": 34.7,
+    "ducats": 65,
+    "volume": 213
+  },
+  "Volt Prime Chassis": {
+    "plat": 14.1,
+    "ducats": 45,
+    "volume": 173
+  },
+  "Volt Prime Blueprint": {
+    "plat": 14.5,
+    "ducats": 25,
+    "volume": 142
+  },
+  "Odonata Prime Harness": {
+    "plat": 8.9,
+    "ducats": 15,
+    "volume": 49
+  },
+  "Odonata Prime Systems": {
+    "plat": 7.4,
+    "ducats": 15,
+    "volume": 44
+  },
+  "Ash Prime Blueprint": {
+    "plat": 20.1,
+    "ducats": 45,
+    "volume": 87
+  },
+  "Ash Prime Chassis": {
+    "plat": 12.0,
+    "ducats": 15,
+    "volume": 83
+  },
+  "Ash Prime Systems": {
+    "plat": 47.2,
+    "ducats": 65,
+    "volume": 97
+  },
+  "Carrier Prime Blueprint": {
+    "plat": 9.8,
+    "ducats": 15,
+    "volume": 39
+  },
+  "Vectis Prime Barrel": {
+    "plat": 13.9,
+    "ducats": 15,
+    "volume": 25
+  },
+  "Trinity Prime Neuroptics": {
+    "plat": 9.8,
+    "ducats": 25,
+    "volume": 93
+  },
+  "Dual Kamas Prime Blueprint": {
+    "plat": 7.0,
+    "ducats": 15,
+    "volume": 39
+  },
+  "Akbronco Prime Link": {
+    "plat": 3.4,
+    "ducats": 45,
+    "volume": 34
+  },
+  "Dakra Prime Handle": {
+    "plat": 8.9,
+    "ducats": 15,
+    "volume": 22
+  },
+  "Hikou Prime Pouch": {
+    "plat": 13.8,
+    "ducats": 15,
+    "volume": 95
+  },
+  "Orthos Prime Handle": {
+    "plat": 2.8,
+    "ducats": 15,
+    "volume": 11
+  },
+  "Reaper Prime Blade": {
+    "plat": 9.8,
+    "ducats": 45,
+    "volume": 28
+  },
+  "Reaper Prime Blueprint": {
+    "plat": 8.7,
+    "ducats": 15,
+    "volume": 22
+  },
+  "Scindo Prime Blueprint": {
+    "plat": 5.9,
+    "ducats": 45,
+    "volume": 40
+  },
+  "Soma Prime Barrel": {
+    "plat": 10.6,
+    "ducats": 15,
+    "volume": 63
+  },
+  "Soma Prime Blueprint": {
+    "plat": 7.8,
+    "ducats": 15,
+    "volume": 37
+  },
+  "Vasto Prime Barrel": {
+    "plat": 8.9,
+    "ducats": 15,
+    "volume": 55
+  },
+  "Vasto Prime Blueprint": {
+    "plat": 5.9,
+    "ducats": 45,
+    "volume": 29
+  },
+  "Nova Prime Neuroptics": {
+    "plat": 9.6,
+    "ducats": 15,
+    "volume": 104
+  },
+  "Nova Prime Chassis": {
+    "plat": 39.0,
+    "ducats": 100,
+    "volume": 89
+  },
+  "Nova Prime Blueprint": {
+    "plat": 9.6,
+    "ducats": 45,
+    "volume": 128
+  },
+  "Frost Prime Neuroptics": {
+    "plat": 8.0,
+    "ducats": 15,
+    "volume": 62
+  },
+  "Mag Prime Neuroptics": {
+    "plat": 10.1,
+    "ducats": 15,
+    "volume": 71
+  },
+  "Rhino Prime Neuroptics": {
+    "plat": 17.1,
+    "ducats": 45,
+    "volume": 217
+  },
+  "Loki Prime Neuroptics": {
+    "plat": 12.1,
+    "ducats": 15,
+    "volume": 126
+  },
+  "Nyx Prime Neuroptics": {
+    "plat": 34.7,
+    "ducats": 100,
+    "volume": 157
+  },
+  "Nyx Prime Chassis": {
+    "plat": 9.5,
+    "ducats": 65,
+    "volume": 129
+  },
+  "Loki Prime Chassis": {
+    "plat": 15.3,
+    "ducats": 45,
+    "volume": 103
+  },
+  "Rhino Prime Blueprint": {
+    "plat": 29.5,
+    "ducats": 100,
+    "volume": 177
+  },
+  "Frost Prime Systems": {
+    "plat": 9.8,
+    "ducats": 45,
+    "volume": 80
+  },
+  "Mag Prime Systems": {
+    "plat": 14.1,
+    "ducats": 15,
+    "volume": 52
+  },
+  "Mag Prime Chassis": {
+    "plat": 9.0,
+    "ducats": 45,
+    "volume": 68
+  },
+  "Tigris Prime Stock": {
+    "plat": 5.7,
+    "ducats": 15,
+    "volume": 14
+  },
+  "Tigris Prime Receiver": {
+    "plat": 8.1,
+    "ducats": 45,
+    "volume": 24
+  },
+  "Tigris Prime Blueprint": {
+    "plat": 21.8,
+    "ducats": 100,
+    "volume": 49
+  },
+  "Valkyr Prime Neuroptics": {
+    "plat": 7.3,
+    "ducats": 45,
+    "volume": 107
+  },
+  "Venka Prime Blueprint": {
+    "plat": 7.7,
+    "ducats": 45,
+    "volume": 68
+  },
+  "Wyrm Prime Cerebrum": {
+    "plat": 16.0,
+    "ducats": 15,
+    "volume": 92
+  },
+  "Volt Prime Systems": {
+    "plat": 9.9,
+    "ducats": 45,
+    "volume": 226
+  },
+  "Ash Prime Neuroptics": {
+    "plat": 9.7,
+    "ducats": 45,
+    "volume": 79
+  },
+  "Carrier Prime Carapace": {
+    "plat": 12.1,
+    "ducats": 15,
+    "volume": 44
+  },
+  "Vectis Prime Receiver": {
+    "plat": 47.5,
+    "ducats": 100,
+    "volume": 35
+  },
+  "Vectis Prime Stock": {
+    "plat": 16.8,
+    "ducats": 65,
+    "volume": 27
+  },
+  "Trinity Prime Blueprint": {
+    "plat": 11.8,
+    "ducats": 45,
+    "volume": 103
+  },
+  "Helios Prime Blueprint": {
+    "plat": 5.8,
+    "ducats": 45,
+    "volume": 34
+  },
+  "Sybaris Prime Barrel": {
+    "plat": 24.8,
+    "ducats": 100,
+    "volume": 48
+  },
+  "Banshee Prime Chassis": {
+    "plat": 25.1,
+    "ducats": 100,
+    "volume": 91
+  },
+  "Euphona Prime Blueprint": {
+    "plat": 4.1,
+    "ducats": 15,
+    "volume": 7
+  },
+  "Hydroid Prime Systems": {
+    "plat": 39.4,
+    "ducats": 100,
+    "volume": 141
+  },
+  "Hydroid Prime Chassis": {
+    "plat": 9.1,
+    "ducats": 15,
+    "volume": 136
+  },
+  "Akbronco Prime Blueprint": {
+    "plat": 1.8,
+    "ducats": 15,
+    "volume": 3
+  },
+  "Ankyros Prime Blueprint": {
+    "plat": 7.4,
+    "ducats": 15,
+    "volume": 34
+  },
+  "Boar Prime Barrel": {
+    "plat": 13.2,
+    "ducats": 45,
+    "volume": 69
+  },
+  "Boar Prime Blueprint": {
+    "plat": 9.0,
+    "ducats": 15,
+    "volume": 52
+  },
+  "Boar Prime Receiver": {
+    "plat": 12.6,
+    "ducats": 15,
+    "volume": 59
+  },
+  "Boar Prime Stock": {
+    "plat": 42.9,
+    "ducats": 100,
+    "volume": 74
+  },
+  "Boltor Prime Barrel": {
+    "plat": 10.4,
+    "ducats": 15,
+    "volume": 60
+  },
+  "Boltor Prime Blueprint": {
+    "plat": 26.3,
+    "ducats": 100,
+    "volume": 93
+  },
+  "Boltor Prime Receiver": {
+    "plat": 9.8,
+    "ducats": 45,
+    "volume": 75
+  },
+  "Boltor Prime Stock": {
+    "plat": 9.2,
+    "ducats": 15,
+    "volume": 83
+  },
+  "Braton Prime Barrel": {
+    "plat": 2.7,
+    "ducats": 15,
+    "volume": 34
+  },
+  "Braton Prime Blueprint": {
+    "plat": 1.6,
+    "ducats": 25,
+    "volume": 20
+  },
+  "Braton Prime Receiver": {
+    "plat": 3.4,
+    "ducats": 45,
+    "volume": 69
+  },
+  "Braton Prime Stock": {
+    "plat": 2.2,
+    "ducats": 25,
+    "volume": 42
+  },
+  "Bronco Prime Barrel": {
+    "plat": 3.3,
+    "ducats": 45,
+    "volume": 47
+  },
+  "Bronco Prime Blueprint": {
+    "plat": 3.4,
+    "ducats": 15,
+    "volume": 13
+  },
+  "Bronco Prime Receiver": {
+    "plat": 3.9,
+    "ducats": 15,
+    "volume": 34
+  },
+  "Burston Prime Barrel": {
+    "plat": 3.4,
+    "ducats": 45,
+    "volume": 62
+  },
+  "Burston Prime Blueprint": {
+    "plat": 4.6,
+    "ducats": 15,
+    "volume": 25
+  },
+  "Burston Prime Receiver": {
+    "plat": 3.2,
+    "ducats": 15,
+    "volume": 29
+  },
+  "Burston Prime Stock": {
+    "plat": 2.8,
+    "ducats": 15,
+    "volume": 30
+  },
+  "Dakra Prime Blade": {
+    "plat": 10.6,
+    "ducats": 65,
+    "volume": 23
+  },
+  "Dakra Prime Blueprint": {
+    "plat": 6.1,
+    "ducats": 45,
+    "volume": 14
+  },
+  "Fang Prime Blade": {
+    "plat": 3.8,
+    "ducats": 15,
+    "volume": 33
+  },
+  "Fang Prime Blueprint": {
+    "plat": 1.4,
+    "ducats": 15,
+    "volume": 9
+  },
+  "Glaive Prime Blade": {
+    "plat": 57.4,
+    "ducats": 45,
+    "volume": 272
+  },
+  "Glaive Prime Blueprint": {
+    "plat": 180.1,
+    "ducats": 100,
+    "volume": 123
+  },
+  "Glaive Prime Disc": {
+    "plat": 39.5,
+    "ducats": 45,
+    "volume": 112
+  },
+  "Hikou Prime Blueprint": {
+    "plat": 5.1,
+    "ducats": 15,
+    "volume": 37
+  },
+  "Hikou Prime Stars": {
+    "plat": 8.9,
+    "ducats": 15,
+    "volume": 75
+  },
+  "Latron Prime Blueprint": {
+    "plat": 19.1,
+    "ducats": 15,
+    "volume": 87
+  },
+  "Latron Prime Receiver": {
+    "plat": 19.2,
+    "ducats": 15,
+    "volume": 54
+  },
+  "Latron Prime Stock": {
+    "plat": 18.8,
+    "ducats": 15,
+    "volume": 47
+  },
+  "Lex Prime Barrel": {
+    "plat": 2.8,
+    "ducats": 15,
+    "volume": 13
+  },
+  "Lex Prime Blueprint": {
+    "plat": 2.3,
+    "ducats": 25,
+    "volume": 16
+  },
+  "Orthos Prime Blueprint": {
+    "plat": 2.9,
+    "ducats": 45,
+    "volume": 30
+  },
+  "Paris Prime Grip": {
+    "plat": 3.7,
+    "ducats": 45,
+    "volume": 32
+  },
+  "Paris Prime String": {
+    "plat": 2.3,
+    "ducats": 15,
+    "volume": 12
+  },
+  "Reaper Prime Handle": {
+    "plat": 9.7,
+    "ducats": 15,
+    "volume": 32
+  },
+  "Sicarus Prime Barrel": {
+    "plat": 14.0,
+    "ducats": 15,
+    "volume": 23
+  },
+  "Sicarus Prime Blueprint": {
+    "plat": 6.9,
+    "ducats": 15,
+    "volume": 24
+  },
+  "Sicarus Prime Receiver": {
+    "plat": 29.7,
+    "ducats": 100,
+    "volume": 28
+  },
+  "Soma Prime Receiver": {
+    "plat": 16.9,
+    "ducats": 45,
+    "volume": 80
+  },
+  "Soma Prime Stock": {
+    "plat": 27.6,
+    "ducats": 100,
+    "volume": 89
+  },
+  "Vasto Prime Receiver": {
+    "plat": 7.8,
+    "ducats": 15,
+    "volume": 54
+  },
+  "Nova Prime Systems": {
+    "plat": 9.6,
+    "ducats": 15,
+    "volume": 125
+  },
+  "Frost Prime Blueprint": {
+    "plat": 32.0,
+    "ducats": 100,
+    "volume": 58
+  },
+  "Vauban Prime Chassis": {
+    "plat": 19.2,
+    "ducats": 25,
+    "volume": 205
+  },
+  "Vauban Prime Neuroptics": {
+    "plat": 38.2,
+    "ducats": 100,
+    "volume": 118
+  },
+  "Fragor Prime Blueprint": {
+    "plat": 10.9,
+    "ducats": 65,
+    "volume": 52
+  },
+  "Fragor Prime Handle": {
+    "plat": 13.6,
+    "ducats": 65,
+    "volume": 63
+  },
+  "Fragor Prime Head": {
+    "plat": 9.4,
+    "ducats": 15,
+    "volume": 55
+  },
+  "Akstiletto Prime Blueprint": {
+    "plat": 18.4,
+    "ducats": 100,
+    "volume": 76
+  },
+  "Akstiletto Prime Barrel": {
+    "plat": 15.6,
+    "ducats": 25,
+    "volume": 141
+  },
+  "Akstiletto Prime Receiver": {
+    "plat": 17.2,
+    "ducats": 45,
+    "volume": 116
+  },
+  "Akstiletto Prime Link": {
+    "plat": 13.5,
+    "ducats": 45,
+    "volume": 71
+  },
+  "Nekros Prime Systems": {
+    "plat": 39.9,
+    "ducats": 100,
+    "volume": 50
+  },
+  "Galatine Prime Handle": {
+    "plat": 5.6,
+    "ducats": 45,
+    "volume": 18
+  },
+  "Galatine Prime Blade": {
+    "plat": 5.8,
+    "ducats": 15,
+    "volume": 20
+  },
+  "Galatine Prime Blueprint": {
+    "plat": 36.9,
+    "ducats": 100,
+    "volume": 22
+  },
+  "Trinity Prime Chassis": {
+    "plat": 8.7,
+    "ducats": 45,
+    "volume": 107
+  },
+  "Nekros Prime Blueprint": {
+    "plat": 38.1,
+    "ducats": 65,
+    "volume": 81
+  },
+  "Trinity Prime Systems": {
+    "plat": 9.6,
+    "ducats": 15,
+    "volume": 88
+  },
+  "Dual Kamas Prime Blade": {
+    "plat": 36.8,
+    "ducats": 100,
+    "volume": 82
+  },
+  "Dual Kamas Prime Handle": {
+    "plat": 9.3,
+    "ducats": 45,
+    "volume": 77
+  },
+  "Vauban Prime Blueprint": {
+    "plat": 18.7,
+    "ducats": 65,
+    "volume": 221
+  },
+  "Tigris Prime Barrel": {
+    "plat": 5.5,
+    "ducats": 45,
+    "volume": 18
+  },
+  "Valkyr Prime Chassis": {
+    "plat": 25.8,
+    "ducats": 100,
+    "volume": 223
+  },
+  "Valkyr Prime Systems": {
+    "plat": 11.7,
+    "ducats": 65,
+    "volume": 207
+  },
+  "Venka Prime Gauntlet": {
+    "plat": 32.3,
+    "ducats": 100,
+    "volume": 189
+  },
+  "Cernos Prime Blueprint": {
+    "plat": 4.1,
+    "ducats": 45,
+    "volume": 27
+  },
+  "Cernos Prime Lower Limb": {
+    "plat": 27.4,
+    "ducats": 100,
+    "volume": 84
+  },
+  "Cernos Prime Upper Limb": {
+    "plat": 8.0,
+    "ducats": 15,
+    "volume": 46
+  },
+  "Cernos Prime Grip": {
+    "plat": 6.2,
+    "ducats": 15,
+    "volume": 33
+  },
+  "Cernos Prime String": {
+    "plat": 6.7,
+    "ducats": 25,
+    "volume": 38
+  },
+  "Valkyr Prime Blueprint": {
+    "plat": 5.0,
+    "ducats": 15,
+    "volume": 111
+  },
+  "Venka Prime Blades": {
+    "plat": 8.1,
+    "ducats": 15,
+    "volume": 125
+  },
+  "Aklex Prime Blueprint": {
+    "plat": 9.2,
+    "ducats": 45,
+    "volume": 28
+  },
+  "Ballistica Prime Blueprint": {
+    "plat": 19.5,
+    "ducats": 100,
+    "volume": 55
+  },
+  "Oberon Prime Chassis": {
+    "plat": 9.6,
+    "ducats": 15,
+    "volume": 128
+  },
+  "Banshee Prime Neuroptics": {
+    "plat": 4.0,
+    "ducats": 15,
+    "volume": 26
+  },
+  "Silva & Aegis Prime Blade": {
+    "plat": 7.1,
+    "ducats": 45,
+    "volume": 35
+  },
+  "Sybaris Prime Stock": {
+    "plat": 8.0,
+    "ducats": 15,
+    "volume": 35
+  },
+  "Sybaris Prime Receiver": {
+    "plat": 8.5,
+    "ducats": 45,
+    "volume": 43
+  },
+  "Oberon Prime Systems": {
+    "plat": 15.0,
+    "ducats": 65,
+    "volume": 79
+  },
+  "Ballistica Prime Receiver": {
+    "plat": 5.9,
+    "ducats": 45,
+    "volume": 44
+  },
+  "Aklex Prime Link": {
+    "plat": 40.7,
+    "ducats": 100,
+    "volume": 51
+  },
+  "Oberon Prime Blueprint": {
+    "plat": 8.6,
+    "ducats": 45,
+    "volume": 118
+  },
+  "Ballistica Prime Upper Limb": {
+    "plat": 6.6,
+    "ducats": 45,
+    "volume": 52
+  },
+  "Banshee Prime Systems": {
+    "plat": 28.1,
+    "ducats": 65,
+    "volume": 68
+  },
+  "Hydroid Prime Blueprint": {
+    "plat": 16.6,
+    "ducats": 45,
+    "volume": 211
+  },
+  "Lex Prime Receiver": {
+    "plat": 4.0,
+    "ducats": 15,
+    "volume": 43
+  },
+  "Nami Skyla Prime Blueprint": {
+    "plat": 8.6,
+    "ducats": 15,
+    "volume": 53
+  },
+  "Paris Prime Blueprint": {
+    "plat": 2.5,
+    "ducats": 15,
+    "volume": 12
+  },
+  "Silva & Aegis Prime Hilt": {
+    "plat": 6.2,
+    "ducats": 15,
+    "volume": 34
+  },
+  "Paris Prime Upper Limb": {
+    "plat": 2.1,
+    "ducats": 25,
+    "volume": 28
+  },
+  "Silva & Aegis Prime Blueprint": {
+    "plat": 8.4,
+    "ducats": 45,
+    "volume": 30
+  },
+  "Scindo Prime Blade": {
+    "plat": 16.4,
+    "ducats": 100,
+    "volume": 72
+  },
+  "Euphona Prime Barrel": {
+    "plat": 6.7,
+    "ducats": 45,
+    "volume": 20
+  },
+  "Mag Prime Blueprint": {
+    "plat": 34.6,
+    "ducats": 100,
+    "volume": 90
+  },
+  "Banshee Prime Blueprint": {
+    "plat": 5.0,
+    "ducats": 45,
+    "volume": 29
+  },
+  "Euphona Prime Receiver": {
+    "plat": 38.3,
+    "ducats": 100,
+    "volume": 41
+  },
+  "Nami Skyla Prime Handle": {
+    "plat": 8.0,
+    "ducats": 45,
+    "volume": 92
+  },
+  "Odonata Prime Blueprint": {
+    "plat": 6.6,
+    "ducats": 45,
+    "volume": 31
+  },
+  "Odonata Prime Wings": {
+    "plat": 14.4,
+    "ducats": 65,
+    "volume": 52
+  },
+  "Carrier Prime Cerebrum": {
+    "plat": 44.1,
+    "ducats": 65,
+    "volume": 80
+  },
+  "Carrier Prime Systems": {
+    "plat": 8.0,
+    "ducats": 15,
+    "volume": 41
+  },
+  "Vectis Prime Blueprint": {
+    "plat": 7.2,
+    "ducats": 45,
+    "volume": 18
+  },
+  "Saryn Prime Blueprint": {
+    "plat": 20.2,
+    "ducats": 65,
+    "volume": 419
+  },
+  "Saryn Prime Neuroptics": {
+    "plat": 12.9,
+    "ducats": 45,
+    "volume": 361
+  },
+  "Saryn Prime Systems": {
+    "plat": 6.9,
+    "ducats": 15,
+    "volume": 174
+  },
+  "Saryn Prime Chassis": {
+    "plat": 40.3,
+    "ducats": 100,
+    "volume": 356
+  },
+  "Nikana Prime Blueprint": {
+    "plat": 6.9,
+    "ducats": 25,
+    "volume": 94
+  },
+  "Nikana Prime Blade": {
+    "plat": 18.4,
+    "ducats": 65,
+    "volume": 195
+  },
+  "Nikana Prime Hilt": {
+    "plat": 41.7,
+    "ducats": 100,
+    "volume": 193
+  },
+  "Spira Prime Blueprint": {
+    "plat": 5.6,
+    "ducats": 15,
+    "volume": 38
+  },
+  "Spira Prime Blade": {
+    "plat": 13.6,
+    "ducats": 65,
+    "volume": 148
+  },
+  "Spira Prime Pouch": {
+    "plat": 32.5,
+    "ducats": 100,
+    "volume": 149
+  },
+  "Vauban Prime Systems": {
+    "plat": 36.8,
+    "ducats": 100,
+    "volume": 216
+  },
+  "Helios Prime Systems": {
+    "plat": 9.6,
+    "ducats": 45,
+    "volume": 45
+  },
+  "Nami Skyla Prime Blade": {
+    "plat": 32.7,
+    "ducats": 100,
+    "volume": 109
+  },
+  "Mirage Prime Systems": {
+    "plat": 14.7,
+    "ducats": 45,
+    "volume": 128
+  },
+  "Mirage Prime Blueprint": {
+    "plat": 45.6,
+    "ducats": 100,
+    "volume": 125
+  },
+  "Mirage Prime Chassis": {
+    "plat": 9.0,
+    "ducats": 15,
+    "volume": 97
+  },
+  "Mirage Prime Neuroptics": {
+    "plat": 5.3,
+    "ducats": 15,
+    "volume": 72
+  },
+  "Akbolto Prime Receiver": {
+    "plat": 26.8,
+    "ducats": 100,
+    "volume": 73
+  },
+  "Akbolto Prime Blueprint": {
+    "plat": 3.8,
+    "ducats": 15,
+    "volume": 8
+  },
+  "Kogake Prime Boot": {
+    "plat": 7.0,
+    "ducats": 15,
+    "volume": 35
+  },
+  "Kogake Prime Blueprint": {
+    "plat": 5.7,
+    "ducats": 45,
+    "volume": 11
+  },
+  "Akbolto Prime Link": {
+    "plat": 4.0,
+    "ducats": 45,
+    "volume": 15
+  },
+  "Kogake Prime Gauntlet": {
+    "plat": 25.2,
+    "ducats": 100,
+    "volume": 58
+  },
+  "Akbolto Prime Barrel": {
+    "plat": 7.3,
+    "ducats": 45,
+    "volume": 64
+  },
+  "Zephyr Prime Neuroptics": {
+    "plat": 5.4,
+    "ducats": 15,
+    "volume": 71
+  },
+  "Zephyr Prime Blueprint": {
+    "plat": 13.2,
+    "ducats": 65,
+    "volume": 124
+  },
+  "Zephyr Prime Chassis": {
+    "plat": 6.4,
+    "ducats": 25,
+    "volume": 66
+  },
+  "Zephyr Prime Systems": {
+    "plat": 43.9,
+    "ducats": 100,
+    "volume": 103
+  },
+  "Tiberon Prime Blueprint": {
+    "plat": 4.0,
+    "ducats": 25,
+    "volume": 12
+  },
+  "Kronen Prime Blueprint": {
+    "plat": 4.1,
+    "ducats": 15,
+    "volume": 22
+  },
+  "Tiberon Prime Barrel": {
+    "plat": 9.0,
+    "ducats": 65,
+    "volume": 28
+  },
+  "Kronen Prime Handle": {
+    "plat": 10.2,
+    "ducats": 45,
+    "volume": 58
+  },
+  "Tiberon Prime Stock": {
+    "plat": 20.6,
+    "ducats": 100,
+    "volume": 46
+  },
+  "Tiberon Prime Receiver": {
+    "plat": 6.8,
+    "ducats": 15,
+    "volume": 16
+  },
+  "Kronen Prime Blade": {
+    "plat": 33.6,
+    "ducats": 100,
+    "volume": 83
+  },
+  "Destreza Prime Blade": {
+    "plat": 41.9,
+    "ducats": 100,
+    "volume": 33
+  },
+  "Pyrana Prime Blueprint": {
+    "plat": 37.1,
+    "ducats": 100,
+    "volume": 58
+  },
+  "Pyrana Prime Receiver": {
+    "plat": 8.5,
+    "ducats": 45,
+    "volume": 41
+  },
+  "Pyrana Prime Barrel": {
+    "plat": 6.6,
+    "ducats": 15,
+    "volume": 31
+  },
+  "Destreza Prime Blueprint": {
+    "plat": 4.4,
+    "ducats": 45,
+    "volume": 13
+  },
+  "Destreza Prime Handle": {
+    "plat": 7.9,
+    "ducats": 15,
+    "volume": 27
+  },
+  "Limbo Prime Blueprint": {
+    "plat": 5.2,
+    "ducats": 45,
+    "volume": 44
+  },
+  "Limbo Prime Neuroptics": {
+    "plat": 27.7,
+    "ducats": 100,
+    "volume": 80
+  },
+  "Limbo Prime Systems": {
+    "plat": 3.8,
+    "ducats": 15,
+    "volume": 47
+  },
+  "Limbo Prime Chassis": {
+    "plat": 60.0,
+    "ducats": 100,
+    "volume": 75
+  },
+  "Chroma Prime Systems": {
+    "plat": 15.6,
+    "ducats": 65,
+    "volume": 153
+  },
+  "Chroma Prime Chassis": {
+    "plat": 6.7,
+    "ducats": 25,
+    "volume": 74
+  },
+  "Chroma Prime Neuroptics": {
+    "plat": 24.5,
+    "ducats": 100,
+    "volume": 153
+  },
+  "Chroma Prime Blueprint": {
+    "plat": 6.8,
+    "ducats": 15,
+    "volume": 85
+  },
+  "Gram Prime Handle": {
+    "plat": 15.4,
+    "ducats": 100,
+    "volume": 55
+  },
+  "Rubico Prime Barrel": {
+    "plat": 8.9,
+    "ducats": 25,
+    "volume": 65
+  },
+  "Rubico Prime Receiver": {
+    "plat": 5.5,
+    "ducats": 15,
+    "volume": 57
+  },
+  "Gram Prime Blueprint": {
+    "plat": 7.2,
+    "ducats": 45,
+    "volume": 12
+  },
+  "Gram Prime Blade": {
+    "plat": 4.6,
+    "ducats": 15,
+    "volume": 18
+  },
+  "Rubico Prime Stock": {
+    "plat": 9.2,
+    "ducats": 45,
+    "volume": 79
+  },
+  "Rubico Prime Blueprint": {
+    "plat": 29.5,
+    "ducats": 100,
+    "volume": 80
+  },
+  "Akvasto Prime Blueprint": {
+    "plat": 57.4,
+    "ducats": 100,
+    "volume": 32
+  },
+  "Akvasto Prime Link": {
+    "plat": 23.7,
+    "ducats": 45,
+    "volume": 28
+  },
+  "Mesa Prime Neuroptics": {
+    "plat": 33.2,
+    "ducats": 100,
+    "volume": 222
+  },
+  "Mesa Prime Blueprint": {
+    "plat": 7.8,
+    "ducats": 45,
+    "volume": 265
+  },
+  "Mesa Prime Systems": {
+    "plat": 18.7,
+    "ducats": 100,
+    "volume": 200
+  },
+  "Mesa Prime Chassis": {
+    "plat": 6.6,
+    "ducats": 15,
+    "volume": 172
+  },
+  "Akjagara Prime Barrel": {
+    "plat": 21.7,
+    "ducats": 100,
+    "volume": 147
+  },
+  "Akjagara Prime Blueprint": {
+    "plat": 3.7,
+    "ducats": 15,
+    "volume": 24
+  },
+  "Redeemer Prime Blade": {
+    "plat": 5.9,
+    "ducats": 15,
+    "volume": 49
+  },
+  "Redeemer Prime Blueprint": {
+    "plat": 5.2,
+    "ducats": 45,
+    "volume": 58
+  },
+  "Akjagara Prime Receiver": {
+    "plat": 9.7,
+    "ducats": 45,
+    "volume": 84
+  },
+  "Redeemer Prime Handle": {
+    "plat": 39.0,
+    "ducats": 100,
+    "volume": 89
+  },
+  "Akjagara Prime Link": {
+    "plat": 5.7,
+    "ducats": 45,
+    "volume": 39
+  },
+  "Tipedo Prime Handle": {
+    "plat": 34.7,
+    "ducats": 100,
+    "volume": 23
+  },
+  "Stradavar Prime Barrel": {
+    "plat": 3.8,
+    "ducats": 45,
+    "volume": 18
+  },
+  "Tipedo Prime Ornament": {
+    "plat": 12.9,
+    "ducats": 45,
+    "volume": 58
+  },
+  "Tipedo Prime Blueprint": {
+    "plat": 5.4,
+    "ducats": 15,
+    "volume": 9
+  },
+  "Equinox Prime Systems": {
+    "plat": 34.0,
+    "ducats": 100,
+    "volume": 117
+  },
+  "Equinox Prime Chassis": {
+    "plat": 4.0,
+    "ducats": 15,
+    "volume": 50
+  },
+  "Stradavar Prime Receiver": {
+    "plat": 6.0,
+    "ducats": 15,
+    "volume": 20
+  },
+  "Stradavar Prime Stock": {
+    "plat": 8.7,
+    "ducats": 15,
+    "volume": 34
+  },
+  "Equinox Prime Neuroptics": {
+    "plat": 6.4,
+    "ducats": 45,
+    "volume": 63
+  },
+  "Equinox Prime Blueprint": {
+    "plat": 14.0,
+    "ducats": 45,
+    "volume": 72
+  },
+  "Stradavar Prime Blueprint": {
+    "plat": 12.4,
+    "ducats": 100,
+    "volume": 39
+  },
+  "Ninkondi Prime Blueprint": {
+    "plat": 4.8,
+    "ducats": 15,
+    "volume": 9
+  },
+  "Zhuge Prime Barrel": {
+    "plat": 18.6,
+    "ducats": 100,
+    "volume": 47
+  },
+  "Zhuge Prime Grip": {
+    "plat": 5.0,
+    "ducats": 15,
+    "volume": 10
+  },
+  "Wukong Prime Chassis": {
+    "plat": 9.0,
+    "ducats": 45,
+    "volume": 131
+  },
+  "Ninkondi Prime Handle": {
+    "plat": 21.7,
+    "ducats": 100,
+    "volume": 75
+  },
+  "Wukong Prime Blueprint": {
+    "plat": 44.9,
+    "ducats": 100,
+    "volume": 171
+  },
+  "Wukong Prime Systems": {
+    "plat": 11.6,
+    "ducats": 45,
+    "volume": 149
+  },
+  "Zhuge Prime String": {
+    "plat": 8.7,
+    "ducats": 15,
+    "volume": 29
+  },
+  "Zhuge Prime Blueprint": {
+    "plat": 4.7,
+    "ducats": 45,
+    "volume": 8
+  },
+  "Ninkondi Prime Chain": {
+    "plat": 3.7,
+    "ducats": 45,
+    "volume": 7
+  },
+  "Zhuge Prime Receiver": {
+    "plat": 10.0,
+    "ducats": 45,
+    "volume": 28
+  },
+  "Wukong Prime Neuroptics": {
+    "plat": 6.7,
+    "ducats": 15,
+    "volume": 101
+  },
+  "Atlas Prime Chassis": {
+    "plat": 8.0,
+    "ducats": 45,
+    "volume": 98
+  },
+  "Atlas Prime Systems": {
+    "plat": 5.3,
+    "ducats": 45,
+    "volume": 80
+  },
+  "Atlas Prime Neuroptics": {
+    "plat": 39.1,
+    "ducats": 100,
+    "volume": 202
+  },
+  "Atlas Prime Blueprint": {
+    "plat": 3.7,
+    "ducats": 15,
+    "volume": 68
+  },
+  "Dethcube Prime Carapace": {
+    "plat": 4.2,
+    "ducats": 45,
+    "volume": 38
+  },
+  "Dethcube Prime Cerebrum": {
+    "plat": 20.9,
+    "ducats": 65,
+    "volume": 112
+  },
+  "Tekko Prime Gauntlet": {
+    "plat": 9.0,
+    "ducats": 15,
+    "volume": 94
+  },
+  "Dethcube Prime Blueprint": {
+    "plat": 18.2,
+    "ducats": 100,
+    "volume": 123
+  },
+  "Dethcube Prime Systems": {
+    "plat": 5.9,
+    "ducats": 15,
+    "volume": 49
+  },
+  "Tekko Prime Blade": {
+    "plat": 25.0,
+    "ducats": 100,
+    "volume": 145
+  },
+  "Tekko Prime Blueprint": {
+    "plat": 4.2,
+    "ducats": 45,
+    "volume": 23
+  },
+  "Ivara Prime Blueprint": {
+    "plat": 6.7,
+    "ducats": 45,
+    "volume": 116
+  },
+  "Ivara Prime Neuroptics": {
+    "plat": 5.7,
+    "ducats": 15,
+    "volume": 120
+  },
+  "Ivara Prime Chassis": {
+    "plat": 31.0,
+    "ducats": 100,
+    "volume": 185
+  },
+  "Ivara Prime Systems": {
+    "plat": 8.2,
+    "ducats": 45,
+    "volume": 139
+  },
+  "Baza Prime Blueprint": {
+    "plat": 10.1,
+    "ducats": 65,
+    "volume": 32
+  },
+  "Aksomati Prime Link": {
+    "plat": 24.9,
+    "ducats": 100,
+    "volume": 84
+  },
+  "Baza Prime Stock": {
+    "plat": 32.3,
+    "ducats": 100,
+    "volume": 80
+  },
+  "Aksomati Prime Receiver": {
+    "plat": 8.4,
+    "ducats": 15,
+    "volume": 98
+  },
+  "Baza Prime Barrel": {
+    "plat": 4.7,
+    "ducats": 45,
+    "volume": 34
+  },
+  "Aksomati Prime Blueprint": {
+    "plat": 4.1,
+    "ducats": 15,
+    "volume": 26
+  },
+  "Baza Prime Receiver": {
+    "plat": 5.4,
+    "ducats": 15,
+    "volume": 34
+  },
+  "Aksomati Prime Barrel": {
+    "plat": 10.2,
+    "ducats": 45,
+    "volume": 69
+  },
+  "Aklex Prime Set": {
+    "plat": 56.1,
+    "ducats": 0,
+    "volume": 35
+  },
+  "Silva & Aegis Prime Set": {
+    "plat": 48.3,
+    "ducats": 0,
+    "volume": 64
+  },
+  "Frost Prime Set": {
+    "plat": 78.8,
+    "ducats": 0,
+    "volume": 147
+  },
+  "Latron Prime Set": {
+    "plat": 94.1,
+    "ducats": 0,
+    "volume": 93
+  },
+  "Lex Prime Set": {
+    "plat": 8.7,
+    "ducats": 0,
+    "volume": 86
+  },
+  "Odonata Prime Set": {
+    "plat": 39.0,
+    "ducats": 0,
+    "volume": 57
+  },
+  "Hydroid Prime Set": {
+    "plat": 99.7,
+    "ducats": 0,
+    "volume": 126
+  },
+  "Destreza Prime Set": {
+    "plat": 56.7,
+    "ducats": 0,
+    "volume": 39
+  },
+  "Ninkondi Prime Set": {
+    "plat": 66.5,
+    "ducats": 0,
+    "volume": 50
+  },
+  "Wukong Prime Set": {
+    "plat": 85.1,
+    "ducats": 0,
+    "volume": 301
+  },
+  "Zhuge Prime Set": {
+    "plat": 56.2,
+    "ducats": 0,
+    "volume": 37
+  },
+  "Helios Prime Set": {
+    "plat": 72.9,
+    "ducats": 0,
+    "volume": 122
+  },
+  "Hikou Prime Set": {
+    "plat": 61.4,
+    "ducats": 0,
+    "volume": 68
+  },
+  "Paris Prime Set": {
+    "plat": 7.9,
+    "ducats": 0,
+    "volume": 114
+  },
+  "Trinity Prime Set": {
+    "plat": 58.9,
+    "ducats": 0,
+    "volume": 148
+  },
+  "Ballistica Prime Set": {
+    "plat": 68.4,
+    "ducats": 0,
+    "volume": 64
+  },
+  "Vasto Prime Set": {
+    "plat": 29.5,
+    "ducats": 0,
+    "volume": 110
+  },
+  "Akbronco Prime Set": {
+    "plat": 9.8,
+    "ducats": 0,
+    "volume": 30
+  },
+  "Ankyros Prime Set": {
+    "plat": 73.2,
+    "ducats": 0,
+    "volume": 60
+  },
+  "Carrier Prime Set": {
+    "plat": 94.9,
+    "ducats": 0,
+    "volume": 88
+  },
+  "Dakra Prime Set": {
+    "plat": 28.7,
+    "ducats": 0,
+    "volume": 37
+  },
+  "Dual Kamas Prime Set": {
+    "plat": 134.0,
+    "ducats": 0,
+    "volume": 48
+  },
+  "Ember Prime Set": {
+    "plat": 107.9,
+    "ducats": 0,
+    "volume": 128
+  },
+  "Fang Prime Set": {
+    "plat": 8.7,
+    "ducats": 0,
+    "volume": 41
+  },
+  "Mag Prime Set": {
+    "plat": 88.2,
+    "ducats": 0,
+    "volume": 173
+  },
+  "Saryn Prime Set": {
+    "plat": 95.9,
+    "ducats": 0,
+    "volume": 389
+  },
+  "Venka Prime Set": {
+    "plat": 102.6,
+    "ducats": 0,
+    "volume": 64
+  },
+  "Vectis Prime Set": {
+    "plat": 110.4,
+    "ducats": 0,
+    "volume": 39
+  },
+  "Volt Prime Set": {
+    "plat": 89.8,
+    "ducats": 0,
+    "volume": 215
+  },
+  "Wyrm Prime Set": {
+    "plat": 91.1,
+    "ducats": 0,
+    "volume": 71
+  },
+  "Euphona Prime Set": {
+    "plat": 48.3,
+    "ducats": 0,
+    "volume": 42
+  },
+  "Sybaris Prime Set": {
+    "plat": 51.4,
+    "ducats": 0,
+    "volume": 63
+  },
+  "Bo Prime Set": {
+    "plat": 65.1,
+    "ducats": 0,
+    "volume": 54
+  },
+  "Boar Prime Set": {
+    "plat": 103.8,
+    "ducats": 0,
+    "volume": 89
+  },
+  "Boltor Prime Set": {
+    "plat": 83.4,
+    "ducats": 0,
+    "volume": 96
+  },
+  "Braton Prime Set": {
+    "plat": 8.8,
+    "ducats": 0,
+    "volume": 94
+  },
+  "Nikana Prime Set": {
+    "plat": 84.5,
+    "ducats": 0,
+    "volume": 165
+  },
+  "Banshee Prime Set": {
+    "plat": 68.9,
+    "ducats": 0,
+    "volume": 103
+  },
+  "Vauban Prime Set": {
+    "plat": 139.3,
+    "ducats": 0,
+    "volume": 180
+  },
+  "Fragor Prime Set": {
+    "plat": 44.1,
+    "ducats": 0,
+    "volume": 78
+  },
+  "Oberon Prime Set": {
+    "plat": 84.7,
+    "ducats": 0,
+    "volume": 136
+  },
+  "Bronco Prime Set": {
+    "plat": 11.7,
+    "ducats": 0,
+    "volume": 112
+  },
+  "Kronen Prime Set": {
+    "plat": 99.8,
+    "ducats": 0,
+    "volume": 39
+  },
+  "Tiberon Prime Set": {
+    "plat": 42.4,
+    "ducats": 0,
+    "volume": 41
+  },
+  "Mirage Prime Set": {
+    "plat": 86.3,
+    "ducats": 0,
+    "volume": 230
+  },
+  "Zephyr Prime Set": {
+    "plat": 82.8,
+    "ducats": 0,
+    "volume": 167
+  },
+  "Pyrana Prime Set": {
+    "plat": 71.5,
+    "ducats": 0,
+    "volume": 95
+  },
+  "Ash Prime Set": {
+    "plat": 116.7,
+    "ducats": 0,
+    "volume": 123
+  },
+  "Nekros Prime Set": {
+    "plat": 130.0,
+    "ducats": 0,
+    "volume": 158
+  },
+  "Galatine Prime Set": {
+    "plat": 57.2,
+    "ducats": 0,
+    "volume": 52
+  },
+  "Mesa Prime Set": {
+    "plat": 79.6,
+    "ducats": 0,
+    "volume": 281
+  },
+  "Redeemer Prime Set": {
+    "plat": 53.1,
+    "ducats": 0,
+    "volume": 75
+  },
+  "Gram Prime Set": {
+    "plat": 30.6,
+    "ducats": 0,
+    "volume": 59
+  },
+  "Akvasto Prime Set": {
+    "plat": 98.1,
+    "ducats": 0,
+    "volume": 40
+  },
+  "Stradavar Prime Set": {
+    "plat": 37.8,
+    "ducats": 0,
+    "volume": 46
+  },
+  "Glaive Prime Set": {
+    "plat": 368.5,
+    "ducats": 0,
+    "volume": 196
+  },
+  "Orthos Prime Set": {
+    "plat": 10.3,
+    "ducats": 0,
+    "volume": 95
+  },
+  "Reaper Prime Set": {
+    "plat": 38.1,
+    "ducats": 0,
+    "volume": 66
+  },
+  "Rhino Prime Set": {
+    "plat": 91.5,
+    "ducats": 0,
+    "volume": 209
+  },
+  "Scindo Prime Set": {
+    "plat": 34.6,
+    "ducats": 0,
+    "volume": 98
+  },
+  "Sicarus Prime Set": {
+    "plat": 61.1,
+    "ducats": 0,
+    "volume": 43
+  },
+  "Akstiletto Prime Set": {
+    "plat": 138.7,
+    "ducats": 0,
+    "volume": 54
+  },
+  "Tigris Prime Set": {
+    "plat": 49.5,
+    "ducats": 0,
+    "volume": 30
+  },
+  "Cernos Prime Set": {
+    "plat": 66.4,
+    "ducats": 0,
+    "volume": 57
+  },
+  "Valkyr Prime Set": {
+    "plat": 65.3,
+    "ducats": 0,
+    "volume": 187
+  },
+  "Burston Prime Set": {
+    "plat": 11.2,
+    "ducats": 0,
+    "volume": 129
+  },
+  "Loki Prime Set": {
+    "plat": 84.6,
+    "ducats": 0,
+    "volume": 125
+  },
+  "Nova Prime Set": {
+    "plat": 87.8,
+    "ducats": 0,
+    "volume": 131
+  },
+  "Nyx Prime Set": {
+    "plat": 77.9,
+    "ducats": 0,
+    "volume": 168
+  },
+  "Soma Prime Set": {
+    "plat": 91.0,
+    "ducats": 0,
+    "volume": 92
+  },
+  "Spira Prime Set": {
+    "plat": 126.3,
+    "ducats": 0,
+    "volume": 67
+  },
+  "Nami Skyla Prime Set": {
+    "plat": 114.8,
+    "ducats": 0,
+    "volume": 34
+  },
+  "Kogake Prime Set": {
+    "plat": 97.2,
+    "ducats": 0,
+    "volume": 22
+  },
+  "Akbolto Prime Set": {
+    "plat": 90.4,
+    "ducats": 0,
+    "volume": 38
+  },
+  "Limbo Prime Set": {
+    "plat": 112.4,
+    "ducats": 0,
+    "volume": 128
+  },
+  "Chroma Prime Set": {
+    "plat": 70.1,
+    "ducats": 0,
+    "volume": 241
+  },
+  "Rubico Prime Set": {
+    "plat": 67.0,
+    "ducats": 0,
+    "volume": 164
+  },
+  "Akjagara Prime Set": {
+    "plat": 97.9,
+    "ducats": 0,
+    "volume": 58
+  },
+  "Equinox Prime Set": {
+    "plat": 69.5,
+    "ducats": 0,
+    "volume": 106
+  },
+  "Tipedo Prime Set": {
+    "plat": 80.3,
+    "ducats": 0,
+    "volume": 37
+  },
+  "Atlas Prime Set": {
+    "plat": 59.1,
+    "ducats": 0,
+    "volume": 197
+  },
+  "Dethcube Prime Set": {
+    "plat": 64.6,
+    "ducats": 0,
+    "volume": 107
+  },
+  "Tekko Prime Set": {
+    "plat": 94.8,
+    "ducats": 0,
+    "volume": 40
+  },
+  "Ivara Prime Set": {
+    "plat": 59.6,
+    "ducats": 0,
+    "volume": 164
+  },
+  "Baza Prime Set": {
+    "plat": 67.4,
+    "ducats": 0,
+    "volume": 71
+  },
+  "Aksomati Prime Set": {
+    "plat": 90.7,
+    "ducats": 0,
+    "volume": 64
+  },
+  "Titania Prime Chassis": {
+    "plat": 8.8,
+    "ducats": 15,
+    "volume": 123
+  },
+  "Corinth Prime Stock": {
+    "plat": 12.9,
+    "ducats": 100,
+    "volume": 62
+  },
+  "Corinth Prime Blueprint": {
+    "plat": 4.0,
+    "ducats": 15,
+    "volume": 13
+  },
+  "Pangolin Prime Handle": {
+    "plat": 6.4,
+    "ducats": 15,
+    "volume": 15
+  },
+  "Corinth Prime Set": {
+    "plat": 96.5,
+    "ducats": 0,
+    "volume": 73
+  },
+  "Pangolin Prime Blueprint": {
+    "plat": 12.3,
+    "ducats": 100,
+    "volume": 55
+  },
+  "Titania Prime Systems": {
+    "plat": 45.4,
+    "ducats": 100,
+    "volume": 206
+  },
+  "Corinth Prime Barrel": {
+    "plat": 52.5,
+    "ducats": 100,
+    "volume": 73
+  },
+  "Corinth Prime Receiver": {
+    "plat": 7.8,
+    "ducats": 45,
+    "volume": 30
+  },
+  "Titania Prime Neuroptics": {
+    "plat": 5.3,
+    "ducats": 45,
+    "volume": 112
+  },
+  "Pangolin Prime Blade": {
+    "plat": 6.2,
+    "ducats": 45,
+    "volume": 21
+  },
+  "Pangolin Prime Set": {
+    "plat": 29.6,
+    "ducats": 0,
+    "volume": 63
+  },
+  "Titania Prime Blueprint": {
+    "plat": 9.0,
+    "ducats": 45,
+    "volume": 140
+  },
+  "Titania Prime Set": {
+    "plat": 77.7,
+    "ducats": 0,
+    "volume": 322
+  },
+  "Kavasa Prime Kubrow Collar Set": {
+    "plat": 26.6,
+    "ducats": 0,
+    "volume": 11
+  },
+  "Kavasa Prime Kubrow Collar Blueprint": {
+    "plat": 5.0,
+    "ducats": 45,
+    "volume": 6
+  },
+  "Kavasa Prime Buckle": {
+    "plat": 13.8,
+    "ducats": 65,
+    "volume": 19
+  },
+  "Kavasa Prime Band": {
+    "plat": 5.8,
+    "ducats": 45,
+    "volume": 11
+  },
+  "Inaros Prime Set": {
+    "plat": 61.9,
+    "ducats": 0,
+    "volume": 173
+  },
+  "Inaros Prime Chassis": {
+    "plat": 5.0,
+    "ducats": 45,
+    "volume": 46
+  },
+  "Inaros Prime Neuroptics": {
+    "plat": 37.7,
+    "ducats": 100,
+    "volume": 101
+  },
+  "Inaros Prime Blueprint": {
+    "plat": 6.3,
+    "ducats": 45,
+    "volume": 71
+  },
+  "Inaros Prime Systems": {
+    "plat": 6.9,
+    "ducats": 15,
+    "volume": 38
+  },
+  "Panthera Prime Stock": {
+    "plat": 5.8,
+    "ducats": 45,
+    "volume": 23
+  },
+  "Karyst Prime Handle": {
+    "plat": 4.1,
+    "ducats": 45,
+    "volume": 19
+  },
+  "Karyst Prime Set": {
+    "plat": 27.8,
+    "ducats": 0,
+    "volume": 58
+  },
+  "Panthera Prime Set": {
+    "plat": 53.2,
+    "ducats": 0,
+    "volume": 47
+  },
+  "Panthera Prime Barrel": {
+    "plat": 14.5,
+    "ducats": 100,
+    "volume": 38
+  },
+  "Panthera Prime Receiver": {
+    "plat": 16.3,
+    "ducats": 100,
+    "volume": 47
+  },
+  "Panthera Prime Blueprint": {
+    "plat": 5.2,
+    "ducats": 15,
+    "volume": 14
+  },
+  "Karyst Prime Blueprint": {
+    "plat": 4.5,
+    "ducats": 15,
+    "volume": 12
+  },
+  "Karyst Prime Blade": {
+    "plat": 17.3,
+    "ducats": 100,
+    "volume": 48
+  },
+  "Guandao Prime Set": {
+    "plat": 57.6,
+    "ducats": 0,
+    "volume": 105
+  },
+  "Nezha Prime Blueprint": {
+    "plat": 4.9,
+    "ducats": 45,
+    "volume": 63
+  },
+  "Guandao Prime Blade": {
+    "plat": 9.7,
+    "ducats": 15,
+    "volume": 66
+  },
+  "Zakti Prime Blueprint": {
+    "plat": 13.3,
+    "ducats": 100,
+    "volume": 38
+  },
+  "Zakti Prime Set": {
+    "plat": 28.7,
+    "ducats": 0,
+    "volume": 47
+  },
+  "Guandao Prime Blueprint": {
+    "plat": 5.1,
+    "ducats": 45,
+    "volume": 32
+  },
+  "Guandao Prime Handle": {
+    "plat": 17.4,
+    "ducats": 100,
+    "volume": 67
+  },
+  "Zakti Prime Barrel": {
+    "plat": 4.5,
+    "ducats": 45,
+    "volume": 19
+  },
+  "Nezha Prime Systems": {
+    "plat": 4.3,
+    "ducats": 15,
+    "volume": 43
+  },
+  "Nezha Prime Chassis": {
+    "plat": 27.2,
+    "ducats": 100,
+    "volume": 115
+  },
+  "Zakti Prime Receiver": {
+    "plat": 5.2,
+    "ducats": 15,
+    "volume": 21
+  },
+  "Nezha Prime Neuroptics": {
+    "plat": 18.6,
+    "ducats": 100,
+    "volume": 110
+  },
+  "Nezha Prime Set": {
+    "plat": 66.9,
+    "ducats": 0,
+    "volume": 216
+  },
+  "Octavia Prime Blueprint": {
+    "plat": 53.2,
+    "ducats": 100,
+    "volume": 193
+  },
+  "Tenora Prime Blueprint": {
+    "plat": 3.7,
+    "ducats": 15,
+    "volume": 9
+  },
+  "Tenora Prime Receiver": {
+    "plat": 19.6,
+    "ducats": 100,
+    "volume": 27
+  },
+  "Pandero Prime Set": {
+    "plat": 29.9,
+    "ducats": 0,
+    "volume": 45
+  },
+  "Tenora Prime Stock": {
+    "plat": 7.9,
+    "ducats": 45,
+    "volume": 25
+  },
+  "Tenora Prime Set": {
+    "plat": 49.8,
+    "ducats": 0,
+    "volume": 54
+  },
+  "Pandero Prime Barrel": {
+    "plat": 4.3,
+    "ducats": 45,
+    "volume": 13
+  },
+  "Tenora Prime Barrel": {
+    "plat": 12.0,
+    "ducats": 100,
+    "volume": 38
+  },
+  "Octavia Prime Chassis": {
+    "plat": 10.4,
+    "ducats": 45,
+    "volume": 127
+  },
+  "Octavia Prime Neuroptics": {
+    "plat": 4.3,
+    "ducats": 15,
+    "volume": 101
+  },
+  "Pandero Prime Receiver": {
+    "plat": 20.1,
+    "ducats": 100,
+    "volume": 57
+  },
+  "Octavia Prime Systems": {
+    "plat": 8.1,
+    "ducats": 15,
+    "volume": 117
+  },
+  "Pandero Prime Blueprint": {
+    "plat": 4.4,
+    "ducats": 15,
+    "volume": 15
+  },
+  "Octavia Prime Set": {
+    "plat": 87.5,
+    "ducats": 0,
+    "volume": 332
+  },
+  "Volnus Prime Handle": {
+    "plat": 21.5,
+    "ducats": 100,
+    "volume": 67
+  },
+  "Volnus Prime Head": {
+    "plat": 5.0,
+    "ducats": 45,
+    "volume": 17
+  },
+  "Gara Prime Blueprint": {
+    "plat": 42.2,
+    "ducats": 100,
+    "volume": 123
+  },
+  "Volnus Prime Set": {
+    "plat": 29.6,
+    "ducats": 0,
+    "volume": 47
+  },
+  "Gara Prime Set": {
+    "plat": 66.7,
+    "ducats": 0,
+    "volume": 227
+  },
+  "Gara Prime Neuroptics": {
+    "plat": 4.2,
+    "ducats": 45,
+    "volume": 70
+  },
+  "Gara Prime Systems": {
+    "plat": 4.9,
+    "ducats": 15,
+    "volume": 70
+  },
+  "Astilla Prime Blueprint": {
+    "plat": 5.7,
+    "ducats": 45,
+    "volume": 19
+  },
+  "Astilla Prime Receiver": {
+    "plat": 4.7,
+    "ducats": 15,
+    "volume": 26
+  },
+  "Astilla Prime Barrel": {
+    "plat": 14.4,
+    "ducats": 100,
+    "volume": 54
+  },
+  "Astilla Prime Set": {
+    "plat": 35.9,
+    "ducats": 0,
+    "volume": 101
+  },
+  "Astilla Prime Stock": {
+    "plat": 4.8,
+    "ducats": 45,
+    "volume": 26
+  },
+  "Volnus Prime Blueprint": {
+    "plat": 2.5,
+    "ducats": 15,
+    "volume": 13
+  },
+  "Gara Prime Chassis": {
+    "plat": 9.1,
+    "ducats": 45,
+    "volume": 99
+  },
+  "Nidus Prime Blueprint": {
+    "plat": 5.2,
+    "ducats": 45,
+    "volume": 87
+  },
+  "Strun Prime Set": {
+    "plat": 36.4,
+    "ducats": 0,
+    "volume": 103
+  },
+  "Magnus Prime Set": {
+    "plat": 28.7,
+    "ducats": 0,
+    "volume": 56
+  },
+  "Nidus Prime Set": {
+    "plat": 81.7,
+    "ducats": 0,
+    "volume": 256
+  },
+  "Strun Prime Blueprint": {
+    "plat": 12.9,
+    "ducats": 100,
+    "volume": 79
+  },
+  "Magnus Prime Blueprint": {
+    "plat": 3.7,
+    "ducats": 15,
+    "volume": 12
+  },
+  "Strun Prime Receiver": {
+    "plat": 4.8,
+    "ducats": 15,
+    "volume": 22
+  },
+  "Strun Prime Barrel": {
+    "plat": 5.7,
+    "ducats": 45,
+    "volume": 42
+  },
+  "Nidus Prime Systems": {
+    "plat": 3.8,
+    "ducats": 15,
+    "volume": 58
+  },
+  "Strun Prime Stock": {
+    "plat": 5.3,
+    "ducats": 45,
+    "volume": 41
+  },
+  "Nidus Prime Neuroptics": {
+    "plat": 38.9,
+    "ducats": 100,
+    "volume": 152
+  },
+  "Nidus Prime Chassis": {
+    "plat": 21.0,
+    "ducats": 100,
+    "volume": 165
+  },
+  "Magnus Prime Receiver": {
+    "plat": 4.0,
+    "ducats": 45,
+    "volume": 23
+  },
+  "Magnus Prime Barrel": {
+    "plat": 19.1,
+    "ducats": 100,
+    "volume": 67
+  },
+  "Knell Prime Set": {
+    "plat": 25.6,
+    "ducats": 0,
+    "volume": 109
+  },
+  "Scourge Prime Blade": {
+    "plat": 3.4,
+    "ducats": 15,
+    "volume": 13
+  },
+  "Harrow Prime Blueprint": {
+    "plat": 4.1,
+    "ducats": 45,
+    "volume": 75
+  },
+  "Harrow Prime Set": {
+    "plat": 45.5,
+    "ducats": 0,
+    "volume": 288
+  },
+  "Knell Prime Barrel": {
+    "plat": 20.7,
+    "ducats": 100,
+    "volume": 83
+  },
+  "Harrow Prime Neuroptics": {
+    "plat": 4.2,
+    "ducats": 45,
+    "volume": 92
+  },
+  "Scourge Prime Barrel": {
+    "plat": 21.0,
+    "ducats": 100,
+    "volume": 58
+  },
+  "Knell Prime Blueprint": {
+    "plat": 2.6,
+    "ducats": 15,
+    "volume": 6
+  },
+  "Harrow Prime Chassis": {
+    "plat": 6.9,
+    "ducats": 15,
+    "volume": 111
+  },
+  "Scourge Prime Set": {
+    "plat": 50.6,
+    "ducats": 0,
+    "volume": 79
+  },
+  "Harrow Prime Systems": {
+    "plat": 23.0,
+    "ducats": 100,
+    "volume": 185
+  },
+  "Scourge Prime Handle": {
+    "plat": 3.9,
+    "ducats": 45,
+    "volume": 18
+  },
+  "Knell Prime Receiver": {
+    "plat": 3.6,
+    "ducats": 45,
+    "volume": 30
+  },
+  "Scourge Prime Blueprint": {
+    "plat": 9.7,
+    "ducats": 100,
+    "volume": 36
+  },
+  "Garuda Prime Chassis": {
+    "plat": 3.2,
+    "ducats": 45,
+    "volume": 61
+  },
+  "Corvas Prime Set": {
+    "plat": 22.4,
+    "ducats": 0,
+    "volume": 120
+  },
+  "Nagantaka Prime Set": {
+    "plat": 19.9,
+    "ducats": 0,
+    "volume": 72
+  },
+  "Corvas Prime Barrel": {
+    "plat": 14.2,
+    "ducats": 100,
+    "volume": 68
+  },
+  "Corvas Prime Blueprint": {
+    "plat": 2.9,
+    "ducats": 45,
+    "volume": 19
+  },
+  "Nagantaka Prime Receiver": {
+    "plat": 3.1,
+    "ducats": 45,
+    "volume": 44
+  },
+  "Nagantaka Prime Blueprint": {
+    "plat": 9.3,
+    "ducats": 100,
+    "volume": 69
+  },
+  "Corvas Prime Stock": {
+    "plat": 4.0,
+    "ducats": 15,
+    "volume": 15
+  },
+  "Nagantaka Prime Stock": {
+    "plat": 3.8,
+    "ducats": 45,
+    "volume": 39
+  },
+  "Garuda Prime Systems": {
+    "plat": 42.3,
+    "ducats": 100,
+    "volume": 190
+  },
+  "Corvas Prime Receiver": {
+    "plat": 4.0,
+    "ducats": 15,
+    "volume": 25
+  },
+  "Nagantaka Prime Barrel": {
+    "plat": 5.3,
+    "ducats": 15,
+    "volume": 31
+  },
+  "Garuda Prime Set": {
+    "plat": 63.6,
+    "ducats": 0,
+    "volume": 297
+  },
+  "Garuda Prime Neuroptics": {
+    "plat": 15.7,
+    "ducats": 100,
+    "volume": 227
+  },
+  "Garuda Prime Blueprint": {
+    "plat": 1.8,
+    "ducats": 15,
+    "volume": 41
+  },
+  "Hystrix Prime Blueprint": {
+    "plat": 2.9,
+    "ducats": 45,
+    "volume": 30
+  },
+  "Khora Prime Chassis": {
+    "plat": 2.8,
+    "ducats": 45,
+    "volume": 227
+  },
+  "Dual Keres Prime Set": {
+    "plat": 25.1,
+    "ducats": 0,
+    "volume": 125
+  },
+  "Hystrix Prime Set": {
+    "plat": 14.1,
+    "ducats": 0,
+    "volume": 113
+  },
+  "Dual Keres Prime Handle": {
+    "plat": 3.3,
+    "ducats": 45,
+    "volume": 76
+  },
+  "Khora Prime Set": {
+    "plat": 50.0,
+    "ducats": 0,
+    "volume": 564
+  },
+  "Khora Prime Blueprint": {
+    "plat": 14.7,
+    "ducats": 100,
+    "volume": 350
+  },
+  "Hystrix Prime Receiver": {
+    "plat": 8.7,
+    "ducats": 100,
+    "volume": 122
+  },
+  "Hystrix Prime Barrel": {
+    "plat": 3.3,
+    "ducats": 15,
+    "volume": 30
+  },
+  "Khora Prime Neuroptics": {
+    "plat": 21.5,
+    "ducats": 100,
+    "volume": 403
+  },
+  "Dual Keres Prime Blueprint": {
+    "plat": 10.1,
+    "ducats": 100,
+    "volume": 75
+  },
+  "Khora Prime Systems": {
+    "plat": 2.8,
+    "ducats": 15,
+    "volume": 135
+  },
+  "Dual Keres Prime Blade": {
+    "plat": 3.4,
+    "ducats": 15,
+    "volume": 56
+  },
+  "Tatsu Prime Blade": {
+    "plat": 3.4,
+    "ducats": 45,
+    "volume": 62
+  },
+  "Revenant Prime Chassis": {
+    "plat": 4.5,
+    "ducats": 15,
+    "volume": 213
+  },
+  "Revenant Prime Systems": {
+    "plat": 6.2,
+    "ducats": 45,
+    "volume": 303
+  },
+  "Tatsu Prime Set": {
+    "plat": 17.4,
+    "ducats": 0,
+    "volume": 187
+  },
+  "Tatsu Prime Blueprint": {
+    "plat": 2.7,
+    "ducats": 15,
+    "volume": 17
+  },
+  "Revenant Prime Set": {
+    "plat": 40.0,
+    "ducats": 0,
+    "volume": 798
+  },
+  "Phantasma Prime Barrel": {
+    "plat": 11.8,
+    "ducats": 100,
+    "volume": 179
+  },
+  "Revenant Prime Neuroptics": {
+    "plat": 5.3,
+    "ducats": 45,
+    "volume": 276
+  },
+  "Tatsu Prime Handle": {
+    "plat": 9.8,
+    "ducats": 100,
+    "volume": 138
+  },
+  "Phantasma Prime Blueprint": {
+    "plat": 2.6,
+    "ducats": 45,
+    "volume": 71
+  },
+  "Phantasma Prime Set": {
+    "plat": 34.2,
+    "ducats": 0,
+    "volume": 253
+  },
+  "Phantasma Prime Receiver": {
+    "plat": 2.6,
+    "ducats": 15,
+    "volume": 35
+  },
+  "Revenant Prime Blueprint": {
+    "plat": 13.4,
+    "ducats": 100,
+    "volume": 446
+  },
+  "Phantasma Prime Stock": {
+    "plat": 13.5,
+    "ducats": 100,
+    "volume": 187
+  },
+  "Baruuk Prime Chassis": {
+    "plat": 2.9,
+    "ducats": 45,
+    "volume": 120
+  },
+  "Baruuk Prime Blueprint": {
+    "plat": 11.0,
+    "ducats": 100,
+    "volume": 192
+  },
+  "Baruuk Prime Systems": {
+    "plat": 4.2,
+    "ducats": 15,
+    "volume": 111
+  },
+  "Baruuk Prime Neuroptics": {
+    "plat": 14.1,
+    "ducats": 100,
+    "volume": 296
+  },
+  "Baruuk Prime Set": {
+    "plat": 41.7,
+    "ducats": 0,
+    "volume": 350
+  },
+  "Cobra & Crane Prime Guard": {
+    "plat": 8.6,
+    "ducats": 100,
+    "volume": 154
+  },
+  "Afuris Prime Barrel": {
+    "plat": 3.3,
+    "ducats": 15,
+    "volume": 59
+  },
+  "Afuris Prime Set": {
+    "plat": 59.2,
+    "ducats": 0,
+    "volume": 74
+  },
+  "Afuris Prime Link": {
+    "plat": 3.4,
+    "ducats": 45,
+    "volume": 40
+  },
+  "Cobra & Crane Prime Blueprint": {
+    "plat": 2.8,
+    "ducats": 45,
+    "volume": 30
+  },
+  "Afuris Prime Blueprint": {
+    "plat": 2.4,
+    "ducats": 15,
+    "volume": 13
+  },
+  "Cobra & Crane Prime Blade": {
+    "plat": 3.5,
+    "ducats": 45,
+    "volume": 31
+  },
+  "Cobra & Crane Prime Hilt": {
+    "plat": 3.7,
+    "ducats": 15,
+    "volume": 22
+  },
+  "Cobra & Crane Prime Set": {
+    "plat": 18.5,
+    "ducats": 0,
+    "volume": 52
+  },
+  "Afuris Prime Receiver": {
+    "plat": 19.2,
+    "ducats": 100,
+    "volume": 117
+  },
+  "Hildryn Prime Blueprint": {
+    "plat": 13.0,
+    "ducats": 100,
+    "volume": 334
+  },
+  "Hildryn Prime Systems": {
+    "plat": 2.4,
+    "ducats": 15,
+    "volume": 76
+  },
+  "Shade Prime Blueprint": {
+    "plat": 4.2,
+    "ducats": 45,
+    "volume": 55
+  },
+  "Hildryn Prime Set": {
+    "plat": 33.7,
+    "ducats": 0,
+    "volume": 465
+  },
+  "Shade Prime Systems": {
+    "plat": 3.1,
+    "ducats": 45,
+    "volume": 54
+  },
+  "Larkspur Prime Set": {
+    "plat": 30.2,
+    "ducats": 0,
+    "volume": 111
+  },
+  "Hildryn Prime Neuroptics": {
+    "plat": 4.7,
+    "ducats": 45,
+    "volume": 175
+  },
+  "Larkspur Prime Barrel": {
+    "plat": 17.5,
+    "ducats": 100,
+    "volume": 121
+  },
+  "Shade Prime Cerebrum": {
+    "plat": 3.3,
+    "ducats": 15,
+    "volume": 36
+  },
+  "Shade Prime Set": {
+    "plat": 21.4,
+    "ducats": 0,
+    "volume": 169
+  },
+  "Larkspur Prime Stock": {
+    "plat": 2.9,
+    "ducats": 45,
+    "volume": 61
+  },
+  "Hildryn Prime Chassis": {
+    "plat": 6.3,
+    "ducats": 45,
+    "volume": 218
+  },
+  "Larkspur Prime Receiver": {
+    "plat": 3.9,
+    "ducats": 45,
+    "volume": 32
+  },
+  "Shade Prime Carapace": {
+    "plat": 10.2,
+    "ducats": 100,
+    "volume": 96
+  },
+  "Larkspur Prime Blueprint": {
+    "plat": 3.2,
+    "ducats": 15,
+    "volume": 27
+  },
+  "Wisp Prime Chassis": {
+    "plat": 15.3,
+    "ducats": 100,
+    "volume": 422
+  },
+  "Gunsen Prime Blueprint": {
+    "plat": 2.6,
+    "ducats": 15,
+    "volume": 25
+  },
+  "Gunsen Prime Set": {
+    "plat": 59.9,
+    "ducats": 0,
+    "volume": 122
+  },
+  "Fulmin Prime Blueprint": {
+    "plat": 3.9,
+    "ducats": 45,
+    "volume": 81
+  },
+  "Gunsen Prime Handle": {
+    "plat": 8.5,
+    "ducats": 45,
+    "volume": 187
+  },
+  "Fulmin Prime Barrel": {
+    "plat": 4.1,
+    "ducats": 15,
+    "volume": 57
+  },
+  "Wisp Prime Set": {
+    "plat": 76.8,
+    "ducats": 0,
+    "volume": 769
+  },
+  "Fulmin Prime Set": {
+    "plat": 30.3,
+    "ducats": 0,
+    "volume": 328
+  },
+  "Fulmin Prime Stock": {
+    "plat": 4.1,
+    "ducats": 45,
+    "volume": 118
+  },
+  "Wisp Prime Neuroptics": {
+    "plat": 6.8,
+    "ducats": 45,
+    "volume": 340
+  },
+  "Gunsen Prime Blade": {
+    "plat": 11.6,
+    "ducats": 100,
+    "volume": 218
+  },
+  "Wisp Prime Systems": {
+    "plat": 8.4,
+    "ducats": 15,
+    "volume": 412
+  },
+  "Fulmin Prime Receiver": {
+    "plat": 14.6,
+    "ducats": 100,
+    "volume": 291
+  },
+  "Wisp Prime Blueprint": {
+    "plat": 26.2,
+    "ducats": 100,
+    "volume": 484
+  },
+  "Grendel Prime Blueprint": {
+    "plat": 12.7,
+    "ducats": 100,
+    "volume": 300
+  },
+  "Grendel Prime Neuroptics": {
+    "plat": 4.2,
+    "ducats": 15,
+    "volume": 132
+  },
+  "Grendel Prime Chassis": {
+    "plat": 7.5,
+    "ducats": 45,
+    "volume": 166
+  },
+  "Grendel Prime Systems": {
+    "plat": 36.8,
+    "ducats": 100,
+    "volume": 320
+  },
+  "Masseter Prime Blueprint": {
+    "plat": 7.5,
+    "ducats": 45,
+    "volume": 50
+  },
+  "Masseter Prime Blade": {
+    "plat": 12.6,
+    "ducats": 100,
+    "volume": 78
+  },
+  "Masseter Prime Handle": {
+    "plat": 3.3,
+    "ducats": 15,
+    "volume": 38
+  },
+  "Zylok Prime Blueprint": {
+    "plat": 10.9,
+    "ducats": 100,
+    "volume": 135
+  },
+  "Zylok Prime Barrel": {
+    "plat": 4.4,
+    "ducats": 15,
+    "volume": 71
+  },
+  "Zylok Prime Receiver": {
+    "plat": 4.7,
+    "ducats": 45,
+    "volume": 74
+  },
+  "Gauss Prime Set": {
+    "plat": 112.2,
+    "ducats": 0,
+    "volume": 1215
+  },
+  "Gauss Prime Blueprint": {
+    "plat": 36.5,
+    "ducats": 45,
+    "volume": 996
+  },
+  "Gauss Prime Neuroptics": {
+    "plat": 15.2,
+    "ducats": 45,
+    "volume": 928
+  },
+  "Gauss Prime Chassis": {
+    "plat": 11.0,
+    "ducats": 15,
+    "volume": 959
+  },
+  "Gauss Prime Systems": {
+    "plat": 23.5,
+    "ducats": 100,
+    "volume": 946
+  },
+  "Akarius Prime Set": {
+    "plat": 138.5,
+    "ducats": 0,
+    "volume": 282
+  },
+  "Akarius Prime Blueprint": {
+    "plat": 18.6,
+    "ducats": 100,
+    "volume": 331
+  },
+  "Akarius Prime Barrel": {
+    "plat": 18.5,
+    "ducats": 15,
+    "volume": 527
+  },
+  "Akarius Prime Receiver": {
+    "plat": 20.2,
+    "ducats": 100,
+    "volume": 476
+  },
+  "Akarius Prime Link": {
+    "plat": 5.3,
+    "ducats": 45,
+    "volume": 221
+  },
+  "Acceltra Prime Set": {
+    "plat": 107.7,
+    "ducats": 0,
+    "volume": 520
+  },
+  "Acceltra Prime Blueprint": {
+    "plat": 4.9,
+    "ducats": 15,
+    "volume": 249
+  },
+  "Acceltra Prime Barrel": {
+    "plat": 26.6,
+    "ducats": 100,
+    "volume": 474
+  },
+  "Acceltra Prime Receiver": {
+    "plat": 11.3,
+    "ducats": 45,
+    "volume": 485
+  },
+  "Acceltra Prime Stock": {
+    "plat": 40.3,
+    "ducats": 100,
+    "volume": 493
+  },
+  "Forma Blueprint": {
+    "plat": 0,
+    "ducats": 0,
+    "volume": 0
+  },
+  "Exilus Weapon Adapter Blueprint": {
+    "plat": 0,
+    "ducats": 0,
+    "volume": 0
+  },
+  "Kuva": {
+    "plat": 0,
+    "ducats": 0,
+    "volume": 0
+  },
+  "Riven Sliver": {
+    "plat": 0,
+    "ducats": 0,
+    "volume": 0
+  },
+  "Ayatan Amber Star": {
+    "plat": 0,
+    "ducats": 0,
+    "volume": 0
+  },
+  "timestamp": "2024-02-03T11:10:49.3168809+01:00",
+  "version": "1.0.0"
+}

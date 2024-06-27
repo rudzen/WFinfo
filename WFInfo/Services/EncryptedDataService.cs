@@ -1,50 +1,57 @@
-using System.Data.SqlClient;
 using System.IO;
-using System.Security;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
-using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
-namespace WFInfo
+namespace WFInfo.Services;
+
+public sealed class EncryptedDataService : IEncryptedDataService
 {
-    public class EncryptedDataService
+    private static readonly ILogger Logger = Log.Logger.ForContext<EncryptedDataService>();
+    private static readonly string FileName = Path.Combine(ApplicationConstants.AppPath, "jwt_encrypted");
+
+    private readonly IDataProtector _jwtProtector;
+
+    public EncryptedDataService(IDataProtectionProvider provider)
     {
-        private static readonly IDataProtector JwtProtector;
+        _jwtProtector = provider.CreateProtector("WFInfo.JWT.v1");
+        LoadStoredJWT();
+    }
 
-        static EncryptedDataService()
+    public string? JWT { get; set; }
+
+    public void LoadStoredJWT()
+    {
+        try
         {
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddDataProtection();
-            var services = serviceCollection.BuildServiceProvider();
-            IDataProtectionProvider provider = services.GetService<IDataProtectionProvider>();
-            JwtProtector = provider?.CreateProtector("WFInfo.JWT.v1");
-        } 
-
-        public static string LoadStoredJWT()
-        {
-            try
-            {
-                var fileText = File.ReadAllText(Main.AppPath + @"\jwt_encrypted");
-                return JwtProtector?.Unprotect(fileText);
-            }
-            catch (FileNotFoundException e)
-            {
-                Main.AddLog($"{e.Message} JWT not set");
-            }
-            catch (CryptographicException e)
-            {
-                Main.AddLog($"{e.Message} JWT decryption failed");
-            }
-
-            return null;
+            var fileText = File.ReadAllText(FileName);
+            JWT = _jwtProtector.Unprotect(fileText);
         }
-        
-        public static void PersistJWT(string jwt)
+        catch (FileNotFoundException e)
         {
-            var encryptedJWT = JwtProtector?.Protect(jwt);
-            File.WriteAllText(Main.AppPath + @"\jwt_encrypted", encryptedJWT);
+            Logger.Error(e, "JWT not set");
         }
-        
-        
+        catch (CryptographicException e)
+        {
+            Logger.Error(e, "JWT decryption failed");
+        }
+    }
+
+    public bool IsJwtLoggedIn()
+    {
+        //check if the token is of the right length
+        return JWT is { Length: > 300 };
+    }
+
+    public void PersistJWT()
+    {
+        if (JWT is null)
+        {
+            Logger.Warning("JWT is null, not persisting");
+            return;
+        }
+
+        var encryptedJwt = _jwtProtector.Protect(JWT);
+        File.WriteAllText(FileName, encryptedJwt);
     }
 }

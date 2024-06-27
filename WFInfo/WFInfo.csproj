@@ -1,127 +1,180 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
-    <OutputType>WinExe</OutputType>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
-    <AllowedReferenceRelatedFileExtensions>
-      *.pdb;
-      *.xml
-    </AllowedReferenceRelatedFileExtensions>
-    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <UseWindowsForms>true</UseWindowsForms>
-    <UseWPF>true</UseWPF>
-    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
-    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <RunCodeAnalysis>false</RunCodeAnalysis>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationIcon>WFLogo.ico</ApplicationIcon>
-  </PropertyGroup>
-  <PropertyGroup>
-    <StartupObject>WFInfo.CustomEntrypoint</StartupObject>
-  </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="System.Net.Http" />
-    <Reference Include="Tesseract">
-      <HintPath>lib\Tesseract.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Resources\*" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="WFLogo.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <BootstrapperPackage Include=".NETFramework,Version=v4.5.2">
-      <Visible>False</Visible>
-      <ProductName>Microsoft .NET Framework 4.5.2 %28x86 and x64%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Update="Resources\achievment_03.wav" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="FodyWeavers.xml" />
-    <Content Include="FodyWeavers.xsd" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Autoupdater.NET.Official" Version="1.8.4" />
-    <PackageReference Include="Costura.Fody" Version="5.7.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="DotNetZip" Version="1.16.0" />
-    <PackageReference Include="Fody" Version="6.8.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="7.0.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.22621.755" />
-    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.39" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
-    <PackageReference Include="SharpDX.Mathematics" Version="4.2.0" />
-    <PackageReference Include="SuperSocket.ClientEngine.Core" Version="0.10.0" />
-    <PackageReference Include="System.Management" Version="7.0.2" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Net.Security" Version="4.3.2" />
-    <PackageReference Include="System.Resources.Extensions" Version="7.0.0" />
-    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="7.0.12" /> 
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="$(HOME)\.nuget\packages\tesseract\5.2.0\build\\..\x64\leptonica-1.82.0.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="$(HOME)\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="$(HOME)\.nuget\packages\tesseract\5.2.0\build\\..\x86\leptonica-1.82.0.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="$(HOME)\.nuget\packages\tesseract\5.2.0\build\\..\x86\tesseract50.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UseWPF>true</UseWPF>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <DefineConstants>SYSTEM_DRAWING_SUPPORT</DefineConstants>
+        <ApplicationIcon>Resources\WFLogo.ico</ApplicationIcon>
+    </PropertyGroup>
+
+<!--    <PropertyGroup>-->
+<!--        <StartupObject>WFInfo.CustomEntrypoint</StartupObject>-->
+<!--    </PropertyGroup>-->
+
+    <ItemGroup>
+        <None Remove="Resources\achievment_03.wav"/>
+        <None Remove="Resources\Axi.png"/>
+        <None Remove="Resources\background.jpg"/>
+        <None Remove="Resources\background_dark.jpg"/>
+        <None Remove="Resources\discord.png"/>
+        <None Remove="Resources\discord_h.png"/>
+        <None Remove="Resources\ducat_w.gif"/>
+        <None Remove="Resources\foundry.png"/>
+        <None Remove="Resources\foundry_h.png"/>
+        <None Remove="Resources\gear.png"/>
+        <None Remove="Resources\gear_h.png"/>
+        <None Remove="Resources\home.png"/>
+        <None Remove="Resources\home_h.png"/>
+        <None Remove="Resources\info.png"/>
+        <None Remove="Resources\info_h.png"/>
+        <None Remove="Resources\Lith.png"/>
+        <None Remove="Resources\Meso.png"/>
+        <None Remove="Resources\Minimise.png"/>
+        <None Remove="Resources\NameTray.png"/>
+        <None Remove="Resources\Neo.png"/>
+        <None Remove="Resources\panelBG.bmp"/>
+        <None Remove="Resources\Panel_UV.png"/>
+        <None Remove="Resources\Panel_V.png"/>
+        <None Remove="Resources\plat.gif"/>
+        <None Remove="Resources\plusone.png"/>
+        <None Remove="Resources\plusone.psd"/>
+        <None Remove="Resources\plusone_h.png"/>
+        <None Remove="Resources\Relic.png"/>
+        <None Remove="Resources\Relic_h.png"/>
+        <None Remove="Resources\Reload.png"/>
+        <None Remove="Resources\Reload_h.png"/>
+        <None Remove="Resources\SearchIcon.png"/>
+        <None Remove="Resources\SearchIcon_h.png"/>
+        <None Remove="Resources\search_icon.psd"/>
+        <None Remove="Resources\Settings.png"/>
+        <None Remove="Resources\Settings_h.png"/>
+        <None Remove="Resources\Target.bmp"/>
+        <None Remove="Resources\Target.png"/>
+        <None Remove="Resources\Target1.png"/>
+        <None Remove="Resources\TargetBox.png"/>
+        <None Remove="Resources\tressure.png"/>
+        <None Remove="Resources\tressure.psd"/>
+        <None Remove="Resources\tressure_h.png"/>
+        <None Remove="Resources\warning-sign.png"/>
+        <None Remove="Resources\WFLogo.ico"/>
+        <None Remove="Resources\WFLogo.png"/>
+        <None Remove="WFLogo.ico"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Autoupdater.NET.Official" Version="1.8.4"/>
+        <PackageReference Include="DotNext" Version="5.0.2" />
+        <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="8.0.2" />
+        <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.0" />
+        <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.77"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
+        <PackageReference Include="Polly" Version="8.3.0" />
+        <PackageReference Include="RecordParser" Version="2.3.0" />
+        <PackageReference Include="Serilog" Version="3.1.1" />
+        <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" />
+        <PackageReference Include="Serilog.Enrichers.Thread" Version="3.1.0" />
+        <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+        <PackageReference Include="Serilog.Sinks.Debug" Version="2.0.0" />
+        <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+        <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0"/>
+        <PackageReference Include="SharpDX.Mathematics" Version="4.2.0"/>
+        <PackageReference Include="System.Management" Version="8.0.0"/>
+        <PackageReference Include="System.Resources.Extensions" Version="8.0.0"/>
+        <PackageReference Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0"/>
+        <PackageReference Include="Tesseract" Version="5.2.0"/>
+        <PackageReference Include="Tesseract.Drawing" Version="5.2.0"/>
+        <PackageReference Include="WebSocketSharp-netstandard" Version="1.0.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Mediator.SourceGenerator" Version="2.1.7">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Mediator.Abstractions" Version="2.1.7" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Resource Include="Resources\achievment_03.wav"/>
+        <Resource Include="Resources\Axi.png"/>
+        <Resource Include="Resources\background.jpg"/>
+        <Resource Include="Resources\background_dark.jpg"/>
+        <Resource Include="Resources\discord.png"/>
+        <Resource Include="Resources\discord_h.png"/>
+        <Resource Include="Resources\ducat_w.gif"/>
+        <Resource Include="Resources\foundry.png"/>
+        <Resource Include="Resources\foundry_h.png"/>
+        <Resource Include="Resources\gear.png"/>
+        <Resource Include="Resources\gear_h.png"/>
+        <Resource Include="Resources\home.png"/>
+        <Resource Include="Resources\home_h.png"/>
+        <Resource Include="Resources\info.png"/>
+        <Resource Include="Resources\info_h.png"/>
+        <Resource Include="Resources\Lith.png"/>
+        <Resource Include="Resources\Meso.png"/>
+        <Resource Include="Resources\Minimise.png"/>
+        <Resource Include="Resources\NameTray.png"/>
+        <Resource Include="Resources\Neo.png"/>
+        <Resource Include="Resources\panelBG.bmp"/>
+        <Resource Include="Resources\Panel_UV.png"/>
+        <Resource Include="Resources\Panel_V.png"/>
+        <Resource Include="Resources\plat.gif"/>
+        <Resource Include="Resources\plusone.png"/>
+        <Resource Include="Resources\plusone.psd"/>
+        <Resource Include="Resources\plusone_h.png"/>
+        <Resource Include="Resources\Relic.png"/>
+        <Resource Include="Resources\Relic_h.png"/>
+        <Resource Include="Resources\Reload.png"/>
+        <Resource Include="Resources\Reload_h.png"/>
+        <Resource Include="Resources\SearchIcon.png"/>
+        <Resource Include="Resources\SearchIcon_h.png"/>
+        <Resource Include="Resources\search_icon.psd"/>
+        <Resource Include="Resources\Settings.png"/>
+        <Resource Include="Resources\Settings_h.png"/>
+        <Resource Include="Resources\Target.bmp"/>
+        <Resource Include="Resources\Target.png"/>
+        <Resource Include="Resources\Target1.png"/>
+        <Resource Include="Resources\TargetBox.png"/>
+        <Resource Include="Resources\tressure.png"/>
+        <Resource Include="Resources\tressure.psd"/>
+        <Resource Include="Resources\tressure_h.png"/>
+        <Resource Include="Resources\warning-sign.png"/>
+        <Resource Include="Resources\WFLogo.ico"/>
+        <Resource Include="Resources\WFLogo.png"/>
+        <Resource Include="WFLogo.ico"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="appsettings.json" />
+      <Content Include="appsettings.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\WFInfo.Models\WFInfo.Models.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Update="EquipmentWindow.cs">
+        <DependentUpon>EquipmentWindow.xaml</DependentUpon>
+      </Compile>
+      <Compile Update="RelicsWindow.cs">
+        <DependentUpon>RelicsWindow.xaml</DependentUpon>
+      </Compile>
+    </ItemGroup>
+
 </Project>

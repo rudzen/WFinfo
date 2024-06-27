@@ -1,26 +1,20 @@
-using System.IO;
 using System.Reflection;
 
-namespace WFInfo
+namespace WFInfo.Services;
+
+public sealed class SoundPlayer : ISoundPlayer
 {
-    internal interface ISoundPlayer
+    private readonly System.Media.SoundPlayer _player;
+
+    public SoundPlayer()
     {
-        void Play();
+        var assembly = Assembly.GetExecutingAssembly();
+        var audioStream = assembly.GetManifestResourceStream("WFInfo.Resources.achievment_03.wav");
+        _player = new System.Media.SoundPlayer(audioStream);
     }
 
-    public class SoundPlayer : ISoundPlayer
+    public void Play()
     {
-        private readonly System.Media.SoundPlayer _player;
-        public SoundPlayer()
-        {
-            var assembly = Assembly.GetExecutingAssembly();
-            var audioStream = assembly.GetManifestResourceStream("WFInfo.Resources.achievment_03.wav");
-            _player = new System.Media.SoundPlayer(audioStream);
-        }
-
-        public void Play()
-        {
-            _player.Play();
-        }
+        _player.Play();
     }
 }

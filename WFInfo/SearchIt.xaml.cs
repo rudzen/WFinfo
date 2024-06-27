@@ -1,98 +1,97 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Navigation;
+using Serilog;
 using WebSocketSharp;
+using WFInfo.Domain.Types;
 
-namespace WFInfo
+namespace WFInfo;
+
+/// <summary>
+/// Interaction logic for SearchIt.xaml
+/// </summary>
+///
+public partial class SearchIt : Window
 {
-    /// <summary>
-    /// Interaction logic for SearchIt.xaml
-    /// </summary>
-    /// 
+    private static readonly ILogger Logger = Log.Logger.ForContext<SearchIt>();
 
-    public partial class SearchIt : Window
+    public SearchIt()
     {
+        InitializeComponent();
+    }
 
-        public SearchIt()
-        {
-            InitializeComponent();
-        }
+    public bool IsInUse { get; set; }
 
-        public bool IsInUse { get; set; } = false;
-        /// <summary>
-        /// Launch snapit, prompts user if not logged in
-        /// </summary>
-        public void Start()
+    /// <summary>
+    /// Launch snapit, prompts user if not logged in
+    /// </summary>
+    public void Start(Func<bool> isJwtLegal)
+    {
+        Main.SearchIt.Show();
+        MainWindow.INSTANCE.Topmost = true;
+        Main.SearchIt.Placeholder.Content = "Search for warframe.market Items";
+        if (!isJwtLegal())
         {
-            Main.searchBox.Show();
-            MainWindow.INSTANCE.Topmost = true;
-            Main.searchBox.placeholder.Content = "Search for warframe.market Items";
-            if (!Main.dataBase.IsJwtLoggedIn())
-            {
-                Main.searchBox.placeholder.Content = "Please log in first";
-                Main.login.MoveLogin(Left, Main.searchBox.Top - 130);
-                return;
-            }
-            MainWindow.INSTANCE.Topmost = false;
-            IsInUse = true;
-            Main.searchBox.Show();
-            searchField.Focusable = true;
-            Main.searchBox.Topmost = true;
-            Win32.BringToFront(Process.GetCurrentProcess());
-        }
-        /// <summary>
-        /// Stats a search, it will try to get the closest item from the search box and spawn a create listing screen
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Search(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var closest = Main.dataBase.GetPartNameHuman(searchField.Text, out _);
-                var primeRewards = new List<string> { closest };
-                var rewardCollection = Task.Run(() => Main.listingHelper.GetRewardCollection(primeRewards)).Result;
-                Main.listingHelper.ScreensList.Add(new KeyValuePair<string, RewardCollection>("", rewardCollection));
-                if (!Main.listingHelper.IsVisible)
-                {
-                    Main.listingHelper.SetScreen(Main.listingHelper.ScreensList.Count - 1);
-                }
-                Main.listingHelper.Show();
-                Main.listingHelper.BringIntoView();
-            }
-            catch (Exception exception)
-            {
-                Main.AddLog(exception.ToString());
-            }
-            Finish();
+            Main.SearchIt.Placeholder.Content = "Please log in first";
+            Main.Login.MoveLogin(Left, Main.SearchIt.Top - 130);
+            return;
         }
 
-        /// <summary>
-        /// Reset the search box back to original status and then hide it
-        /// </summary>
-        internal void Finish()
+        MainWindow.INSTANCE.Topmost = false;
+        IsInUse = true;
+        Main.SearchIt.Show();
+        SearchField.Focusable = true;
+        Main.SearchIt.Topmost = true;
+        Win32.BringToFront(Process.GetCurrentProcess());
+    }
+
+    /// <summary>
+    /// Stats a search, it will try to get the closest item from the search box and spawn a create listing screen
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void Search(object sender, RoutedEventArgs e)
+    {
+        try
         {
-            searchField.Text = "";
-            placeholder.Visibility = Visibility.Visible;
-            searchField.Focusable = false;
-            IsInUse = false;
-            Hide();
+            var closest = Main.DataBase.GetPartNameHuman(SearchField.Text, out var _);
+            var primeRewards = new List<string> { closest };
+            var rewardCollection = Main.ListingHelper.GetRewardCollection(primeRewards).GetAwaiter().GetResult();
+            Main.ListingHelper.ScreensList.Add(new RewardCollectionItem(string.Empty, rewardCollection));
+            if (!Main.ListingHelper.IsVisible)
+                Main.ListingHelper.SetScreen(Main.ListingHelper.ScreensList.Count - 1);
+
+            Main.ListingHelper.Show();
+            Main.ListingHelper.BringIntoView();
         }
-        /// <summary>
-        /// Helper method to remove the placeholder text
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void TextChanged(object sender, TextChangedEventArgs e)
+        catch (Exception exception)
         {
-            if (!searchField.Text.IsNullOrEmpty())
-                placeholder.Visibility = Visibility.Hidden;
+            Logger.Error(exception, "Failed to search");
         }
+
+        Finish();
+    }
+
+    /// <summary>
+    /// Reset the search box back to original status and then hide it
+    /// </summary>
+    internal void Finish()
+    {
+        SearchField.Text = string.Empty;
+        Placeholder.Visibility = Visibility.Visible;
+        SearchField.Focusable = false;
+        IsInUse = false;
+        Hide();
+    }
+
+    /// <summary>
+    /// Helper method to remove the placeholder text
+    /// </summary>
+    /// <param name="sender"></param>
+    /// <param name="e"></param>
+    private void TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (!SearchField.Text.IsNullOrEmpty())
+            Placeholder.Visibility = Visibility.Hidden;
     }
 }
-
-
