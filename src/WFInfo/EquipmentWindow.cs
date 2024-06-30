@@ -98,9 +98,9 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
                     if (partName.Contains("Kubrow"))
                         partName = partName[(partName.IndexOf(" Blueprint") + 1)..];
                     var partNode = new TreeNode(partName,
-                        primePart.Value["vaulted"].ToObject<bool>() ? "Vaulted" : "", false, 0);
+                        primePart.Value["vaulted"].ToObject<bool>() ? "Vaulted" : string.Empty, false, 0);
                     partNode.MakeClickable(primePart.Key);
-                    if (Main.DataBase.MarketData.TryGetValue(primePart.Key.ToString(), out var marketValues))
+                    if (Main.DataBase.MarketData.TryGetValue(primePart.Key, out var marketValues))
                         partNode.SetPrimePart(marketValues["plat"].ToObject<double>(),
                             marketValues["ducats"].ToObject<int>(), primePart.Value["owned"].ToObject<int>(),
                             primePart.Value["count"].ToObject<int>());
@@ -110,7 +110,7 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
                         var ducats = 0.0;
                         foreach (KeyValuePair<string, JToken> subPartPart in job["parts"].ToObject<JObject>())
                         {
-                            if (Main.DataBase.MarketData.TryGetValue(subPartPart.Key.ToString(),
+                            if (Main.DataBase.MarketData.TryGetValue(subPartPart.Key,
                                     out var subMarketValues))
                             {
                                 var temp = subPartPart.Value["count"].ToObject<int>();
@@ -218,7 +218,7 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
 
     private void VaultedClick(object sender, RoutedEventArgs e)
     {
-        if ((bool)vaulted.IsChecked)
+        if (vaulted.IsChecked is true)
         {
             foreach (var (_, value) in primeTypes)
                 value.FilterOutVaulted(true);
@@ -380,16 +380,19 @@ public partial class EquipmentWindow : Window, INotificationHandler<EventWindowR
 
     private void ReapplyFilters()
     {
-        foreach (var primeType in primeTypes)
-            primeType.Value.ResetFilter();
+        if (primeTypes is null)
+            return;
 
-        if ((bool)vaulted.IsChecked)
-            foreach (var primeType in primeTypes)
-                primeType.Value.FilterOutVaulted(true);
-
-        if (searchText != null && searchText.Length != 0)
-            foreach (var primeType in primeTypes)
-                primeType.Value.FilterSearchText(searchText, false, true);
+        var isVaulted = vaulted.IsChecked is true;
+        var hasSearchText = searchText is not null && searchText.Length != 0;
+        foreach (var value in primeTypes.Values)
+        {
+            value.ResetFilter();
+            if (isVaulted)
+                value.FilterOutVaulted(true);
+            if (hasSearchText)
+                value.FilterSearchText(searchText.AsSpan(), false, true);
+        }
 
         RefreshVisibleRelics();
     }

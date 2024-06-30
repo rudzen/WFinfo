@@ -493,10 +493,10 @@ public partial class TreeNode : INPC
     }
 
     public bool FilterSearchText(
-        IEnumerable<string> searchText,
+        ReadOnlySpan<string> searchText,
         bool removeLeaves,
         bool additionalFilter = false,
-        Dictionary<string, bool> matchedText = null)
+        Dictionary<string, bool>? matchedText = null)
     {
         var matchedTextCopy = new Dictionary<string, bool>();
 
@@ -508,7 +508,7 @@ public partial class TreeNode : INPC
             done = done && tempVal;
         }
 
-        List<TreeNode> filterList = additionalFilter ? ChildrenFiltered : Children;
+        var filterList = additionalFilter ? ChildrenFiltered : Children;
         if (done)
         {
             if (ChildrenFiltered.Count > 0)
@@ -616,7 +616,7 @@ public partial class TreeNode : INPC
         }
     }
 
-    public static string PadNumbers(string input)
+    private static string PadNumbers(string input)
     {
         return NumberRegEx().Replace(input, match => match.Value.PadLeft(5, '0'));
     }
