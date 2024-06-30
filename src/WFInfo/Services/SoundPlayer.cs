@@ -17,4 +17,9 @@ public sealed class SoundPlayer : ISoundPlayer
     {
         _player.Play();
     }
+
+    public void Dispose()
+    {
+        _player.Dispose();
+    }
 }
